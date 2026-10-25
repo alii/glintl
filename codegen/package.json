@@ -1,0 +1,9 @@
+{
+  "name": "glintl-codegen",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "cldr-core": "48.0.0"
+  }
+}
