@@ -1,4 +1,4 @@
-//// Format dates and times for people, in their own language.
+//// Format dates and times in many languages, on Erlang and JavaScript.
 ////
 //// ```gleam
 //// import glintl
