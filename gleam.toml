@@ -5,8 +5,8 @@ version = "0.0.1"
 # your project to the Hex package manager.
 #
 description = "Format dates and times in many languages, on Erlang and JavaScript."
-licences = ["Apache-2.0"]
-# repository = { type = "github", user = "", repo = "" }
+licences = ["MIT"]
+repository = { type = "github", user = "alii", repo = "glintl" }
 # links = [{ title = "Website", href = "" }]
 #
 # For a full reference of all the available options, you can have a look at
