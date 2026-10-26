@@ -87,15 +87,18 @@ On Erlang, calendars with their own months are stored as tables of years made fr
 
 glintl copies ICU, mistakes included, so the output matches JavaScript. When the data is generated, every calendar's maths is checked against ICU on every day it covers, about 29 million days in all. The tests then check the Erlang calendar code field by field, and every locale's formats against `Intl.DateTimeFormat`.
 
-As a separate check of ICU itself, its dates were compared once with the algorithms from Reingold and Dershowitz's _Calendrical Calculations_ (4th edition), on every day from year 1 to 4000. Coptic, Ethiopic, Hebrew, Persian (the 33-year rule) and the tabular Islamic calendars match on every day. The Chinese and Dangi (Korean) calendars match on every day from 1900 to 2100 except these, where glintl follows ICU:
+As a separate check of ICU itself, its dates were compared once with the algorithms from Reingold and Dershowitz's _Calendrical Calculations_ (4th edition), on every day from year 1 to 4000. Coptic, Ethiopic, Hebrew, Persian (the 33-year rule) and the tabular Islamic calendars match on every day. The Chinese and Dangi (Korean) calendars match on most days from 1900 to 2100. On these, where glintl follows ICU 78.3, they don't:
 
-| When                             | Calendar | ICU                              | The book                                                                        |
-| -------------------------------- | -------- | -------------------------------- | ------------------------------------------------------------------------------- |
-| 1906, 1914, 1916, 1920           | Chinese  | Starts some months a day earlier | Uses Beijing local time, as China did before 1929                               |
-| 1904, 1905, 1908, 1911           | Dangi    | Starts some months a day earlier | Uses the time zones Korea used then: Seoul local time until 1908, then UTC+8:30 |
-| August 2033                      | Both     | Puts the leap month elsewhere    | The well-known "2033 problem"                                                   |
-| 28 September 2057, 7 August 2097 | Chinese  | Calls the day "day 0"            | Day 1 of the month                                                              |
-| 13 January 2097                  | Dangi    | Calls the day "day 0"            | Day 1 of the month                                                              |
+| When                                           | Calendar | ICU 78.3                                  | The book                                                                        |
+| ---------------------------------------------- | -------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| 1906, 1917, 1922                               | Chinese  | Starts some months a day earlier or later | Uses Beijing local time, as China did before 1929                               |
+| 1904, 1905, 1908, 1911                         | Dangi    | Starts some months a day earlier          | Uses the time zones Korea used then: Seoul local time until 1908, then UTC+8:30 |
+| 1954, 1955, 1987, 1999, 2012, 2018, 2057, 2070 | Chinese  | Starts some months a day earlier or later | Starts them on the other day                                                    |
+| 2017, 2051, 2097                               | Dangi    | Starts some months a day earlier or later | Starts them on the other day                                                    |
+| Chinese New Year 2027 and 2030                 | Chinese  | 7 February 2027 and 2 February 2030       | 6 February 2027 and 3 February 2030, the real dates                             |
+| August 2033                                    | Both     | Puts the leap month elsewhere             | The well-known "2033 problem"                                                   |
+
+So in those months, glintl and JavaScript are both a day out. ICU's Chinese calendar changes between versions: the ICU 78.1 in macOS gets 2027 and 2030 right, and has other differences instead. glintl's tables are regenerated from the pinned ICU, so they follow it.
 
 The Umm al-Qura calendar follows Saudi Arabia's official tables, so it isn't compared with the book's rule.
 
