@@ -43,16 +43,31 @@ export function escape(s: string, hex: (code: string) => string): string {
 }
 
 export type Term =
-  | { t: "text"; text: string }
+  | { t: "text"; text: string; words: number }
   | { t: "list"; items: Term[] }
   | { t: "tuple"; items: Term[]; separator: string; repeatable: boolean };
 
 const SEPARATOR = ", ";
 
-const raw = (text: string): Term => ({ t: "text", text });
+// Sizes in memory words, as `erts_debug:flat_size` counts them.
+const WORD_BYTES = 8;
+const BINARY_HEADER_WORDS = 2;
+const LIST_CELL_WORDS = 2;
+const TUPLE_HEADER_WORDS = 1;
+const TUPLE_ELEMENT_WORDS = 1;
 
-const string = (s: string) =>
-  raw(`<<"${escape(s, (h) => `\\x{${h}}`)}"/utf8>>`);
+// Smaller pieces cost more to call than to repeat.
+const SMALLEST_PIECE_WORDS = 8;
+
+const raw = (text: string): Term => ({ t: "text", text, words: 0 });
+
+const string = (s: string): Term => ({
+  t: "text",
+  text: `<<"${escape(s, (h) => `\\x{${h}}`)}"/utf8>>`,
+  words:
+    BINARY_HEADER_WORDS +
+    Math.ceil(new TextEncoder().encode(s).length / WORD_BYTES),
+});
 
 const bool = (b: boolean) => raw(b ? "true" : "false");
 
@@ -107,6 +122,23 @@ export function text(term: Term): string {
   texts.set(term, written);
 
   return written;
+}
+
+function words(term: Term): number {
+  switch (term.t) {
+    case "text":
+      return term.words;
+    case "list":
+      return term.items.reduce(
+        (sum, item) => sum + LIST_CELL_WORDS + words(item),
+        0,
+      );
+    case "tuple":
+      return term.items.reduce(
+        (sum, item) => sum + TUPLE_ELEMENT_WORDS + words(item),
+        TUPLE_HEADER_WORDS,
+      );
+  }
 }
 
 function subterms(term: Term): Term[] {
@@ -295,8 +327,8 @@ export function pieces(module: string, terms: Term[]): Pieces {
   const counts = terms
     .flatMap(subterms)
     .values()
+    .filter((t) => words(t) >= SMALLEST_PIECE_WORDS)
     .map(text)
-    .filter((t) => t.length >= SHORTEST_SHARED)
     .reduce(
       (seen, t) => seen.set(t, (seen.get(t) ?? 0) + 1),
       new Map<string, number>(),
