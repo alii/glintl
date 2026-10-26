@@ -1,0 +1,9 @@
+[lint]
+plugins = ["functional"]
+
+[lint.rules]
+"curly" = "error"
+"functional/no-let" = "error"
+"functional/no-loop-statements" = "error"
+"functional/no-classes" = "error"
+"functional/no-class-inheritance" = "error"

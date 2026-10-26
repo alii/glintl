@@ -28,11 +28,18 @@ const SHORTEST_SHARED = 24;
 export function escape(s: string, hex: (code: string) => string): string {
   return [...s]
     .map((c) => {
-      if (c === "\\") return "\\\\";
-      if (c === '"') return '\\"';
-      if (c === " ") return c;
-      if (INVISIBLE.test(c))
+      if (c === "\\") {
+        return "\\\\";
+      }
+      if (c === '"') {
+        return '\\"';
+      }
+      if (c === " ") {
+        return c;
+      }
+      if (INVISIBLE.test(c)) {
         return hex(c.codePointAt(0)!.toString(HEXADECIMAL).toUpperCase());
+      }
       return c;
     })
     .join("");
@@ -125,7 +132,9 @@ export class Writer {
   // One of something for each style, from full to short, like Gleam's
   // `Styles`.
   styles<T>(items: T[], write: (item: T) => string): string {
-    if (items.length !== STYLE_COUNT) throw new Error("A style is missing");
+    if (items.length !== STYLE_COUNT) {
+      throw new Error("A style is missing");
+    }
     return this.shared(`{styles, ${items.map(write).join(", ")}}`);
   }
 
@@ -173,8 +182,11 @@ export class Writer {
       .sort((a, b) => a.length - b.length);
     const names = new Map(repeated.map((t, n) => [t, `V${n + 1}`]));
     const replace = (text: string, shorterThan: number) => {
-      for (const t of [...repeated].reverse())
-        if (t.length < shorterThan) text = text.split(t).join(names.get(t)!);
+      for (const t of [...repeated].reverse()) {
+        if (t.length < shorterThan) {
+          text = text.split(t).join(names.get(t)!);
+        }
+      }
       return text;
     };
     const bindings = repeated.map(

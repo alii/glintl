@@ -163,13 +163,18 @@ function formatter(tag: string, calendar: CalendarId, options: Options) {
 // Every day that a calendar's maths covers, to look for years with odd
 // numbers: negative ones, or the first year of an era.
 function sampleDays(math: Math_): number[] {
-  if (math.kind === "table")
+  if (math.kind === "table") {
     return math.starts.slice(0, -1).map((start) => start + INTO_YEAR);
+  }
   const days: number[] = [];
-  for (let year = SCAN_FROM; year <= LAST_YEAR; year++)
+  for (let year = SCAN_FROM; year <= LAST_YEAR; year++) {
     days.push(day(year, ...MID_YEAR));
-  for (const era of math.eras)
-    if (Number.isFinite(era.start)) days.push(era.start, era.start + 1);
+  }
+  for (const era of math.eras) {
+    if (Number.isFinite(era.start)) {
+      days.push(era.start, era.start + 1);
+    }
+  }
   return days;
 }
 
@@ -189,11 +194,14 @@ export function derive(
   const valueAt = (date: Date, i: number) => {
     const parts = f.formatToParts(date);
     const type = probe[i]!.type;
-    if (parts.length === probe.length && parts[i]!.type === type)
+    if (parts.length === probe.length && parts[i]!.type === type) {
       return parts[i]!.value;
+    }
     const n = probe.slice(0, i).filter((p) => p.type === type).length;
     const found = parts.filter((p) => p.type === type)[n];
-    if (!found) throw new Error(`${name}: no ${type} on ${date.toISOString()}`);
+    if (!found) {
+      throw new Error(`${name}: no ${type} on ${date.toISOString()}`);
+    }
     return found.value;
   };
   // The digits of the part being read: the locale's, or ASCII for parts
@@ -209,8 +217,12 @@ export function derive(
       .join("");
   const numeric = (s: string) => /^\d+$/.test(toAscii(s));
   const padded = (value: string, n: number) => {
-    if (value === local(n, true) && n < ONE_DIGIT_BELOW) return true;
-    if (value === local(n, false)) return false;
+    if (value === local(n, true) && n < ONE_DIGIT_BELOW) {
+      return true;
+    }
+    if (value === local(n, false)) {
+      return false;
+    }
     throw new Error(`${name}: can't read number ${value}`);
   };
   const date = calendarDate(math, probeDay)!;
@@ -227,15 +239,18 @@ export function derive(
     const negative =
       negatives.find((d) => calendarDate(math, d)?.era === date.era) ??
       negatives[0];
-    if (negative === undefined) return "-";
+    if (negative === undefined) {
+      return "-";
+    }
     const value = valueAt(at(negative), i);
     const digitsPart = twoDigit
       ? local(-year(negative)! % TWO_DIGIT_YEARS, true)
       : local(-year(negative)!, false);
-    if (!value.endsWith(digitsPart))
+    if (!value.endsWith(digitsPart)) {
       throw new Error(
         `${name}: odd negative year ${value} for ${year(negative)} on day ${negative}`,
       );
+    }
     return value.slice(0, -digitsPart.length);
   };
 
@@ -271,9 +286,9 @@ export function derive(
           abs >= TWO_DIGIT_YEARS &&
           value.endsWith(local(abs % TWO_DIGIT_YEARS, true)) &&
           !value.endsWith(local(abs, false))
-        )
+        ) {
           twoDigit = true;
-        else if (value.endsWith(local(abs, false))) {
+        } else if (value.endsWith(local(abs, false))) {
           // Years under 100 look the same either way, unless one under 10 is
           // padded.
           const small = days().find((d) => {
@@ -286,7 +301,9 @@ export function derive(
             abs < TWO_DIGIT_YEARS &&
             small !== undefined &&
             valueAt(at(small), i).endsWith(local(Math.abs(year(small)!), true));
-        } else throw new Error(`${name}: odd year ${value}`);
+        } else {
+          throw new Error(`${name}: odd year ${value}`);
+        }
         // Some patterns write the first year of an era as a word, like 元.
         const one = days().find((d) => year(d) === 1 && sameEra(d));
         const firstValue =
@@ -320,9 +337,15 @@ export function derive(
           (start): [number, number, number][] => {
             const extended = calendarDate(math, start)!.extended;
             const text = number(extended, "-", local);
-            for (let d = start - DAYS_PER_WEEK; d <= start + DAYS_PER_WEEK; d++)
-              if (calendarDate(math, d) && valueAt(at(d), i) === text)
+            for (
+              let d = start - DAYS_PER_WEEK;
+              d <= start + DAYS_PER_WEEK;
+              d++
+            ) {
+              if (calendarDate(math, d) && valueAt(at(d), i) === text) {
                 return [[start, extended, d]];
+              }
+            }
             return [];
           },
         );
@@ -342,8 +365,9 @@ export function derive(
         const exceptions = misses(minimalDays).map(
           ([, extended, d]): [number, number] => [extended, d],
         );
-        if (exceptions.length > observed.length / EXCEPTIONS_AT_MOST_ONE_IN)
+        if (exceptions.length > observed.length / EXCEPTIONS_AT_MOST_ONE_IN) {
           throw new Error(`${name}: odd week-based year`);
+        }
         const extended = (d: number) => calendarDate(math, d)?.extended;
         return {
           t: "week_year",
@@ -354,12 +378,14 @@ export function derive(
         };
       }
       case "relatedYear":
-        if (value !== local(date.related, false))
+        if (value !== local(date.related, false)) {
           throw new Error(`${name}: odd related year`);
+        }
         return { t: "related_year" };
       case "yearName":
-        if (math.kind !== "table")
+        if (math.kind !== "table") {
           throw new Error(`${name}: year names without a table`);
+        }
         return {
           t: "year_name",
           names: occurrences(math).cycles.map((days) =>
@@ -380,8 +406,9 @@ export function derive(
           // only numbers if every month follows the same rule.
           if (numeric(value)) {
             const pad = padded(value, date.month + 1);
-            if (names.every((name, m) => name === local(m + 1, pad)))
+            if (names.every((name, m) => name === local(m + 1, pad))) {
               return { t: "month_number", pad };
+            }
           }
           return { t: "month_name", names };
         }
@@ -397,8 +424,9 @@ export function derive(
           const early = probeDay - date.day + PADDED_DAY;
           return { t: "day", pad: padded(valueAt(at(early), i), PADDED_DAY) };
         }
-        if (math.kind !== "table")
+        if (math.kind !== "table") {
           throw new Error(`${name}: day names without a table`);
+        }
         const longMonth = near(occurrences(math).longMonths);
         // Names for days 0 to 30. Day 0 only happens where ICU's
         // astronomy goes wrong, so it's taken from one of those days.
@@ -462,7 +490,9 @@ export function derive(
     try {
       return read(part, i);
     } catch (error) {
-      if (digits === ASCII_DIGITS) throw error;
+      if (digits === ASCII_DIGITS) {
+        throw error;
+      }
       active = ASCII_DIGITS;
       try {
         return { t: "ascii", token: read(part, i) };
@@ -496,7 +526,9 @@ function deriveZone(
   const minuteDigits = local(ZONE_MINUTES, true);
   const hAt = full.indexOf(hourDigits);
   const mAt = full.indexOf(minuteDigits, hAt + hourDigits.length);
-  if (hAt < 0 || mAt < 0) throw new Error(`${name}: odd zone ${full}`);
+  if (hAt < 0 || mAt < 0) {
+    throw new Error(`${name}: odd zone ${full}`);
+  }
   const positive = full.slice(0, hAt);
   const separator = full.slice(hAt + hourDigits.length, mAt);
   const suffix = full.slice(mAt + minuteDigits.length);
@@ -512,8 +544,9 @@ function deriveZone(
   if (
     negativeFull !==
     negative + hourDigits + separator + minuteDigits + negativeSuffix
-  )
+  ) {
     throw new Error(`${name}: odd negative zone ${negativeFull}`);
+  }
 
   // With minutes left out, some locales also change the suffix.
   const whole = zone(zoneOffset("+", ZONE_HOURS, 0));
@@ -521,8 +554,9 @@ function deriveZone(
   const optionalMinutes = !whole.includes(separator + local(0, true));
   const wholeSuffix = (text: string, prefix: string) => {
     const wholeMinutes = optionalMinutes ? "" : separator + local(0, true);
-    if (!text.startsWith(prefix + hourDigits + wholeMinutes))
+    if (!text.startsWith(prefix + hourDigits + wholeMinutes)) {
       throw new Error(`${name}: odd whole hour zone ${text}`);
+    }
     return text.slice((prefix + hourDigits + wholeMinutes).length);
   };
 
@@ -560,8 +594,9 @@ export function glue(
     const d = both.indexOf(date);
     const t = both.indexOf(time, d < 0 ? 0 : d + date.length);
     const t2 = t >= 0 ? t : both.indexOf(time);
-    if (d < 0 || t2 < 0)
+    if (d < 0 || t2 < 0) {
       throw new Error(`${name}: can't find the date and time in ${both}`);
+    }
     const marks = [
       { at: d, length: date.length, piece: { t: "date" } as GluePiece },
       { at: t2, length: time.length, piece: { t: "time" } as GluePiece },
@@ -569,17 +604,21 @@ export function glue(
     const result: GluePiece[] = [];
     let from = 0;
     for (const mark of marks) {
-      if (mark.at > from)
+      if (mark.at > from) {
         result.push({ t: "text", value: both.slice(from, mark.at) });
+      }
       result.push(mark.piece);
       from = mark.at + mark.length;
     }
-    if (from < both.length) result.push({ t: "text", value: both.slice(from) });
+    if (from < both.length) {
+      result.push({ t: "text", value: both.slice(from) });
+    }
     return result;
   };
   const short = pieces("short");
-  if (JSON.stringify(pieces("full")) !== JSON.stringify(short))
+  if (JSON.stringify(pieces("full")) !== JSON.stringify(short)) {
     throw new Error(`${name}: the glue depends on the time style`);
+  }
   return short;
 }
 
@@ -611,7 +650,9 @@ function findOccurrences(math: Table) {
     cycles[calendarDate(math, start)!.cycle]?.push(start + INTO_YEAR);
     for (const [month, length] of math.months[shape]!) {
       months[month]!.push(start + INTO_MONTH);
-      if (length === LONGEST_LUNAR_MONTH) longMonths.push(start);
+      if (length === LONGEST_LUNAR_MONTH) {
+        longMonths.push(start);
+      }
       start += length;
     }
   });
@@ -624,8 +665,11 @@ function nearest(days: number[], target: number): number {
   let high = days.length - 1;
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (days[middle]! < target) low = middle + 1;
-    else high = middle;
+    if (days[middle]! < target) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
   }
   const after = days[low]!;
   const before = days[low - 1];
@@ -681,47 +725,62 @@ const checkDayCache = new WeakMap<Math_, number[]>();
 
 function checkDays(math: Math_): number[] {
   const cached = checkDayCache.get(math);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const days = new Set<number>([PROBE_DAY]);
   const next = random(RANDOM_SEED);
   const [from, to] =
     math.kind === "table"
       ? [math.starts[0]!, math.starts.at(-1)! - 1]
       : [day(SCAN_FROM, 1, 1), LAST_DAY];
-  for (let n = 0; n < RANDOM_CHECK_DAYS; n++)
+  for (let n = 0; n < RANDOM_CHECK_DAYS; n++) {
     days.add(from + Math.floor(next() * (to - from)));
+  }
   days.add(from).add(to);
   if (math.kind === "proleptic") {
-    for (const era of math.eras)
-      if (Number.isFinite(era.start))
+    for (const era of math.eras) {
+      if (Number.isFinite(era.start)) {
         days
           .add(era.start)
           .add(era.start - 1)
           .add(era.start + DAYS_INTO_ERA[0]!);
+      }
+    }
     days
       .add(day(SCAN_FROM, ...MID_YEAR))
       .add(day(-1, ...MID_YEAR))
       .add(FIRST_DAY);
   } else {
-    for (const d of math.eraDays)
-      for (const into of [0, ...DAYS_INTO_ERA.slice(1)]) days.add(d + into);
-    for (const list of occurrences(math).months)
+    for (const d of math.eraDays) {
+      for (const into of [0, ...DAYS_INTO_ERA.slice(1)]) {
+        days.add(d + into);
+      }
+    }
+    for (const list of occurrences(math).months) {
       days.add(nearest(list, PROBE_DAY));
-    for (const list of occurrences(math).cycles)
-      if (list.length) days.add(nearest(list, PROBE_DAY));
+    }
+    for (const list of occurrences(math).cycles) {
+      if (list.length) {
+        days.add(nearest(list, PROBE_DAY));
+      }
+    }
   }
   // A few first years of eras, and negative years.
   let firsts = 0;
   let negatives = 0;
   for (const d of sampleDays(math)) {
     const year = calendarDate(math, d)?.year;
-    if (year === 1 && firsts++ < FIRST_YEAR_CHECK_DAYS) days.add(d);
+    if (year === 1 && firsts++ < FIRST_YEAR_CHECK_DAYS) {
+      days.add(d);
+    }
     if (
       year !== undefined &&
       year < 0 &&
       negatives++ < NEGATIVE_YEAR_CHECK_DAYS
-    )
+    ) {
       days.add(d);
+    }
   }
   const result = [...days].filter(
     (d) => d >= day(SCAN_FROM, 1, 1) && calendarDate(math, d) !== undefined,
@@ -777,8 +836,9 @@ export function formats(
     result.dates.push(derive(tag, calendar, math, { dateStyle }, digits));
     result.glues.push(glue(tag, calendar, dateStyle));
   }
-  for (const timeStyle of STYLES)
+  for (const timeStyle of STYLES) {
     result.times.push(derive(tag, calendar, math, { timeStyle }, digits));
+  }
 
   const main: EraFormats = { era: -1, dates: result.dates };
   const formatsFor = (era: number) =>
@@ -805,7 +865,9 @@ export function formats(
   // Eras that ICU formats differently get their own date patterns.
   for (const d of days) {
     const era = calendarDate(math, d)!.era;
-    if (!failing(formatsFor(era), d)) continue;
+    if (!failing(formatsFor(era), d)) {
+      continue;
+    }
     if (result.eras.some((e) => e.era === era)) {
       const m = moment(math, d, 0);
       const s = STYLES.findIndex(
@@ -842,10 +904,11 @@ export function formats(
       const m = moment(math, d, 0);
       const ours = render(f.dates[s]!, digits, m);
       const theirs = icu(tag, calendar, { dateStyle }, m);
-      if (ours !== theirs)
+      if (ours !== theirs) {
         throw new Error(
           `${tag} ${calendar} ${dateStyle}: day ${d} doesn't match: ${ours} | ${theirs}`,
         );
+      }
     });
   }
 
@@ -863,15 +926,18 @@ export function formats(
     moment(math, PROBE_DAY, 0, lastHour, lastMinute, lastSecond),
   ];
   const before1970 = day(BEFORE_1970, ...MID_YEAR);
-  if (calendarDate(math, before1970))
+  if (calendarDate(math, before1970)) {
     timeMoments.push(moment(math, before1970, 0));
+  }
   STYLES.forEach((timeStyle, s) => {
-    for (const m of timeMoments)
+    for (const m of timeMoments) {
       if (
         render(result.times[s]!, digits, m) !==
         icu(tag, calendar, { timeStyle }, m)
-      )
+      ) {
         throw new Error(`${tag} ${calendar} ${timeStyle}: time doesn't match`);
+      }
+    }
   });
   // Dates and times together, on a day in each era.
   const combinedFor = (f: EraFormats, ds: number, ts: number) =>
@@ -879,23 +945,29 @@ export function formats(
     join(f.dates[ds]!, result.glues[ds]!, result.times[ts]!);
   const combinedMismatch = (f: EraFormats, d: number) => {
     const m = moment(math, d, DATE_AND_TIME_OFFSET);
-    for (const [ds, dateStyle] of STYLES.entries())
+    for (const [ds, dateStyle] of STYLES.entries()) {
       for (const [ts, timeStyle] of STYLES.entries()) {
         const ours = render(combinedFor(f, ds, ts), digits, m);
         const theirs = icu(tag, calendar, { dateStyle, timeStyle }, m);
-        if (ours !== theirs)
+        if (ours !== theirs) {
           return `${dateStyle} ${timeStyle} on day ${d}: ${ours} | ${theirs}`;
+        }
       }
+    }
     return undefined;
   };
   const eraDays = new Map<number, number>();
   for (const d of [PROBE_DAY, ...days]) {
     const era = calendarDate(math, d)!.era;
-    if (!eraDays.has(era)) eraDays.set(era, d);
+    if (!eraDays.has(era)) {
+      eraDays.set(era, d);
+    }
   }
   for (const [era, d] of eraDays) {
     let f = formatsFor(era);
-    if (!combinedMismatch(f, d)) continue;
+    if (!combinedMismatch(f, d)) {
+      continue;
+    }
     if (f === main) {
       f = { era, dates: result.dates };
       result.eras.push(f);
@@ -907,20 +979,22 @@ export function formats(
       ),
     );
     const mismatch = combinedMismatch(eraFormats, d);
-    if (mismatch)
+    if (mismatch) {
       throw new Error(
         `${tag} ${calendar}: date and time don't match, ${mismatch}`,
       );
+    }
   }
   for (const d of [PROBE_DAY, days[1]!]) {
     const mismatch = combinedMismatch(
       formatsFor(calendarDate(math, d)!.era),
       d,
     );
-    if (mismatch)
+    if (mismatch) {
       throw new Error(
         `${tag} ${calendar}: date and time don't match, ${mismatch}`,
       );
+    }
   }
   return result;
 }

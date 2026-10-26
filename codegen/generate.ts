@@ -36,9 +36,11 @@ const RUNTIME = `Bun ${Bun.version}, ICU ${process.versions.icu}`;
 // Every calendar ICU has must be one glintl knows, or the Gleam `Calendar`
 // type is out of date.
 const icuCalendars = Intl.supportedValuesOf("calendar");
-for (const id of icuCalendars)
-  if (!CALENDARS.some((c) => c.id === id))
+for (const id of icuCalendars) {
+  if (!CALENDARS.some((c) => c.id === id)) {
     throw new Error(`ICU has a new calendar: ${id}`);
+  }
+}
 
 type LocaleData = {
   tag: string;
@@ -111,7 +113,9 @@ console.log(`Working out ${CALENDARS.length} calendars...`);
 const mathExits = await Promise.all(
   CALENDARS.map(({ id }) => spawn(["--math", id])),
 );
-if (mathExits.some((code) => code !== 0)) throw new Error("A calendar failed");
+if (mathExits.some((code) => code !== 0)) {
+  throw new Error("A calendar failed");
+}
 
 // Gregorian's maths is written by hand in `data.gleam`, so Gregorian
 // formatters load nothing extra. It must still match ICU.
@@ -129,10 +133,11 @@ const expected = JSON.stringify([
   ],
   -Infinity,
 ]);
-if (gregorian !== expected)
+if (gregorian !== expected) {
   throw new Error(
     `Update \`gregorian\` in data.gleam: ICU now says ${gregorian}`,
   );
+}
 
 const workers = availableParallelism();
 console.log(`Reading ${LOCALES.length} locales in ${workers} processes...`);
@@ -141,20 +146,25 @@ const exits = await Promise.all(
     spawn(["--shard", `${i}/${workers}`]),
   ),
 );
-if (exits.some((code) => code !== 0)) throw new Error("A worker failed");
+if (exits.some((code) => code !== 0)) {
+  throw new Error("A worker failed");
+}
 const byTag = new Map<string, LocaleData>();
-for (let i = 0; i < workers; i++)
+for (let i = 0; i < workers; i++) {
   for (const data of (await Bun.file(
     join(CACHE, `${i}.json`),
-  ).json()) as LocaleData[])
+  ).json()) as LocaleData[]) {
     byTag.set(data.tag, data);
+  }
+}
 // --- Erlang -------------------------------------------------------------------
 
 const ERLANG = "src/glintl/internal/generated/erlang";
 const JAVASCRIPT = "src/glintl/internal/generated/javascript";
 
-for (const dir of ["src/glintl/locale", "src/glintl/internal/generated"])
+for (const dir of ["src/glintl/locale", "src/glintl/internal/generated"]) {
   rmSync(join(ROOT, dir), { recursive: true, force: true });
+}
 
 async function write(path: string, contents: string): Promise<void> {
   await Bun.write(join(ROOT, path), contents);
@@ -203,7 +213,7 @@ for (const [body, { name, tags }] of bases) {
   );
   await write(`${JAVASCRIPT}/${name}.mjs`, jsModule(tags));
 }
-for (const [body, { name, tags }] of calendarSets)
+for (const [body, { name, tags }] of calendarSets) {
   await write(
     `${ERLANG}/glintl_generated_calendars_${name}.erl`,
     erlang.module(
@@ -212,6 +222,7 @@ for (const [body, { name, tags }] of calendarSets)
       [["data", body]],
     ),
   );
+}
 for (const { id } of CALENDARS.slice(1)) {
   const name = `glintl_generated_calendar_${id.replaceAll("-", "_")}`;
   await write(
@@ -280,9 +291,12 @@ function aliases(): Map<string, string> {
   for (const [name, tag] of LOCALES) {
     const full = new Intl.Locale(tag).maximize();
     const short = `${full.language}-${full.region}`.toLowerCase();
-    if (known.has(short) || found.has(short)) continue;
-    if (new Intl.Locale(short).maximize().toString() === full.toString())
+    if (known.has(short) || found.has(short)) {
+      continue;
+    }
+    if (new Intl.Locale(short).maximize().toString() === full.toString()) {
       found.set(short, name);
+    }
   }
   return found;
 }
@@ -380,8 +394,9 @@ ${cases}
 `;
 }
 
-for (const [name, tag] of LOCALES)
+for (const [name, tag] of LOCALES) {
   await write(`src/glintl/locale/${name}.gleam`, gleamLocaleModule(tag));
+}
 await write("src/glintl/locales.gleam", gleamLocalesModule());
 await write(
   "test/glintl/fixtures.gleam",
@@ -397,8 +412,11 @@ await write(
 );
 rmSync(CACHE, { recursive: true, force: true });
 // Gleam isn't in the Bun Docker image, so formatting can be left for later.
-if (Bun.which("gleam")) await $`gleam format src test`.cwd(ROOT);
-else console.log("Gleam isn't installed: run `gleam format src test` next.");
+if (Bun.which("gleam")) {
+  await $`gleam format src test`.cwd(ROOT);
+} else {
+  console.log("Gleam isn't installed: run `gleam format src test` next.");
+}
 console.log(
   `Generated ${LOCALES.length} locales (${bases.size} Gregorian and ${calendarSets.size} calendar data modules) with ${RUNTIME}.`,
 );

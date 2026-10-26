@@ -148,7 +148,9 @@ export function civil(
   epochDay: number,
   julianBefore: number,
 ): [number, number, number] {
-  if (epochDay < julianBefore) return julianFromDays(epochDay);
+  if (epochDay < julianBefore) {
+    return julianFromDays(epochDay);
+  }
   const date = new Date(epochDay * DAY_MS);
   return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()];
 }
@@ -169,12 +171,17 @@ function julianSwitch(calendar: CalendarId): number {
   const matches = (d: number) =>
     fields(calendar, d).day === new Date(d * DAY_MS).getUTCDate();
   let low = day(...JULIAN_SEARCH[0]);
-  if (matches(low)) return -Infinity;
+  if (matches(low)) {
+    return -Infinity;
+  }
   let high = day(...JULIAN_SEARCH[1]);
   while (low < high) {
     const middle = Math.floor((low + high) / 2);
-    if (matches(middle)) high = middle;
-    else low = middle + 1;
+    if (matches(middle)) {
+      high = middle;
+    } else {
+      low = middle + 1;
+    }
   }
   return low;
 }
@@ -328,7 +335,7 @@ export function proleptic(calendar: CalendarId): Proleptic {
   // Some ICU data has no era names, so an era also starts where the year
   // stops counting the way it did, as it does going from 1 BC to AD 1.
   let direction = 0;
-  for (let year = SCAN_FROM; year <= LAST_YEAR; year++)
+  for (let year = SCAN_FROM; year <= LAST_YEAR; year++) {
     for (let month = 1; month <= MONTHS_PER_YEAR; month++) {
       if (month === 1 && year > SCAN_FROM) {
         const newYear = civilDay(year, 1, 1, julianBefore);
@@ -339,8 +346,12 @@ export function proleptic(calendar: CalendarId): Proleptic {
           if (step === 0 || (direction !== 0 && step !== direction)) {
             starts.push(newYear);
             direction = 0;
-          } else direction = step;
-        } else direction = 0;
+          } else {
+            direction = step;
+          }
+        } else {
+          direction = 0;
+        }
       }
       const end = day(year, month + 1, 1) - 1;
       let low = day(year, month, 1);
@@ -348,13 +359,17 @@ export function proleptic(calendar: CalendarId): Proleptic {
         let high = end;
         while (low < high) {
           const middle = Math.floor((low + high) / 2);
-          if (at(middle).era === previous) low = middle + 1;
-          else high = middle;
+          if (at(middle).era === previous) {
+            low = middle + 1;
+          } else {
+            high = middle;
+          }
         }
         starts.push(low);
         previous = at(low).era;
       }
     }
+  }
 
   const names: string[] = [];
   const keys: string[] = [];
@@ -368,8 +383,9 @@ export function proleptic(calendar: CalendarId): Proleptic {
     const ya = yearOf(first);
     const yb = yearOf(end);
     const sign = yb === ya ? 1 : (other.year - a.year) / (yb - ya);
-    if (sign !== 1 && sign !== -1)
+    if (sign !== 1 && sign !== -1) {
       throw new Error(`${calendar}: odd years in ${a.era}`);
+    }
     segments.push({
       start,
       era: 0,
@@ -415,21 +431,27 @@ export function proleptic(calendar: CalendarId): Proleptic {
     day(-1, 1, 1),
     day(CHECK_TO_YEAR, MONTHS_PER_YEAR, 31),
   ];
-  for (let d = FIRST_DAY; d <= LAST_DAY; d += CHECK_EVERY) checks.push(d);
-  for (const start of starts) checks.push(start - 1, start);
+  for (let d = FIRST_DAY; d <= LAST_DAY; d += CHECK_EVERY) {
+    checks.push(d);
+  }
+  for (const start of starts) {
+    checks.push(start - 1, start);
+  }
   for (const d of checks) {
     const expected = at(d);
     const got = prolepticDate(result, d);
     const week = weekYear(calendar, d);
     const midYear = civilDay(yearOf(d), ...MID_YEAR, julianBefore);
-    if (week !== undefined && weekYear(calendar, midYear) !== yearOf(d))
+    if (week !== undefined && weekYear(calendar, midYear) !== yearOf(d)) {
       throw new Error(
         `${calendar}: the extended year isn't the Gregorian year`,
       );
-    if (names[got.era] !== expected.era || got.year !== expected.year)
+    }
+    if (names[got.era] !== expected.era || got.year !== expected.year) {
       throw new Error(
         `${calendar}: era rules are wrong on day ${d}: expected ${expected.era} ${expected.year}, got ${names[got.era]} ${got.year}`,
       );
+    }
   }
   return result;
 }
@@ -489,7 +511,9 @@ export function table(calendar: CalendarId): Table {
   // Months, as [first day, fields].
   const months: [number, Fields][] = [];
   let start = FIRST_DAY;
-  while (at(start).day !== 1) start++;
+  while (at(start).day !== 1) {
+    start++;
+  }
   while (start <= LAST_DAY + 1) {
     const f = at(start);
     months.push([start, f]);
@@ -497,9 +521,12 @@ export function table(calendar: CalendarId): Table {
     // or `x` days into the next.
     let next = start + SHORTEST_MONTH - 1;
     const x = at(next).day;
-    if (x !== SHORTEST_MONTH) next -= x - 1;
-    else {
-      while (at(next).day !== 1) next++;
+    if (x !== SHORTEST_MONTH) {
+      next -= x - 1;
+    } else {
+      while (at(next).day !== 1) {
+        next++;
+      }
     }
     start = next;
   }
@@ -512,8 +539,11 @@ export function table(calendar: CalendarId): Table {
     const [first, f] = months[i]!;
     const length = months[i + 1]![0] - first;
     const last = years.at(-1);
-    if (last && sameYear(last.fields, f)) last.months.push([f.month, length]);
-    else years.push({ start: first, fields: f, months: [[f.month, length]] });
+    if (last && sameYear(last.fields, f)) {
+      last.months.push([f.month, length]);
+    } else {
+      years.push({ start: first, fields: f, months: [[f.month, length]] });
+    }
   }
   // Only whole years: the first may have started before FIRST_DAY, and the
   // last may run past the months we read.
@@ -523,9 +553,12 @@ export function table(calendar: CalendarId): Table {
     years.length &&
     years.at(-1)!.start + years.at(-1)!.months.reduce((a, [, l]) => a + l, 0) >
       LAST_DAY + 1
-  )
+  ) {
     years.pop();
-  if (years.at(-1) === end) years.pop();
+  }
+  if (years.at(-1) === end) {
+    years.pop();
+  }
   // The week-based year is the extended year in the middle of a year.
   for (const year of years) {
     const middle =
@@ -567,9 +600,10 @@ export function table(calendar: CalendarId): Table {
             INTO_MONTH,
         );
       }
-      if (length === LONGEST_LUNAR_MONTH && longMonth < 0)
+      if (length === LONGEST_LUNAR_MONTH && longMonth < 0) {
         longMonth =
           year.start + year.months.slice(0, m).reduce((a, [, l]) => a + l, 0);
+      }
       return [monthNames.indexOf(name), length];
     });
     const key = JSON.stringify(shape);
@@ -600,8 +634,9 @@ export function table(calendar: CalendarId): Table {
       eraNames.push(f.era);
       eraDays.push(year.start + INTO_MONTH);
     }
-    if (cycleDays[f.cycle] === undefined)
+    if (cycleDays[f.cycle] === undefined) {
       cycleDays[f.cycle] = year.start + INTO_MONTH;
+    }
     const era = eraKeys.indexOf(eraKey);
     const last = result.years.at(-1);
     const step = result.cyclic ? 1 : 0;
@@ -639,13 +674,17 @@ export function table(calendar: CalendarId): Table {
   for (let i = 0; i + 1 < months.length; i++) {
     const last = months[i + 1]![0] - 1;
     const f = at(last);
-    if (f.day === 0) result.dayZero.push([last, monthNames.indexOf(f.month)]);
+    if (f.day === 0) {
+      result.dayZero.push([last, monthNames.indexOf(f.month)]);
+    }
   }
 
   // Check every month we read, and a day in the middle of each, against ICU.
   for (const [first] of months) {
     for (const d of [first, first + MID_MONTH]) {
-      if (d < result.starts[0]! || d >= result.starts.at(-1)!) continue;
+      if (d < result.starts[0]! || d >= result.starts.at(-1)!) {
+        continue;
+      }
       const expected = at(d);
       const got = tableDate(result, d)!;
       if (
@@ -655,10 +694,11 @@ export function table(calendar: CalendarId): Table {
         eraNames[got.era] !== expected.era ||
         got.related !== expected.related ||
         got.cycle !== expected.cycle
-      )
+      ) {
         throw new Error(
           `${calendar}: table is wrong on day ${d}: expected ${JSON.stringify(expected)}, got ${JSON.stringify({ ...got, month: monthNames[got.month], era: eraNames[got.era] })}`,
         );
+      }
     }
   }
   return result;
@@ -666,13 +706,19 @@ export function table(calendar: CalendarId): Table {
 
 export function tableDate(calendar: Table, epochDay: number) {
   const { starts } = calendar;
-  if (epochDay < starts[0]! || epochDay >= starts.at(-1)!) return undefined;
+  if (epochDay < starts[0]! || epochDay >= starts.at(-1)!) {
+    return undefined;
+  }
   let i = Math.floor(
     ((epochDay - starts[0]!) * (starts.length - 1)) /
       (starts.at(-1)! - starts[0]!),
   );
-  while (starts[i]! > epochDay) i--;
-  while (starts[i + 1]! <= epochDay) i++;
+  while (starts[i]! > epochDay) {
+    i--;
+  }
+  while (starts[i + 1]! <= epochDay) {
+    i++;
+  }
   let rest = epochDay - starts[i]!;
   let month = 0;
   for (const [number, length] of calendar.months[calendar.shapes[i]!]!) {
@@ -742,10 +788,14 @@ export function calendarDate(
     };
   }
   const date = tableDate(math, epochDay);
-  if (!date) return undefined;
+  if (!date) {
+    return undefined;
+  }
   const { starts } = math;
   let i = 0;
-  while (starts[i + 1]! <= epochDay) i++;
+  while (starts[i + 1]! <= epochDay) {
+    i++;
+  }
   return { ...date, yearStart: starts[i]!, nextYearStart: starts[i + 1]! };
 }
 
@@ -762,7 +812,9 @@ export function weekBasedYear(
 ): number {
   const firstWeek = (yearStart: number, extended: number) => {
     const exception = exceptions.find(([year]) => year === extended);
-    if (exception) return exception[1];
+    if (exception) {
+      return exception[1];
+    }
     const weekStart =
       yearStart -
       ((isoWeekday(yearStart) - firstDay + DAYS_PER_WEEK) % DAYS_PER_WEEK);
@@ -770,10 +822,12 @@ export function weekBasedYear(
       ? weekStart
       : weekStart + DAYS_PER_WEEK;
   };
-  if (epochDay >= firstWeek(date.nextYearStart, date.extended + 1))
+  if (epochDay >= firstWeek(date.nextYearStart, date.extended + 1)) {
     return date.extended + 1;
-  if (epochDay < firstWeek(date.yearStart, date.extended))
+  }
+  if (epochDay < firstWeek(date.yearStart, date.extended)) {
     return date.extended - 1;
+  }
   return date.extended;
 }
 
@@ -798,10 +852,11 @@ export function checkEveryDay(calendar: CalendarId, math: Math_): number {
           got.day === expected.day &&
           got.related === expected.related &&
           got.cycle === expected.cycle);
-    if (!ok)
+    if (!ok) {
       throw new Error(
         `${calendar}: day ${d} is wrong: expected ${JSON.stringify(expected)}, got ${JSON.stringify(got)}`,
       );
+    }
   }
   return to - from + 1;
 }

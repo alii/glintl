@@ -120,7 +120,9 @@ function group(): Case[] {
     date === 0
       ? 1 + Math.floor(next() * (STYLES.length - 1))
       : Math.floor(next() * STYLES.length);
-  if (date === 0 && time === 0) date = 1;
+  if (date === 0 && time === 0) {
+    date = 1;
+  }
   const offset = pick(OFFSETS);
   const formatter = new Intl.DateTimeFormat(tag, {
     calendar: resolved,
@@ -142,7 +144,9 @@ function group(): Case[] {
             : Math.floor(next() * SECONDS_PER_DAY);
     const seconds =
       epochDay * SECONDS_PER_DAY + secondOfDay - offset * SECONDS_PER_MINUTE;
-    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) continue;
+    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) {
+      continue;
+    }
     cases.push({
       line: [tag, calendar, date, time, seconds, offset].join("\t"),
       expected: formatter.format(seconds * MS_PER_SECOND),
@@ -158,7 +162,7 @@ function* batches(): Generator<Case[]> {
   if (mode === "--check") {
     const [header, ...lines] = readFileSync(file, "utf8").trimEnd().split("\n");
     intl = header!;
-    for (let n = 0; n < lines.length; n += BATCH)
+    for (let n = 0; n < lines.length; n += BATCH) {
       yield lines.slice(n, n + BATCH).map((line) => {
         const at = line.lastIndexOf("\t");
         return {
@@ -166,11 +170,14 @@ function* batches(): Generator<Case[]> {
           expected: JSON.parse(line.slice(at + 1)),
         };
       });
+    }
     return;
   }
   for (let made = 0; made < CASES;) {
     const batch: Case[] = [];
-    while (batch.length < Math.min(BATCH, CASES - made)) batch.push(...group());
+    while (batch.length < Math.min(BATCH, CASES - made)) {
+      batch.push(...group());
+    }
     made += batch.length;
     yield batch;
   }
@@ -178,9 +185,11 @@ function* batches(): Generator<Case[]> {
 
 if (mode === "--save") {
   const lines = [intl];
-  for (const batch of batches())
-    for (const c of batch)
+  for (const batch of batches()) {
+    for (const c of batch) {
       lines.push(`${c.line}\t${JSON.stringify(c.expected)}`);
+    }
+  }
   writeFileSync(file, lines.join("\n") + "\n");
   console.log(
     `Saved ${lines.length - 1} cases from ${intl}, seed ${SEED}, to ${file}.`,
@@ -211,7 +220,9 @@ async function readLine(): Promise<string> {
       return line;
     }
     const { value, done } = await reader.read();
-    if (done) throw new Error("Erlang stopped early");
+    if (done) {
+      throw new Error("Erlang stopped early");
+    }
     buffered += decoder.decode(value, { stream: true });
   }
 }
@@ -229,10 +240,11 @@ for (const batch of batches()) {
       const [tag, calendar] = c.line.split("\t");
       const key = `${tag} ${calendar || "(default)"}`;
       failingCalendars.set(key, (failingCalendars.get(key) ?? 0) + 1);
-      if (failures.length < MOST_SHOWN)
+      if (failures.length < MOST_SHOWN) {
         failures.push(
           `${c.line.replaceAll("\t", " ")}: expected ${JSON.stringify(c.expected)}, got ${JSON.stringify(actual)}`,
         );
+      }
     }
   }
   checked += batch.length;
@@ -245,7 +257,12 @@ const failed = [...failingCalendars.values()].reduce((a, b) => a + b, 0);
 console.log(
   `Checked ${checked} cases against Intl.DateTimeFormat in ${intl}, in ${seconds}s: ${failed} differ.`,
 );
-for (const failure of failures) console.log("  " + failure);
-for (const [key, count] of [...failingCalendars].slice(0, MOST_SHOWN))
+for (const failure of failures) {
+  console.log("  " + failure);
+}
+for (const [key, count] of [...failingCalendars].slice(0, MOST_SHOWN)) {
   console.log(`  ${count} in ${key}`);
-if (failed > 0) process.exit(1);
+}
+if (failed > 0) {
+  process.exit(1);
+}

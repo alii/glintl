@@ -36,7 +36,9 @@ const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 export function render(tokens: Token[], digits: string[], m: Moment): string {
   const number = (n: number, pad: boolean, minus = "-"): string => {
-    if (n < 0) return minus + number(-n, pad);
+    if (n < 0) {
+      return minus + number(-n, pad);
+    }
     return [...(pad && n < ONE_DIGIT_BELOW ? `0${n}` : String(n))]
       .map((c) => digits[+c])
       .join("");
@@ -54,13 +56,18 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
           return render([token.token], ASCII_DIGITS, m);
         case "year": {
           const year = m.date.year;
-          if (token.twoDigit)
+          if (token.twoDigit) {
             return (
               (year < 0 ? token.minus : "") +
               number(Math.abs(year) % TWO_DIGIT_YEARS, true)
             );
-          if (year === 1 && token.first) return token.first;
-          if (year === -1 && token.minusFirst) return token.minusFirst;
+          }
+          if (year === 1 && token.first) {
+            return token.first;
+          }
+          if (year === -1 && token.minusFirst) {
+            return token.minusFirst;
+          }
           return number(year, false, token.minus);
         }
         case "week_year":
@@ -112,13 +119,19 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
         case "day_period": {
           const onTheHour =
             (!hasMinute || m.minute === 0) && (!hasSecond || m.second === 0);
-          if (onTheHour && m.hour === 0) return token.midnight;
-          if (onTheHour && m.hour === HOURS_PER_HALF_DAY) return token.noon;
+          if (onTheHour && m.hour === 0) {
+            return token.midnight;
+          }
+          if (onTheHour && m.hour === HOURS_PER_HALF_DAY) {
+            return token.noon;
+          }
           return token.byHour[m.hour]!;
         }
         case "zone": {
           const offset = m.offsetMinutes;
-          if (offset === 0 && m.unixSeconds >= 0) return token.zero;
+          if (offset === 0 && m.unixSeconds >= 0) {
+            return token.zero;
+          }
           const negative = offset < 0;
           const abs = Math.abs(offset);
           const sign = negative ? token.negative : token.positive;
@@ -126,12 +139,13 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
             Math.floor(abs / MINUTES_PER_HOUR),
             token.padHours,
           );
-          if (abs % MINUTES_PER_HOUR === 0 && token.optionalMinutes)
+          if (abs % MINUTES_PER_HOUR === 0 && token.optionalMinutes) {
             return (
               sign +
               hours +
               (negative ? token.negativeWholeSuffix : token.positiveWholeSuffix)
             );
+          }
           return (
             sign +
             hours +

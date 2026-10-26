@@ -28,8 +28,13 @@ import {
 type Pair = [number, number];
 
 const PAIRS: Pair[] = [];
-for (let d = 0; d <= STYLES.length; d++)
-  for (let t = 0; t <= STYLES.length; t++) if (d || t) PAIRS.push([d, t]);
+for (let d = 0; d <= STYLES.length; d++) {
+  for (let t = 0; t <= STYLES.length; t++) {
+    if (d || t) {
+      PAIRS.push([d, t]);
+    }
+  }
+}
 
 // Locales with something odd in at least one calendar.
 const EDGE_LOCALES = ["en-GB", "ja", "zh", "ko", "ar-SA", "fa", "gl", "ak"];
@@ -129,8 +134,9 @@ function edgeDays(math: Math_): number[] {
   const days = new Set<number>([PROBE_DAY]);
   if (math.kind === "proleptic") {
     const starts = math.eras.map((e) => e.start).filter(Number.isFinite);
-    for (const start of starts.slice(0, MOST_ERA_STARTS))
+    for (const start of starts.slice(0, MOST_ERA_STARTS)) {
       days.add(start - 1).add(start);
+    }
     days
       .add(day(-1000, ...MID_YEAR))
       .add(day(1, 1, 1))
@@ -142,20 +148,25 @@ function edgeDays(math: Math_): number[] {
     for (let year = SCAN_FROM; year <= LAST_YEAR; year++) {
       const d = day(year, ...MID_YEAR);
       const date = calendarDate(math, d)!;
-      if (date.era === oldest && Math.abs(date.year) <= 1) days.add(d);
+      if (date.era === oldest && Math.abs(date.year) <= 1) {
+        days.add(d);
+      }
     }
   } else {
     const first = math.starts[0]!;
     const last = math.starts.at(-1)! - 1;
     days.add(first).add(last);
-    for (const d of math.eraDays) days.add(d);
+    for (const d of math.eraDays) {
+      days.add(d);
+    }
     // Every month name, in the years around the probe day.
     math.shapes.forEach((shape, i) => {
       if (
         Math.abs(math.starts[i]! - PROBE_DAY) >
         DAYS_IN_YEAR * SAMPLE_MONTHS_WITHIN_YEARS
-      )
+      ) {
         return;
+      }
       let start = math.starts[i]!;
       for (const [, length] of math.months[shape]!) {
         days.add(start + INTO_MONTH);
@@ -183,7 +194,9 @@ function expected(
       timeStyle: t ? STYLES[t - 1] : undefined,
     });
     formatters.set(key, f);
-    if (formatters.size > MOST_FORMATTERS) formatters.clear();
+    if (formatters.size > MOST_FORMATTERS) {
+      formatters.clear();
+    }
   }
   return f.format(seconds * MS_PER_SECOND);
 }
@@ -210,7 +223,9 @@ export function fixtures(
     pair: Pair,
     moment: Moment,
   ) => {
-    if (!covered(calendar, moment)) return;
+    if (!covered(calendar, moment)) {
+      return;
+    }
     lines.push(
       `    #("${tag}", "${isDefault ? "" : calendar}", ${pair[0]}, ${pair[1]}, ${moment[0]}, ${moment[1]}, ${gleamString(
         expected(tag, calendar, pair, moment),
@@ -220,14 +235,16 @@ export function fixtures(
 
   // Every locale and style pair in the locale's own calendar.
   let turn = 0;
-  for (const [tag, calendar] of locales)
-    for (const pair of PAIRS)
+  for (const [tag, calendar] of locales) {
+    for (const pair of PAIRS) {
       add(tag, calendar, true, pair, all[turn++ % all.length]!);
+    }
+  }
 
   // Every locale in every other calendar, with styles and moments taking turns.
-  for (const [tag, calendar] of locales)
-    for (const { id } of CALENDARS)
-      if (id !== calendar)
+  for (const [tag, calendar] of locales) {
+    for (const { id } of CALENDARS) {
+      if (id !== calendar) {
         add(
           tag,
           id,
@@ -235,6 +252,9 @@ export function fixtures(
           PAIRS[turn % PAIRS.length]!,
           all[turn++ % all.length]!,
         );
+      }
+    }
+  }
 
   // The odd days of each calendar, in locales with odd formats.
   // Each date style alone, and the fullest and shortest dates with times.
@@ -246,11 +266,16 @@ export function fixtures(
   ];
   for (const tag of EDGE_LOCALES) {
     const calendar = locales.find(([t]) => t === tag)?.[1];
-    if (!calendar) continue;
-    for (const { id } of CALENDARS)
-      for (const d of edgeDays(mathFor(id)))
-        for (const pair of pairs)
+    if (!calendar) {
+      continue;
+    }
+    for (const { id } of CALENDARS) {
+      for (const d of edgeDays(mathFor(id))) {
+        for (const pair of pairs) {
           add(tag, id, id === calendar, pair, at(d, ...EDGE_TIME, 0));
+        }
+      }
+    }
   }
 
   return `//// Expected output, made with \`Intl.DateTimeFormat\` in ${runtime}.
@@ -286,18 +311,24 @@ export function calendarFixtures(
         .add(last)
         .add(last - 1);
       // The first day of a year, and the last, for some of the years.
-      for (let i = 0; i < math.starts.length - 1; i += EVERY_NTH_YEAR)
+      for (let i = 0; i < math.starts.length - 1; i += EVERY_NTH_YEAR) {
         days.add(math.starts[i]!).add(math.starts[i + 1]! - 1);
-      for (let n = 0; n < RANDOM_FIELD_DAYS; n++)
+      }
+      for (let n = 0; n < RANDOM_FIELD_DAYS; n++) {
         days.add(first + Math.floor(next() * (last - first)));
+      }
     } else {
-      for (const era of math.eras)
-        if (Number.isFinite(era.start)) days.add(era.start - 1).add(era.start);
-      for (let n = 0; n < RANDOM_FIELD_DAYS; n++)
+      for (const era of math.eras) {
+        if (Number.isFinite(era.start)) {
+          days.add(era.start - 1).add(era.start);
+        }
+      }
+      for (let n = 0; n < RANDOM_FIELD_DAYS; n++) {
         days.add(
           day(SCAN_FROM, 1, 1) +
             Math.floor(next() * (day(LAST_YEAR, 1, 1) - day(SCAN_FROM, 1, 1))),
         );
+      }
     }
     for (const d of [...days].sort((a, b) => a - b)) {
       const c = calendarDate(math, d);
