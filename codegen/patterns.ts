@@ -41,7 +41,13 @@ export type Token =
   // A part written with ASCII digits, whatever the locale's digits are.
   | { t: "ascii"; token: Token }
   | { t: "extended_year"; minus: string }
-  | { t: "year"; twoDigit: boolean; minus: string; first: string }
+  | {
+      t: "year";
+      twoDigit: boolean;
+      minus: string;
+      first: string;
+      minusFirst: string;
+    }
   | {
       t: "week_year";
       minus: string;
@@ -286,7 +292,16 @@ export function derive(
         const firstValue =
           one === undefined || twoDigit ? "" : valueAt(at(one), i);
         const first = firstValue === local(1, false) ? "" : firstValue;
-        return { t: "year", twoDigit, minus: minus(i, year, twoDigit), first };
+        const yearMinus = minus(i, year, twoDigit);
+        // ICU 78.3's Japanese writes year -1 as 元 too.
+        const minusOne = days().find((d) => year(d) === -1 && sameEra(d));
+        const minusFirstValue =
+          minusOne === undefined || twoDigit ? "" : valueAt(at(minusOne), i);
+        const minusFirst =
+          minusFirstValue === yearMinus + local(1, false)
+            ? ""
+            : minusFirstValue;
+        return { t: "year", twoDigit, minus: yearMinus, first, minusFirst };
       }
       case "unknown": {
         // ICU's week-based year, which only Galician's patterns use.

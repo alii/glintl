@@ -60,6 +60,7 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
               number(Math.abs(year) % TWO_DIGIT_YEARS, true)
             );
           if (year === 1 && token.first) return token.first;
+          if (year === -1 && token.minusFirst) return token.minusFirst;
           return number(year, false, token.minus);
         }
         case "week_year":

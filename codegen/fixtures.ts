@@ -136,6 +136,14 @@ function edgeDays(math: Math_): number[] {
       .add(day(1, 1, 1))
       .add(GREGORIAN_REFORM)
       .add(GREGORIAN_REFORM - 1);
+    // Years -1, 0 and 1 of the oldest era, which some locales write in odd
+    // ways.
+    const oldest = math.eras.at(-1)!.era;
+    for (let year = SCAN_FROM; year <= LAST_YEAR; year++) {
+      const d = day(year, ...MID_YEAR);
+      const date = calendarDate(math, d)!;
+      if (date.era === oldest && Math.abs(date.year) <= 1) days.add(d);
+    }
   } else {
     const first = math.starts[0]!;
     const last = math.starts.at(-1)! - 1;

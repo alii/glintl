@@ -66,7 +66,7 @@ export class Writer {
       case "ascii":
         return `{ascii_digits, ${this.token(token.token)}}`;
       case "year":
-        return `{year, ${bool(token.twoDigit)}, ${string(token.minus)}, ${string(token.first)}}`;
+        return `{year, ${bool(token.twoDigit)}, ${string(token.minus)}, ${string(token.first)}, ${string(token.minusFirst)}}`;
       case "week_year":
         return `{week_year, ${string(token.minus)}, ${token.firstDay}, ${token.minimalDays}, ${this.list(
           token.exceptions.map(([year, d]) => `{${year}, ${d}}`),

@@ -98,8 +98,10 @@ pub type Token {
   Literal(String)
   /// A part written with ASCII digits, whatever the locale's digits are.
   AsciiDigits(Token)
-  /// `first` is how year 1 is written when it isn't a number, like 元.
-  Year(two_digit: Bool, minus: String, first: String)
+  /// `first` is how year 1 is written when it isn't a number, like 元, and
+  /// `minus_first` the same for year -1, which ICU 78.3's Japanese also
+  /// writes as 元.
+  Year(two_digit: Bool, minus: String, first: String, minus_first: String)
   /// ICU's week-based year. Weeks start on `first_day`, 1 for Monday to 7
   /// for Sunday. `exceptions` holds the first day of years where ICU starts
   /// them somewhere else, as `#(extended year, day)`.

@@ -189,18 +189,19 @@ fn token(
   case part {
     Literal(text) -> text
     AsciiDigits(inner) -> token(inner, m, Ascii, has_minute, has_second)
-    Year(two_digit: True, minus:, first: _) -> {
+    Year(two_digit: True, minus:, ..) -> {
       let sign = case m.year < 0 {
         True -> minus
         False -> ""
       }
       sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
-    Year(two_digit: False, minus:, first:) ->
-      case m.year, first {
-        1, "" -> number(m.year, False, digits)
-        1, first -> first
-        year, _ -> signed(year, minus, digits)
+    Year(two_digit: False, minus:, first:, minus_first:) ->
+      case m.year, first, minus_first {
+        1, "", _ | -1, _, "" -> signed(m.year, minus, digits)
+        1, first, _ -> first
+        -1, _, minus_first -> minus_first
+        year, _, _ -> signed(year, minus, digits)
       }
     WeekYear(minus:, first_day:, minimal_days:, exceptions:) ->
       signed(
