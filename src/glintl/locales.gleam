@@ -4,11 +4,11 @@
 //// This module refers to every locale, which has a cost:
 ////
 //// - On JavaScript, bundlers can't leave out the locales you don't use, so
-////   your bundle grows by about 13 KB gzipped. It's not more because each
+////   your bundle grows by about 14 KB gzipped. It's not more because each
 ////   locale is just its tag: the formats come from the runtime's `Intl`.
-//// - On Erlang, `from_tag` loads this module, about 0.4 MB, and the data
-////   for the one locale it finds. `all` loads every locale's data, about
-////   2.3 MB more.
+//// - On Erlang, `from_tag` loads this module and the data for the one
+////   locale it finds, about 0.7 MB. `all` loads every locale's data, about
+////   8 MB more.
 ////
 //// If you know which locales you need, import them from `glintl/locale/`
 //// instead.

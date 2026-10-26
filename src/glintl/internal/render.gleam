@@ -3,34 +3,90 @@
 import gleam/int
 import gleam/list
 import gleam/string
+import glintl/internal/calendar
 import glintl/internal/data.{
-  type Digits, type Pattern, type Token, Ascii, Day, DayPeriod, Digits, Era, H11,
-  H12, H23, H24, Hour, Literal, Minute, MonthName, MonthNumber, Second, Weekday,
-  Year, Zone,
+  type Digits, type EraFormats, type Formats, type Local, type Math,
+  type Pattern, type Token, Ascii, AsciiDigits, Day, DayName, DayPeriod, Digits,
+  Era, EraFormats, EraRule, ExtendedYear, Formats, GlueDate, GlueText, GlueTime,
+  H11, H12, H23, H24, Hour, Literal, Local, Minute, MonthName, MonthNumber,
+  NoMath, Proleptic, RelatedYear, Second, Table, WeekYear, Weekday, Year,
+  YearName, Zone,
 }
+import glintl/internal/math
 
-type Local {
-  Local(
-    year: Int,
-    month: Int,
-    day: Int,
-    weekday: Int,
-    hour: Int,
-    minute: Int,
-    second: Int,
-    offset_minutes: Int,
-    unix_seconds: Int,
+/// A formatter's patterns, ready to render.
+pub type Compiled {
+  Compiled(
+    main: Prepared,
+    /// Patterns for eras that ICU formats differently.
+    eras: List(#(Int, Prepared)),
+    digits: Digits,
+    math: Math,
+    /// Used for days outside a table calendar's years.
+    fallback: Fallback,
   )
 }
 
-pub type Compiled {
-  Compiled(pattern: Pattern, digits: Digits, has_minute: Bool, has_second: Bool)
+pub type Fallback {
+  Fallback(Compiled)
+  NoFallback
 }
 
-pub fn compile(pattern: Pattern, digits: Digits) -> Compiled {
-  Compiled(
+pub type Prepared {
+  Prepared(pattern: Pattern, has_minute: Bool, has_second: Bool)
+}
+
+/// `date` and `time` are 0 for "not shown", or 1 to 4 for full to short.
+pub fn compile(
+  formats: Formats,
+  digits: Digits,
+  math: Math,
+  date: Int,
+  time: Int,
+  fallback: Fallback,
+) -> Compiled {
+  let Formats(dates:, times:, glues:, eras:) = formats
+  let main = pattern(dates, times, glues, [], date, time)
+  let eras = case date {
+    0 -> []
+    _ ->
+      list.map(eras, fn(era: EraFormats) {
+        let EraFormats(era:, dates:, combined:) = era
+        #(era, prepare(pattern(dates, times, glues, combined, date, time)))
+      })
+  }
+  Compiled(main: prepare(main), eras:, digits:, math:, fallback:)
+}
+
+fn pattern(
+  dates: List(Pattern),
+  times: List(Pattern),
+  glues: List(data.Glue),
+  combined: List(Pattern),
+  date: Int,
+  time: Int,
+) -> Pattern {
+  case date, time, combined {
+    0, time, _ -> at(times, time - 1, [])
+    date, 0, _ -> at(dates, date - 1, [])
+    date, time, [] -> {
+      let date_pattern = at(dates, date - 1, [])
+      let time_pattern = at(times, time - 1, [])
+      list.flat_map(at(glues, date - 1, []), fn(piece) {
+        case piece {
+          GlueText(text) -> [Literal(text)]
+          GlueDate -> date_pattern
+          GlueTime -> time_pattern
+        }
+      })
+    }
+    date, time, combined -> at(combined, { date - 1 } * 4 + time - 1, [])
+  }
+}
+
+fn prepare(pattern: Pattern) -> Prepared {
+  Prepared(
     pattern:,
-    digits:,
     has_minute: list.any(pattern, fn(t) {
       t == Minute(True) || t == Minute(False)
     }),
@@ -45,55 +101,103 @@ pub fn render(
   unix_seconds: Int,
   offset_minutes: Int,
 ) -> String {
-  let Compiled(pattern:, digits:, has_minute:, has_second:) = compiled
-  let local = to_local(unix_seconds, offset_minutes)
-  list.fold(pattern, "", fn(acc, t) {
-    acc <> token(t, local, digits, has_minute, has_second)
-  })
+  let seconds = unix_seconds + offset_minutes * 60
+  let epoch_day = floor_divide(seconds, 86_400)
+  let rest = seconds - epoch_day * 86_400
+  case
+    local(compiled.math, epoch_day, rest, offset_minutes, unix_seconds),
+    compiled.fallback
+  {
+    Ok(local), _ -> {
+      let Prepared(pattern:, has_minute:, has_second:) = case compiled.eras {
+        [] -> compiled.main
+        eras ->
+          case list.key_find(eras, local.era) {
+            Ok(prepared) -> prepared
+            Error(Nil) -> compiled.main
+          }
+      }
+      tokens(pattern, local, compiled.digits, has_minute, has_second, "")
+    }
+    Error(Nil), Fallback(gregorian) ->
+      render(gregorian, unix_seconds, offset_minutes)
+    Error(Nil), NoFallback -> ""
+  }
 }
 
-fn token(
-  token: Token,
+fn tokens(
+  pattern: Pattern,
   local: Local,
   digits: Digits,
   has_minute: Bool,
   has_second: Bool,
+  acc: String,
 ) -> String {
-  case token {
+  case pattern {
+    [] -> acc
+    [part, ..rest] ->
+      tokens(
+        rest,
+        local,
+        digits,
+        has_minute,
+        has_second,
+        acc <> token(part, local, digits, has_minute, has_second),
+      )
+  }
+}
+
+fn token(
+  part: Token,
+  m: Local,
+  digits: Digits,
+  has_minute: Bool,
+  has_second: Bool,
+) -> String {
+  case part {
     Literal(text) -> text
-    Year(two_digit:) -> {
-      // There is no year zero: 0 is 1 BC, -1 is 2 BC, and so on.
-      let year = case local.year <= 0 {
-        True -> 1 - local.year
-        False -> local.year
+    AsciiDigits(inner) -> token(inner, m, Ascii, has_minute, has_second)
+    Year(two_digit: True, minus:, first: _) -> {
+      let sign = case m.year < 0 {
+        True -> minus
+        False -> ""
       }
-      case two_digit {
-        True -> number(year % 100, True, digits)
-        False -> number(year, False, digits)
-      }
+      sign <> number(int.absolute_value(m.year) % 100, True, digits)
     }
-    MonthNumber(pad:) -> number(local.month, pad, digits)
-    MonthName(names:) -> at(names, local.month - 1)
-    Day(pad:) -> number(local.day, pad, digits)
-    Weekday(names:) -> at(names, local.weekday)
-    Hour(pad:, cycle:) -> number(hour(local.hour, cycle), pad, digits)
-    Minute(pad:) -> number(local.minute, pad, digits)
-    Second(pad:) -> number(local.second, pad, digits)
+    Year(two_digit: False, minus:, first:) ->
+      case m.year, first {
+        1, "" -> number(1, False, digits)
+        1, first -> first
+        year, _ -> signed(year, minus, digits)
+      }
+    WeekYear(minus:, first_day:, minimal_days:, exceptions:) ->
+      signed(
+        calendar.week_year(m, first_day, minimal_days, exceptions),
+        minus,
+        digits,
+      )
+    ExtendedYear(minus:) -> signed(m.extended, minus, digits)
+    RelatedYear -> signed(m.related, "-", digits)
+    YearName(names:) -> at(names, m.cycle, "")
+    MonthNumber(pad:) -> number(m.month + 1, pad, digits)
+    MonthName(names:) -> at(names, m.month, "")
+    Day(pad:) -> number(m.day, pad, digits)
+    DayName(names:) -> at(names, m.day, "")
+    // 1970-01-01 was a Thursday, and Sunday is 0.
+    Weekday(names:) -> at(names, modulo(m.epoch_day + 4, 7), "")
+    Era(names:) -> at(names, m.era, "")
+    Hour(pad:, cycle:) -> number(hour(m.hour, cycle), pad, digits)
+    Minute(pad:) -> number(m.minute, pad, digits)
+    Second(pad:) -> number(m.second, pad, digits)
     DayPeriod(by_hour:, midnight:, noon:) -> {
       let on_the_hour =
-        { !has_minute || local.minute == 0 }
-        && { !has_second || local.second == 0 }
-      case local.hour, on_the_hour {
+        { !has_minute || m.minute == 0 } && { !has_second || m.second == 0 }
+      case m.hour, on_the_hour {
         0, True -> midnight
         12, True -> noon
-        hour, _ -> at(by_hour, hour)
+        hour, _ -> at(by_hour, hour, "")
       }
     }
-    Era(bc:, ad:) ->
-      case local.year <= 0 {
-        True -> bc
-        False -> ad
-      }
     Zone(
       zero:,
       positive:,
@@ -108,7 +212,7 @@ fn token(
     ) ->
       // ICU only names the zero offset from 1970. Before then it writes it
       // like any other offset, such as `GMT+0`.
-      case local.offset_minutes, local.unix_seconds >= 0 {
+      case m.offset_minutes, m.unix_seconds >= 0 {
         0, True -> zero
         offset, _ -> {
           let #(sign, suffix, whole_suffix) = case offset < 0 {
@@ -131,76 +235,88 @@ fn token(
   }
 }
 
-fn hour(hour: Int, cycle: data.HourCycle) -> Int {
-  case cycle {
-    H23 -> hour
-    H11 -> hour % 12
-    H12 ->
-      case hour % 12 {
-        0 -> 12
-        h -> h
+// --- Calendars --------------------------------------------------------------
+
+/// A day's era, year, extended year, related year, cycle year, month and day
+/// in a calendar, or `[]` if the calendar doesn't cover it. For tests.
+@internal
+pub fn calendar_fields(calendar: Int, epoch_day: Int) -> List(Int) {
+  case local(math.math(calendar), epoch_day, 0, 0, epoch_day * 86_400) {
+    Ok(m) -> [m.era, m.year, m.extended, m.related, m.cycle, m.month, m.day]
+    Error(Nil) -> []
+  }
+}
+
+fn local(
+  math: Math,
+  epoch_day: Int,
+  rest: Int,
+  offset_minutes: Int,
+  unix_seconds: Int,
+) -> Result(Local, Nil) {
+  let hour = rest / 3600
+  let minute = rest % 3600 / 60
+  let second = rest % 60
+  case math {
+    Proleptic(eras:) -> {
+      let #(y, m, d) = civil_from_days(epoch_day)
+      let EraRule(era:, base:, sign:, ..) = era_rule(eras, epoch_day)
+      Ok(Local(
+        epoch_day:,
+        hour:,
+        minute:,
+        second:,
+        offset_minutes:,
+        unix_seconds:,
+        era:,
+        year: base + sign * y,
+        extended: y,
+        related: y,
+        cycle: 0,
+        month: m - 1,
+        day: d,
+        year_start: 0,
+        next_year_start: 0,
+      ))
+    }
+    Table(cyclic:, starts:, shapes:, months:, years:, day_zero:) ->
+      calendar.table_local(
+        cyclic:,
+        starts:,
+        shapes:,
+        months:,
+        years:,
+        day_zero:,
+        epoch_day:,
+        hour:,
+        minute:,
+        second:,
+        offset_minutes:,
+        unix_seconds:,
+      )
+    NoMath -> Error(Nil)
+  }
+}
+
+/// The era a day is in. Eras are newest first, and the last starts at the
+/// start of time.
+fn era_rule(eras: List(data.EraRule), epoch_day: Int) -> data.EraRule {
+  case eras {
+    [rule] -> rule
+    [rule, ..rest] ->
+      case rule.start <= epoch_day {
+        True -> rule
+        False -> era_rule(rest, epoch_day)
       }
-    H24 ->
-      case hour {
-        0 -> 24
-        h -> h
-      }
+    [] -> EraRule(start: 0, era: 0, base: 0, sign: 1)
   }
-}
-
-fn number(n: Int, pad: Bool, digits: Digits) -> String {
-  let text = case pad && n < 10 {
-    True -> "0" <> int.to_string(n)
-    False -> int.to_string(n)
-  }
-  case digits {
-    Ascii -> text
-    Digits(digits) ->
-      text
-      |> string.to_graphemes
-      |> list.map(fn(c) {
-        case int.parse(c) {
-          Ok(i) -> at(digits, i)
-          Error(_) -> c
-        }
-      })
-      |> string.concat
-  }
-}
-
-fn at(items: List(String), index: Int) -> String {
-  case items, index {
-    [item, ..], 0 -> item
-    [_, ..rest], _ -> at(rest, index - 1)
-    [], _ -> ""
-  }
-}
-
-fn to_local(unix_seconds: Int, offset_minutes: Int) -> Local {
-  let seconds = unix_seconds + offset_minutes * 60
-  let days = int.floor_divide(seconds, 86_400) |> unwrap
-  let rest = seconds - days * 86_400
-  let #(year, month, day) = civil_from_days(days)
-  // 1970-01-01 was a Thursday, and Sunday is 0.
-  let weekday = { { days + 4 } % 7 + 7 } % 7
-  Local(
-    year:,
-    month:,
-    day:,
-    weekday:,
-    hour: rest / 3600,
-    minute: rest % 3600 / 60,
-    second: rest % 60,
-    offset_minutes:,
-    unix_seconds:,
-  )
 }
 
 /// Days since 1970-01-01 to a proleptic Gregorian date.
 /// From Howard Hinnant's `civil_from_days`.
 fn civil_from_days(days: Int) -> #(Int, Int, Int) {
   let z = days + 719_468
-  let era = int.floor_divide(z, 146_097) |> unwrap
+  let era = floor_divide(z, 146_097)
   let doe = z - era * 146_097
   let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
   let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
@@ -218,9 +334,67 @@ fn civil_from_days(days: Int) -> #(Int, Int, Int) {
   #(year, month, day)
 }
 
-fn unwrap(result: Result(Int, Nil)) -> Int {
-  case result {
-    Ok(n) -> n
+// --- Numbers and lists -------------------------------------------------------
+
+fn hour(hour: Int, cycle: data.HourCycle) -> Int {
+  case cycle {
+    H23 -> hour
+    H11 -> hour % 12
+    H12 ->
+      case hour % 12 {
+        0 -> 12
+        h -> h
+      }
+    H24 ->
+      case hour {
+        0 -> 24
+        h -> h
+      }
+  }
+}
+
+fn signed(n: Int, minus: String, digits: Digits) -> String {
+  case n < 0 {
+    True -> minus <> number(-n, False, digits)
+    False -> number(n, False, digits)
+  }
+}
+
+fn number(n: Int, pad: Bool, digits: Digits) -> String {
+  let text = case pad && n < 10 {
+    True -> "0" <> int.to_string(n)
+    False -> int.to_string(n)
+  }
+  case digits {
+    Ascii -> text
+    Digits(digits) ->
+      text
+      |> string.to_graphemes
+      |> list.map(fn(c) {
+        case int.parse(c) {
+          Ok(i) -> at(digits, i, c)
+          Error(_) -> c
+        }
+      })
+      |> string.concat
+  }
+}
+
+fn at(items: List(a), index: Int, default: a) -> a {
+  case items, index {
+    [item, ..], 0 -> item
+    [_, ..rest], _ -> at(rest, index - 1, default)
+    [], _ -> default
+  }
+}
+
+fn modulo(n: Int, by: Int) -> Int {
+  { n % by + by } % by
+}
+
+fn floor_divide(n: Int, by: Int) -> Int {
+  case int.floor_divide(n, by) {
+    Ok(result) -> result
     Error(_) -> 0
   }
 }

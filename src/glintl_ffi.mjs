@@ -1,7 +1,27 @@
 const STYLES = [undefined, "full", "long", "medium", "short"];
 
-export function compile(tag, _data, date, time) {
-  const options = { calendar: "gregory" };
+// ICU's names for the calendars, in the order of `glintl.Calendar`.
+const CALENDARS = [
+  "gregory",
+  "iso8601",
+  "buddhist",
+  "japanese",
+  "roc",
+  "persian",
+  "indian",
+  "hebrew",
+  "chinese",
+  "dangi",
+  "coptic",
+  "ethiopic",
+  "ethioaa",
+  "islamic-civil",
+  "islamic-tbla",
+  "islamic-umalqura",
+];
+
+export function compile(tag, _data, _calendars, calendar, date, time) {
+  const options = { calendar: CALENDARS[calendar] };
   if (date) options.dateStyle = STYLES[date];
   if (time) options.timeStyle = STYLES[time];
   return { tag, options, byOffset: new Map() };

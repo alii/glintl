@@ -7,8 +7,9 @@
     "types": ["bun"],
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["generate.ts"]
+  "include": ["*.ts"]
 }
