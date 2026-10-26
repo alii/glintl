@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Tamil, `ta`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ta", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ta", glintl.Gregorian, 307)
 }
-
-@target(javascript)
-/// Tamil, `ta`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ta", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ta", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ta", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

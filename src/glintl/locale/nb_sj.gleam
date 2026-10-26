@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Norwegian Bokmål (Svalbard & Jan Mayen), `nb-SJ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nb-SJ", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("nb-SJ", glintl.Gregorian, 226)
 }
-
-@target(javascript)
-/// Norwegian Bokmål (Svalbard & Jan Mayen), `nb-SJ`.
-pub fn locale() -> Locale {
-  glintl.new_locale("nb-SJ", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_nb", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_nb", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

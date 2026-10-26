@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Sicilian, `scn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("scn", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("scn", glintl.Gregorian, 269)
 }
-
-@target(javascript)
-/// Sicilian, `scn`.
-pub fn locale() -> Locale {
-  glintl.new_locale("scn", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_scn", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_scn", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

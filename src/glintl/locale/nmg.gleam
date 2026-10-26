@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Kwasio, `nmg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nmg", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("nmg", glintl.Gregorian, 233)
 }
-
-@target(javascript)
-/// Kwasio, `nmg`.
-pub fn locale() -> Locale {
-  glintl.new_locale("nmg", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_nmg", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_nmg", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

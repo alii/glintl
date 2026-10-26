@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Upper Sorbian, `hsb`.
 pub fn locale() -> Locale {
-  glintl.new_locale("hsb", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("hsb", glintl.Gregorian, 144)
 }
-
-@target(javascript)
-/// Upper Sorbian, `hsb`.
-pub fn locale() -> Locale {
-  glintl.new_locale("hsb", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_hsb", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_hsb", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

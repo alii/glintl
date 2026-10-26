@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Vietnamese, `vi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vi", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("vi", glintl.Gregorian, 335)
 }
-
-@target(javascript)
-/// Vietnamese, `vi`.
-pub fn locale() -> Locale {
-  glintl.new_locale("vi", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_vi", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_vi", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

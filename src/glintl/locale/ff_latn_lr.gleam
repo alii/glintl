@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Fulah (Latin, Liberia), `ff-Latn-LR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Latn-LR", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ff-Latn-LR", glintl.Gregorian, 116)
 }
-
-@target(javascript)
-/// Fulah (Latin, Liberia), `ff-Latn-LR`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ff-Latn-LR", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ff_latn_gh", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ff", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

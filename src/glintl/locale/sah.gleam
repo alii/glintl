@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Yakut, `sah`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sah", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("sah", glintl.Gregorian, 264)
 }
-
-@target(javascript)
-/// Yakut, `sah`.
-pub fn locale() -> Locale {
-  glintl.new_locale("sah", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_sah", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_sah", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

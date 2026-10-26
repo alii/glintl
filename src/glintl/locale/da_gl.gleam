@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Danish (Greenland), `da-GL`.
 pub fn locale() -> Locale {
-  glintl.new_locale("da-GL", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("da-GL", glintl.Gregorian, 50)
 }
-
-@target(javascript)
-/// Danish (Greenland), `da-GL`.
-pub fn locale() -> Locale {
-  glintl.new_locale("da-GL", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_da", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_da", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

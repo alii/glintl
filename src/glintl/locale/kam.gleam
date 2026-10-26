@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Kamba, `kam`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kam", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("kam", glintl.Gregorian, 161)
 }
-
-@target(javascript)
-/// Kamba, `kam`.
-pub fn locale() -> Locale {
-  glintl.new_locale("kam", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_kam", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_kam", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

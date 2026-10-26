@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Irish (United Kingdom), `ga-GB`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ga-GB", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ga-GB", glintl.Gregorian, 128)
 }
-
-@target(javascript)
-/// Irish (United Kingdom), `ga-GB`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ga-GB", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ga", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ga", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

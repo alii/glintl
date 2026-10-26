@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Friulian, `fur`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fur", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("fur", glintl.Gregorian, 126)
 }
-
-@target(javascript)
-/// Friulian, `fur`.
-pub fn locale() -> Locale {
-  glintl.new_locale("fur", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_fur", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_fur", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

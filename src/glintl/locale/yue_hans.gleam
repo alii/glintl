@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Cantonese (Simplified), `yue-Hans`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yue-Hans", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("yue-Hans", glintl.Gregorian, 349)
 }
-
-@target(javascript)
-/// Cantonese (Simplified), `yue-Hans`.
-pub fn locale() -> Locale {
-  glintl.new_locale("yue-Hans", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_yue_hans", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_yue_hans", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

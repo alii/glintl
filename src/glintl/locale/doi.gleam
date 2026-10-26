@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Dogri, `doi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("doi", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("doi", glintl.Gregorian, 55)
 }
-
-@target(javascript)
-/// Dogri, `doi`.
-pub fn locale() -> Locale {
-  glintl.new_locale("doi", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_doi", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_doi", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

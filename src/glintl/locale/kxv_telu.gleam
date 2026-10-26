@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Kuvi (Telugu), `kxv-Telu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kxv-Telu", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("kxv-Telu", glintl.Gregorian, 188)
 }
-
-@target(javascript)
-/// Kuvi (Telugu), `kxv-Telu`.
-pub fn locale() -> Locale {
-  glintl.new_locale("kxv-Telu", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_kxv_telu", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_kxv_telu", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

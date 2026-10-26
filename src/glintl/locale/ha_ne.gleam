@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Hausa (Niger), `ha-NE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ha-NE", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ha-NE", glintl.Gregorian, 136)
 }
-
-@target(javascript)
-/// Hausa (Niger), `ha-NE`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ha-NE", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ha", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ha", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

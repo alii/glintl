@@ -58,7 +58,7 @@ It is recommended to reuse formatters for performance, because making one is exp
 
 ## Calendars
 
-- Each locale uses its own calendar by default. Thai uses Buddhist.
+- Each locale uses its own calendar by default.
 - Use other calendars with `glintl.with_calendar(locale, glintl.Hebrew)`.
 - All of ICU's calendars: Gregorian, ISO 8601, Buddhist, Japanese, Republic of China, Persian, Indian, Hebrew, Chinese, Dangi, Coptic, Ethiopic (2 eras), and 3 Islamic calendars.
 

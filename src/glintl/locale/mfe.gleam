@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Morisyen, `mfe`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mfe", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("mfe", glintl.Gregorian, 208)
 }
-
-@target(javascript)
-/// Morisyen, `mfe`.
-pub fn locale() -> Locale {
-  glintl.new_locale("mfe", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_mfe", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_mfe", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

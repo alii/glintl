@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Bangla, `bn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bn", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("bn", glintl.Gregorian, 29)
 }
-
-@target(javascript)
-/// Bangla, `bn`.
-pub fn locale() -> Locale {
-  glintl.new_locale("bn", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_bn", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_bn", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats
