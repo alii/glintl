@@ -7,7 +7,6 @@ import gleam/float
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
 import glintl
 import glintl/locale/en_gb
@@ -78,10 +77,9 @@ fn formatter() -> glintl.Formatter {
 fn format_dates(times: Int) -> Nil {
   let formatter = formatter()
   let dates = dates()
+  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
   int.range(from: 0, to: times, with: Nil, run: fn(_, _) {
-    list.each(dates, fn(date) {
-      glintl.format(formatter, date, offset: duration.hours(1))
-    })
+    list.each(dates, fn(date) { glintl.format(formatter, date, offset:) })
   })
 }
 

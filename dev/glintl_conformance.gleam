@@ -32,10 +32,12 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
           #(formatter, dict.insert(formatters, key, formatter))
         }
       }
+      let assert Ok(offset) =
+        glintl.duration_to_offset(duration.minutes(number(offset)))
       glintl.format(
         formatter,
         timestamp.from_unix_seconds(number(seconds)),
-        offset: duration.minutes(number(offset)),
+        offset:,
       )
       |> io.println
       loop(formatters)

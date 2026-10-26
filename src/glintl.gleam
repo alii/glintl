@@ -3,13 +3,14 @@
 //// ```gleam
 //// import glintl
 //// import glintl/locale/en_gb
-//// import gleam/time/duration
 //// import gleam/time/timestamp
 ////
 //// let formatter =
 ////   glintl.date_time_formatter(en_gb.locale(), date: glintl.Long, time: glintl.Short)
 ////
-//// glintl.format(formatter, timestamp.system_time(), offset: duration.hours(1))
+//// let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
+////
+//// glintl.format(formatter, timestamp.system_time(), offset:)
 //// // -> "25 October 2026 at 23:40"
 //// ```
 ////
@@ -118,7 +119,7 @@ pub fn locale_calendar(locale: Locale) -> Calendar {
 /// en_gb.locale()
 /// |> glintl.with_calendar(glintl.Hebrew)
 /// |> glintl.date_formatter(style: glintl.Long)
-/// |> glintl.format(timestamp.system_time(), offset: duration.hours(1))
+/// |> glintl.format(timestamp.system_time(), offset: glintl.utc)
 /// // -> "14 Heshvan 5787"
 /// ```
 pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
@@ -183,26 +184,75 @@ pub fn date_time_formatter(
   )
 }
 
+/// How far a place's clocks are ahead of UTC, in whole minutes, and under
+/// 24 hours either way.
+pub opaque type Offset {
+  Offset(minutes: Int)
+}
+
+/// No offset: UTC itself.
+pub const utc = Offset(minutes: 0)
+
+const minutes_per_hour = 60
+
+const hours_per_day = 24
+
+/// Why an offset couldn't be made.
+pub type OffsetError {
+  /// `hours` and `minutes` have different signs, like
+  /// `offset(hours: -3, minutes: 30)`.
+  MixedSigns
+  /// `minutes` is an hour or more either way.
+  MinutesTooLarge
+  /// The offset is 24 hours or more either way.
+  OffsetTooLarge
+}
+
+/// An offset of `hours` and `minutes` ahead of UTC, like
+/// `offset(hours: 5, minutes: 30)` for India. Behind UTC both are negative,
+/// like `offset(hours: -3, minutes: -30)` for Newfoundland.
+pub fn offset(
+  hours hours: Int,
+  minutes minutes: Int,
+) -> Result(Offset, OffsetError) {
+  let same_sign =
+    { hours >= 0 && minutes >= 0 } || { hours <= 0 && minutes <= 0 }
+  case same_sign, int.absolute_value(minutes) < minutes_per_hour {
+    False, _ -> Error(MixedSigns)
+    True, False -> Error(MinutesTooLarge)
+    True, True -> from_minutes(hours * minutes_per_hour + minutes)
+  }
+}
+
+/// An offset from a `gleam_time` duration, like `calendar.local_offset()`,
+/// rounded down to whole minutes.
+pub fn duration_to_offset(duration: Duration) -> Result(Offset, OffsetError) {
+  let #(seconds, _) = duration.to_seconds_and_nanoseconds(duration)
+  let remainder =
+    { seconds % render.seconds_per_minute + render.seconds_per_minute }
+    % render.seconds_per_minute
+  from_minutes({ seconds - remainder } / render.seconds_per_minute)
+}
+
+fn from_minutes(minutes: Int) -> Result(Offset, OffsetError) {
+  case int.absolute_value(minutes) < hours_per_day * minutes_per_hour {
+    True -> Ok(Offset(minutes:))
+    False -> Error(OffsetTooLarge)
+  }
+}
+
 /// Format a moment in time, as seen from a place `offset` ahead of UTC.
 ///
-/// The offset is rounded down to whole minutes. Time zones are written as a
-/// GMT offset, like `GMT+1`, as glintl knows the offset but not the zone's
-/// name.
+/// Time zones are written as a GMT offset, like `GMT+1`, as glintl knows the
+/// offset but not the zone's name.
 pub fn format(
   formatter: Formatter,
   timestamp: Timestamp,
-  offset offset: Duration,
+  offset offset: Offset,
 ) -> String {
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
-  let #(offset_seconds, _) = duration.to_seconds_and_nanoseconds(offset)
-  let offset_minutes = case
-    int.floor_divide(offset_seconds, render.seconds_per_minute)
-  {
-    Ok(minutes) -> minutes
-    Error(Nil) -> 0
-  }
-  do_format(formatter.compiled, seconds, nanoseconds, offset_minutes)
+  do_format(formatter.compiled, seconds, nanoseconds, offset.minutes)
 }
 
 @target(erlang)

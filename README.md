@@ -11,7 +11,6 @@ gleam add glintl gleam_time
 ```
 
 ```gleam
-import gleam/time/duration
 import gleam/time/timestamp
 import glintl
 import glintl/locale/en_gb
@@ -19,7 +18,7 @@ import glintl/locale/fr
 
 pub fn main() {
   let now = timestamp.system_time()
-  let offset = duration.hours(1)
+  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
 
   glintl.date_time_formatter(en_gb.locale(), date: glintl.Long, time: glintl.Short)
   |> glintl.format(now, offset:)

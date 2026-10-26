@@ -65,12 +65,17 @@ const before_christ = 1
 /// `codegen/generate.ts` checks it against ICU.
 pub const gregorian =
   Proleptic(
-    [
-      EraRule(start: first_day_of_ad, era: anno_domini, base: 0, sign: 1),
-      EraRule(start: start_of_time, era: before_christ, base: 1, sign: -1),
-    ],
+    [gregorian_newest_era, gregorian_oldest_era],
     julian_before: start_of_time,
   )
+
+pub const gregorian_newest_era =
+  EraRule(start: first_day_of_ad, era: anno_domini, base: 0, sign: 1)
+
+pub const gregorian_oldest_era =
+  EraRule(start: start_of_time, era: before_christ, base: 1, sign: -1)
+
+pub const gregorian_older_eras = [gregorian_oldest_era]
 
 /// From `start` until the next era, the year is `base + sign * y`, where `y`
 /// is the astronomical Gregorian year (1 BC is 0).

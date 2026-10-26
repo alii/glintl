@@ -125,18 +125,18 @@ pub opaque type Compiled {
     eras: List(#(Int, Prepared)),
     /// The locale's number in the digits table, or 0 for ASCII digits.
     digits: Int,
-    /// Fetched when formatting, so a copied formatter stays small.
-    math: fn() -> Math,
-    /// Used for days outside a table calendar's years.
-    fallback: Fallback,
+    days: Days,
   )
 }
 
 @target(erlang)
-type Fallback {
-  /// Built only if a day needs it, as that's rare.
-  Fallback(fn() -> Compiled)
-  NoFallback
+/// How a formatter turns a day into a date.
+type Days {
+  /// Gregorian covers every day.
+  GregorianDays
+  /// Another calendar, and Gregorian for days outside its years. Both are
+  /// built when needed, so a copied formatter stays small.
+  OtherDays(math: fn() -> Math, gregorian: fn() -> Compiled)
 }
 
 @target(erlang)
@@ -193,15 +193,10 @@ fn number_at(bits: BitArray, index: Int) -> Int {
 // --- Compiling ---------------------------------------------------------------
 
 @target(erlang)
-fn gregorian_math() -> Math {
-  data.gregorian
-}
-
-@target(erlang)
 /// A formatter for a locale's Gregorian formats.
 pub fn compile(locale: Int, shown: data.Shown) -> Compiled {
   let entry = element(locale, locales())
-  compile_formats(entry, 0, gregorian_math, shown, NoFallback)
+  compile_formats(entry, 0, shown, GregorianDays)
 }
 
 @target(erlang)
@@ -214,10 +209,8 @@ pub fn compile_other(
   shown: data.Shown,
 ) -> Compiled {
   let entry = element(locale, locales())
-  let gregorian = fn() {
-    compile_formats(entry, 0, gregorian_math, shown, NoFallback)
-  }
-  compile_formats(entry, position, math, shown, Fallback(gregorian))
+  let gregorian = fn() { compile_formats(entry, 0, shown, GregorianDays) }
+  compile_formats(entry, position, shown, OtherDays(math:, gregorian:))
 }
 
 @target(erlang)
@@ -225,9 +218,8 @@ pub fn compile_other(
 fn compile_formats(
   entry: BitArray,
   position: Int,
-  math: fn() -> Math,
   shown: data.Shown,
-  fallback: Fallback,
+  days: Days,
 ) -> Compiled {
   let digits = number_at(entry, 0)
   let formats = element(number_at(entry, position + 1), formats())
@@ -240,7 +232,7 @@ fn compile_formats(
     _, <<count, eras:bits>> -> eras_of(eras, count, times, glues, shown)
     _, _ -> []
   }
-  Compiled(main:, eras:, digits:, math:, fallback:)
+  Compiled(main:, eras:, digits:, days:)
 }
 
 @target(erlang)
@@ -354,28 +346,28 @@ pub fn render(
   unix_seconds: Int,
   offset_minutes: Int,
 ) -> String {
-  let seconds = unix_seconds + offset_minutes * seconds_per_minute
-  let epoch_day = floor_divide(seconds, seconds_per_day)
-  let rest = seconds - epoch_day * seconds_per_day
-  case
-    local(compiled.math(), epoch_day, rest, offset_minutes, unix_seconds),
-    compiled.fallback
-  {
-    Ok(local), _ -> {
-      let prepared = case compiled.eras {
-        [] -> compiled.main
-        eras ->
-          case key_find(eras, local.era) {
-            Ok(prepared) -> prepared
-            Error(Nil) -> compiled.main
-          }
+  case compiled.days {
+    GregorianDays ->
+      write(compiled, gregorian_local(unix_seconds, offset_minutes))
+    OtherDays(math:, gregorian:) ->
+      case local(math(), unix_seconds, offset_minutes) {
+        Ok(local) -> write(compiled, local)
+        Error(Nil) -> render(gregorian(), unix_seconds, offset_minutes)
       }
-      walk(prepared.tokens, prepared, local, compiled.digits, "")
-    }
-    Error(Nil), Fallback(gregorian) ->
-      render(gregorian(), unix_seconds, offset_minutes)
-    Error(Nil), NoFallback -> panic as "No calendar covers this day"
   }
+}
+
+@target(erlang)
+fn write(compiled: Compiled, local: Local) -> String {
+  let prepared = case compiled.eras {
+    [] -> compiled.main
+    eras ->
+      case key_find(eras, local.era) {
+        Ok(prepared) -> prepared
+        Error(Nil) -> compiled.main
+      }
+  }
+  walk(prepared.tokens, prepared, local, compiled.digits, "")
 }
 
 @target(erlang)
@@ -600,56 +592,39 @@ fn modulo(n: Int, by: Int) -> Int {
 /// in a calendar, or `[]` if the calendar doesn't cover it. For tests.
 @internal
 pub fn calendar_fields(math: Math, epoch_day: Int) -> List(Int) {
-  case local(math, epoch_day, 0, 0, epoch_day * seconds_per_day) {
+  case local(math, epoch_day * seconds_per_day, 0) {
     Ok(m) -> [m.era, m.year, m.extended, m.related, m.cycle, m.month, m.day]
     Error(Nil) -> []
   }
 }
 
+@target(erlang)
+/// A moment in a Gregorian calendar, which covers every day.
+fn gregorian_local(unix_seconds: Int, offset_minutes: Int) -> Local {
+  proleptic_local(
+    data.gregorian_newest_era,
+    data.gregorian_older_eras,
+    data.start_of_time,
+    unix_seconds,
+    offset_minutes,
+  )
+}
+
+/// A moment in a calendar, or `Error(Nil)` if the calendar doesn't cover it.
 fn local(
   math: Math,
-  epoch_day: Int,
-  rest: Int,
-  offset_minutes: Int,
   unix_seconds: Int,
+  offset_minutes: Int,
 ) -> Result(Local, Nil) {
-  let hour = rest / seconds_per_hour
-  let minute = rest % seconds_per_hour / seconds_per_minute
-  let second = rest % seconds_per_minute
   case math {
-    Proleptic(eras: [newest, ..older], julian_before:) -> {
-      let #(y, m, d) = case epoch_day < julian_before {
-        True -> calendar.julian_from_days(epoch_day)
-        False -> civil_from_days(epoch_day)
-      }
-      // Near the Julian switch a year can start in one calendar and end in
-      // the other, so its bounds are worked out here. Elsewhere `week_year`
-      // works them out only if needed.
-      let #(year_start, next_year_start) = case
-        epoch_day < julian_before + days_in_longest_year
-      {
-        True -> calendar.year_bounds(y, julian_before)
-        False -> #(data.start_of_time, data.start_of_time)
-      }
-      let EraRule(era:, base:, sign:, ..) = era_rule(newest, older, epoch_day)
-      Ok(Local(
-        epoch_day:,
-        hour:,
-        minute:,
-        second:,
-        offset_minutes:,
-        unix_seconds:,
-        era:,
-        year: base + sign * y,
-        extended: y,
-        related: y,
-        cycle: 0,
-        month: m - 1,
-        day: d,
-        year_start:,
-        next_year_start:,
+    Proleptic(eras: [newest, ..older], julian_before:) ->
+      Ok(proleptic_local(
+        newest,
+        older,
+        julian_before,
+        unix_seconds,
+        offset_minutes,
       ))
-    }
     Table(
       cyclic:,
       first_day:,
@@ -660,7 +635,9 @@ fn local(
       months:,
       years:,
       day_zero:,
-    ) ->
+    ) -> {
+      let #(epoch_day, hour, minute, second) =
+        day_and_time(unix_seconds, offset_minutes)
       calendar.table_local(
         cyclic:,
         first_day:,
@@ -678,8 +655,68 @@ fn local(
         offset_minutes:,
         unix_seconds:,
       )
+    }
     Proleptic(eras: [], ..) | NoMath -> Error(Nil)
   }
+}
+
+/// The local day since 1970-01-01, and the hour, minute and second.
+fn day_and_time(
+  unix_seconds: Int,
+  offset_minutes: Int,
+) -> #(Int, Int, Int, Int) {
+  let seconds = unix_seconds + offset_minutes * seconds_per_minute
+  let epoch_day = floor_divide(seconds, seconds_per_day)
+  let rest = seconds - epoch_day * seconds_per_day
+  #(
+    epoch_day,
+    rest / seconds_per_hour,
+    rest % seconds_per_hour / seconds_per_minute,
+    rest % seconds_per_minute,
+  )
+}
+
+/// A moment in a calendar with Gregorian or Julian months.
+fn proleptic_local(
+  newest: EraRule,
+  older: List(EraRule),
+  julian_before: Int,
+  unix_seconds: Int,
+  offset_minutes: Int,
+) -> Local {
+  let #(epoch_day, hour, minute, second) =
+    day_and_time(unix_seconds, offset_minutes)
+  let #(y, m, d) = case epoch_day < julian_before {
+    True -> calendar.julian_from_days(epoch_day)
+    False -> civil_from_days(epoch_day)
+  }
+  // Near the Julian switch a year can start in one calendar and end in
+  // the other, so its bounds are worked out here. Elsewhere `week_year`
+  // works them out only if needed.
+  let #(year_start, next_year_start) = case
+    epoch_day < julian_before + days_in_longest_year
+  {
+    True -> calendar.year_bounds(y, julian_before)
+    False -> #(data.start_of_time, data.start_of_time)
+  }
+  let EraRule(era:, base:, sign:, ..) = era_rule(newest, older, epoch_day)
+  Local(
+    epoch_day:,
+    hour:,
+    minute:,
+    second:,
+    offset_minutes:,
+    unix_seconds:,
+    era:,
+    year: base + sign * y,
+    extended: y,
+    related: y,
+    cycle: 0,
+    month: m - 1,
+    day: d,
+    year_start:,
+    next_year_start:,
+  )
 }
 
 /// The era a day is in. Eras are newest first, and the oldest starts at the

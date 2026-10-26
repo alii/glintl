@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/list
+import gleam/result
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
@@ -28,8 +29,8 @@ pub fn example_test() {
       time: glintl.Short,
     )
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
-  assert glintl.format(formatter, moment, offset: duration.hours(1))
-    == "25 October 2026 at 23:40"
+  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
+  assert glintl.format(formatter, moment, offset:) == "25 October 2026 at 23:40"
 }
 
 pub fn from_tag_test() {
@@ -42,11 +43,40 @@ pub fn from_tag_test() {
   assert locales.from_tag("xx") == Error(Nil)
 }
 
+/// Offsets are under 24 hours either way, like JavaScript's `Intl` allows.
+pub fn offset_test() {
+  assert glintl.offset(hours: 5, minutes: 30) |> result.is_ok
+  assert glintl.offset(hours: -3, minutes: -30) |> result.is_ok
+  assert glintl.offset(hours: 23, minutes: 59) |> result.is_ok
+  assert glintl.offset(hours: -23, minutes: -59) |> result.is_ok
+  assert glintl.offset(hours: 24, minutes: 0) == Error(glintl.OffsetTooLarge)
+  assert glintl.offset(hours: -24, minutes: 0) == Error(glintl.OffsetTooLarge)
+  assert glintl.offset(hours: 1, minutes: 60) == Error(glintl.MinutesTooLarge)
+  assert glintl.offset(hours: -3, minutes: 30) == Error(glintl.MixedSigns)
+  assert glintl.duration_to_offset(duration.hours(1)) == Ok(hours(1))
+  assert glintl.duration_to_offset(duration.seconds(-1))
+    == glintl.offset(hours: 0, minutes: -1)
+  assert glintl.duration_to_offset(duration.hours(24))
+    == Error(glintl.OffsetTooLarge)
+  assert glintl.duration_to_offset(duration.hours(-25))
+    == Error(glintl.OffsetTooLarge)
+}
+
+/// Locales can be compared and used as `Dict` keys on both targets.
+pub fn locale_equality_test() {
+  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  assert en_gb.locale() == en_gb.locale()
+  assert locales.from_tag("en-GB") == Ok(en_gb.locale())
+  assert hebrew == glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  assert hebrew != en_gb.locale()
+  assert en_gb.locale() != ja.locale()
+}
+
 pub fn calendar_test() {
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
   let format = fn(locale, moment) {
     glintl.date_formatter(locale, style: glintl.Long)
-    |> glintl.format(moment, offset: duration.hours(1))
+    |> glintl.format(moment, offset: hours(1))
   }
   assert glintl.locale_calendar(en_gb.locale()) == glintl.Gregorian
   assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
@@ -75,7 +105,7 @@ pub fn outside_calendar_tables_test() {
     en_gb.locale()
     |> glintl.with_calendar(glintl.Hebrew)
     |> glintl.date_formatter(style: glintl.Long)
-    |> glintl.format(year_5000, offset: duration.hours(0))
+    |> glintl.format(year_5000, offset: glintl.utc)
   let expected = case on_erlang() {
     True -> "1 January 5000"
     False -> "20 Kislev 8760"
@@ -109,11 +139,13 @@ pub fn fixtures_test() {
             time: style(time),
           )
       }
+      let assert Ok(utc_offset) =
+        glintl.duration_to_offset(duration.minutes(offset))
       let actual =
         glintl.format(
           formatter,
           timestamp.from_unix_seconds(seconds),
-          offset: duration.minutes(offset),
+          offset: utc_offset,
         )
       case actual == expected {
         True -> Error(Nil)
@@ -154,6 +186,11 @@ pub fn calendar_fields_test() {
 }
 
 // --- Helpers -------------------------------------------------------------------
+
+fn hours(hours: Int) -> glintl.Offset {
+  let assert Ok(offset) = glintl.offset(hours:, minutes: 0)
+  offset
+}
 
 @external(erlang, "glintl_test_ffi", "on_erlang")
 @external(javascript, "./glintl_test_ffi.mjs", "on_erlang")
