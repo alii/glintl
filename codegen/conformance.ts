@@ -20,6 +20,7 @@ import {
   CALENDARS,
   FIRST_YEAR,
   LAST_YEAR,
+  NOON_MS,
   SCAN_FROM,
   day,
 } from "./calendars.ts";
@@ -61,10 +62,9 @@ const WHOLE_HOUR_SHARE = 0.1;
 const MOST_SHOWN = 20;
 const OFFSETS = [0, 60, -480, 330, 345, -210, 840, -600, 525, -720, 765];
 
-// Calendars with their own months cover these days on Erlang. Others
-// have no limit, so they also get days far in the past.
-// A year in from each end of the tables, as a table's first and last years
-// may not quite reach 1 January.
+// Calendars with their own months cover these days on Erlang: a year in
+// from each end, as a table's first and last years may not quite reach
+// 1 January. Others have no limit, so they also get days far in the past.
 const TABLE_DAYS: [number, number] = [
   day(FIRST_YEAR + 1, 1, 1),
   day(LAST_YEAR - 1, 1, 1),
@@ -78,6 +78,35 @@ const between = ([from, to]: [number, number]) =>
   from + Math.floor(next() * (to - from));
 
 type Case = { line: string; expected: string };
+
+// ICU mixes up the era and year in table calendars when the local and UTC
+// dates are in different eras, as glintl's README explains, so those
+// moments are left out.
+const eraFormatters = new Map<string, Intl.DateTimeFormat>();
+function eraOf(calendar: string, epochDay: number): string {
+  let f = eraFormatters.get(calendar);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en", {
+      calendar,
+      // Short names, as the Coptic eras share a long one in English.
+      era: "short",
+      timeZone: "UTC",
+    });
+    eraFormatters.set(calendar, f);
+  }
+  return f.format(epochDay * SECONDS_PER_DAY * MS_PER_SECOND + NOON_MS);
+}
+
+function eraSplit(
+  calendar: string,
+  localDay: number,
+  utcSeconds: number,
+): boolean {
+  const utcDay = Math.floor(utcSeconds / SECONDS_PER_DAY);
+  return (
+    utcDay !== localDay && eraOf(calendar, utcDay) !== eraOf(calendar, localDay)
+  );
+}
 
 function group(): Case[] {
   const tag = pick(LOCALES)[1];
@@ -99,7 +128,8 @@ function group(): Case[] {
     timeStyle: STYLES[time],
     timeZone: offsetString(offset),
   });
-  return Array.from({ length: GROUP }, () => {
+  const cases: Case[] = [];
+  while (cases.length < GROUP) {
     const epochDay = between(kind === "table" ? TABLE_DAYS : ALL_DAYS);
     const r = next();
     const secondOfDay =
@@ -112,11 +142,13 @@ function group(): Case[] {
             : Math.floor(next() * SECONDS_PER_DAY);
     const seconds =
       epochDay * SECONDS_PER_DAY + secondOfDay - offset * SECONDS_PER_MINUTE;
-    return {
+    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) continue;
+    cases.push({
       line: [tag, calendar, date, time, seconds, offset].join("\t"),
       expected: formatter.format(seconds * MS_PER_SECOND),
-    };
-  });
+    });
+  }
+  return cases;
 }
 
 // Batches of cases: made here, or read from a saved file with the Intl it

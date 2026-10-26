@@ -99,6 +99,8 @@ As a separate check of ICU itself, its dates were compared once with the algorit
 
 The Umm al-Qura calendar follows Saudi Arabia's official tables, so it isn't compared with the book's rule.
 
+One ICU quirk isn't copied yet. In the Coptic and Islamic calendars, at moments where the local date and the UTC date are in different eras, ICU takes the era and year from one date and the month and day from the other. For example, at 22:24 on 19 July 622 at UTC−10, it gives "29 Dhu al-Hijjah, 0 AH" where glintl gives "29 Dhu al-Hijjah, 1 BH". This only happens on the day before and the first day of those eras, AD 284 and AD 622, at times when the offset moves the date across midnight.
+
 ## How it works
 
 On Erlang, the formats come from ICU when the package is generated, not when your app runs. `codegen/generate.ts` writes them to Erlang modules as literals: constant data that the BEAM keeps once and shares with every process, without copying it or garbage collecting it.
