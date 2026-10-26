@@ -6,9 +6,9 @@
 data() ->
     V1 = [glue_date, {glue_text, <<" "/utf8>>}, glue_time],
     V2 = [<<"de zenâ"/utf8>>, <<"de frevâ"/utf8>>, <<"de marso"/utf8>>, <<"d’arvî"/utf8>>, <<"de mazzo"/utf8>>, <<"de zugno"/utf8>>, <<"de luggio"/utf8>>, <<"d’agosto"/utf8>>, <<"de settembre"/utf8>>, <<"d’ottobre"/utf8>>, <<"de novembre"/utf8>>, <<"de dexembre"/utf8>>],
-    V3 = [{year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<" "/utf8>>}, {month_name, V2}, {literal, <<" "/utf8>>}, {day, false}],
+    V3 = [{year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<" "/utf8>>}, {month_name, V2}, {literal, <<" "/utf8>>}, {day, false}],
     {data, ascii, {formats,
-     {styles, [{year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<" "/utf8>>}, {month_name, V2}, {literal, <<" "/utf8>>}, {day, false}, {literal, <<", "/utf8>>}, {weekday, [<<"domenega"/utf8>>, <<"lunesdì"/utf8>>, <<"mätesdì"/utf8>>, <<"mäcordì"/utf8>>, <<"zeuggia"/utf8>>, <<"venardì"/utf8>>, <<"sabbo"/utf8>>]}], V3, V3, [{year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<"-"/utf8>>}, {month_number, true}, {literal, <<"-"/utf8>>}, {day, true}]},
+     {styles, [{year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<" "/utf8>>}, {month_name, V2}, {literal, <<" "/utf8>>}, {day, false}, {literal, <<", "/utf8>>}, {weekday, [<<"domenega"/utf8>>, <<"lunesdì"/utf8>>, <<"mätesdì"/utf8>>, <<"mäcordì"/utf8>>, <<"zeuggia"/utf8>>, <<"venardì"/utf8>>, <<"sabbo"/utf8>>]}], V3, V3, [{year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<"-"/utf8>>}, {month_number, true}, {literal, <<"-"/utf8>>}, {day, true}]},
      {styles, [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}, {literal, <<" "/utf8>>}, {zone, <<"oa do meridian de Greenwich"/utf8>>, <<"UTC+"/utf8>>, <<""/utf8>>, <<""/utf8>>, <<"UTC−"/utf8>>, <<""/utf8>>, <<""/utf8>>, true, <<":"/utf8>>, false}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}, {literal, <<" "/utf8>>}, {zone, <<"UTC+0"/utf8>>, <<"UTC+"/utf8>>, <<""/utf8>>, <<""/utf8>>, <<"UTC−"/utf8>>, <<""/utf8>>, <<""/utf8>>, false, <<":"/utf8>>, true}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}]},
      {styles, V1, V1, V1, V1},
      []}}.

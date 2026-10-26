@@ -5,10 +5,10 @@
 
 data() ->
     V1 = [glue_date, {glue_text, <<" "/utf8>>}, glue_time],
-    V2 = [{day, false}, {literal, <<". "/utf8>>}, {month_number, false}, {literal, <<". "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}],
+    V2 = [{day, false}, {literal, <<". "/utf8>>}, {month_number, false}, {literal, <<". "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}],
     V3 = [<<"јануар"/utf8>>, <<"фебруар"/utf8>>, <<"март"/utf8>>, <<"април"/utf8>>, <<"мај"/utf8>>, <<"јун"/utf8>>, <<"јул"/utf8>>, <<"август"/utf8>>, <<"септембар"/utf8>>, <<"октобар"/utf8>>, <<"новембар"/utf8>>, <<"децембар"/utf8>>],
     {data, ascii, {formats,
-     {styles, [{weekday, [<<"недјеља"/utf8>>, <<"понедјељак"/utf8>>, <<"уторак"/utf8>>, <<"сриједа"/utf8>>, <<"четвртак"/utf8>>, <<"петак"/utf8>>, <<"субота"/utf8>>]}, {literal, <<", "/utf8>>}, {day, false}, {literal, <<". "/utf8>>}, {month_name, V3}, {literal, <<" "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}], [{day, false}, {literal, <<". "/utf8>>}, {month_name, V3}, {literal, <<" "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}], V2, V2},
+     {styles, [{weekday, [<<"недјеља"/utf8>>, <<"понедјељак"/utf8>>, <<"уторак"/utf8>>, <<"сриједа"/utf8>>, <<"четвртак"/utf8>>, <<"петак"/utf8>>, <<"субота"/utf8>>]}, {literal, <<", "/utf8>>}, {day, false}, {literal, <<". "/utf8>>}, {month_name, V3}, {literal, <<" "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}], [{day, false}, {literal, <<". "/utf8>>}, {month_name, V3}, {literal, <<" "/utf8>>}, {year, false, <<"-"/utf8>>, <<""/utf8>>, <<""/utf8>>}, {literal, <<"."/utf8>>}], V2, V2},
      {styles, [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}, {literal, <<" "/utf8>>}, {zone, <<"Средње вријеме по Гриничу"/utf8>>, <<"GMT+"/utf8>>, <<""/utf8>>, <<""/utf8>>, <<"GMT-"/utf8>>, <<""/utf8>>, <<""/utf8>>, true, <<":"/utf8>>, false}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}, {literal, <<" "/utf8>>}, {zone, <<"GMT"/utf8>>, <<"GMT+"/utf8>>, <<""/utf8>>, <<""/utf8>>, <<"GMT-"/utf8>>, <<""/utf8>>, <<""/utf8>>, false, <<":"/utf8>>, true}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}, {literal, <<":"/utf8>>}, {second, true}], [{hour, true, h23}, {literal, <<":"/utf8>>}, {minute, true}]},
      {styles, V1, V1, V1, V1},
      []}}.
