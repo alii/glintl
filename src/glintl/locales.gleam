@@ -1357,7 +1357,7 @@ pub fn from_tag(tag: String) -> Result(Locale, Nil) {
 fn find(tag: String) -> Result(Locale, Nil) {
   case exact(tag) {
     Ok(locale) -> Ok(locale)
-    Error(_) ->
+    Error(Nil) ->
       case string.split(tag, "-") |> list.reverse {
         [_, _, ..] as parts ->
           parts |> list.drop(1) |> list.reverse |> string.join("-") |> find

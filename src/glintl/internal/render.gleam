@@ -414,7 +414,7 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
       |> list.map(fn(c) {
         case int.parse(c) {
           Ok(i) -> at(digits, i, c)
-          Error(_) -> c
+          Error(Nil) -> c
         }
       })
       |> string.concat
@@ -436,6 +436,6 @@ fn modulo(n: Int, by: Int) -> Int {
 fn floor_divide(n: Int, by: Int) -> Int {
   case int.floor_divide(n, by) {
     Ok(result) -> result
-    Error(_) -> 0
+    Error(Nil) -> 0
   }
 }

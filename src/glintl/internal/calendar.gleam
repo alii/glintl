@@ -142,7 +142,7 @@ pub fn week_year(
   let first_week = fn(year_start, extended) {
     case list.key_find(exceptions, extended) {
       Ok(day) -> day
-      Error(_) -> {
+      Error(Nil) -> {
         let week_start =
           year_start - modulo(weekday(year_start) - first_day, days_per_week)
         case days_per_week - { year_start - week_start } >= minimal_days {
@@ -232,7 +232,7 @@ fn modulo(n: Int, by: Int) -> Int {
 fn floor_divide(n: Int, by: Int) -> Int {
   case int.floor_divide(n, by) {
     Ok(result) -> result
-    Error(_) -> 0
+    Error(Nil) -> 0
   }
 }
 

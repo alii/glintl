@@ -182,7 +182,7 @@ pub fn format(
     int.floor_divide(offset_seconds, render.seconds_per_minute)
   {
     Ok(minutes) -> minutes
-    Error(_) -> 0
+    Error(Nil) -> 0
   }
   do_format(formatter.compiled, seconds, nanoseconds, offset_minutes)
 }
