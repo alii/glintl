@@ -39,14 +39,17 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
     if (n < 0) {
       return minus + number(-n, pad);
     }
+
     return [...(pad && n < ONE_DIGIT_BELOW ? `0${n}` : String(n))]
       .map((c) => digits[+c])
       .join("");
   };
+
   const hasMinute = tokens.some((t) => t.t === "minute");
   const hasSecond = tokens.some((t) => t.t === "second");
   // From 0 for Sunday, as weekday names are.
   const weekday = isoWeekday(m.epochDay) % DAYS_PER_WEEK;
+
   return tokens
     .map((token) => {
       switch (token.t) {
@@ -56,20 +59,25 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
           return render([token.token], ASCII_DIGITS, m);
         case "year": {
           const year = m.date.year;
+
           if (token.twoDigit) {
             return (
               (year < 0 ? token.minus : "") +
               number(Math.abs(year) % TWO_DIGIT_YEARS, true)
             );
           }
+
           if (year === 1 && token.first) {
             return token.first;
           }
+
           if (year === -1 && token.minusFirst) {
             return token.minusFirst;
           }
+
           return number(year, false, token.minus);
         }
+
         case "week_year":
           return number(
             weekBasedYear(
@@ -102,6 +110,7 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
           return token.names[m.date.era]!;
         case "hour": {
           const h = m.hour;
+
           const shown =
             token.cycle === "h23"
               ? h
@@ -110,8 +119,10 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
                 : token.cycle === "h12"
                   ? h % HOURS_PER_HALF_DAY || HOURS_PER_HALF_DAY
                   : h || HOURS_PER_DAY;
+
           return number(shown, token.pad);
         }
+
         case "minute":
           return number(m.minute, token.pad);
         case "second":
@@ -119,26 +130,34 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
         case "day_period": {
           const onTheHour =
             (!hasMinute || m.minute === 0) && (!hasSecond || m.second === 0);
+
           if (onTheHour && m.hour === 0) {
             return token.midnight;
           }
+
           if (onTheHour && m.hour === HOURS_PER_HALF_DAY) {
             return token.noon;
           }
+
           return token.byHour[m.hour]!;
         }
+
         case "zone": {
           const offset = m.offsetMinutes;
+
           if (offset === 0 && m.unixSeconds >= 0) {
             return token.zero;
           }
+
           const negative = offset < 0;
           const abs = Math.abs(offset);
           const sign = negative ? token.negative : token.positive;
+
           const hours = number(
             Math.floor(abs / MINUTES_PER_HOUR),
             token.padHours,
           );
+
           if (abs % MINUTES_PER_HOUR === 0 && token.optionalMinutes) {
             return (
               sign +
@@ -146,6 +165,7 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
               (negative ? token.negativeWholeSuffix : token.positiveWholeSuffix)
             );
           }
+
           return (
             sign +
             hours +

@@ -31,15 +31,19 @@ export function escape(s: string, hex: (code: string) => string): string {
       if (c === "\\") {
         return "\\\\";
       }
+
       if (c === '"') {
         return '\\"';
       }
+
       if (c === " ") {
         return c;
       }
+
       if (INVISIBLE.test(c)) {
         return hex(c.codePointAt(0)!.toString(HEXADECIMAL).toUpperCase());
       }
+
       return c;
     })
     .join("");
@@ -50,32 +54,35 @@ const bool = (b: boolean) => (b ? "true" : "false");
 
 // Builds terms, counting how often each list term is used, so `body` can
 // bind repeated ones to variables.
-export class Writer {
-  private counts = new Map<string, number>();
+export type Writer = ReturnType<typeof writer>;
 
-  private shared(term: string): string {
-    this.counts.set(term, (this.counts.get(term) ?? 0) + 1);
+export function writer() {
+  const counts = new Map<string, number>();
+
+  function shared(term: string): string {
+    counts.set(term, (counts.get(term) ?? 0) + 1);
+
     return term;
   }
 
-  list(items: string[]): string {
-    return this.shared(`[${items.join(", ")}]`);
+  function list(items: string[]): string {
+    return shared(`[${items.join(", ")}]`);
   }
 
-  strings(items: string[]): string {
-    return this.list(items.map(string));
+  function strings(items: string[]): string {
+    return list(items.map(string));
   }
 
-  token(token: Token): string {
+  function writeToken(token: Token): string {
     switch (token.t) {
       case "literal":
         return `{literal, ${string(token.value)}}`;
       case "ascii":
-        return `{ascii_digits, ${this.token(token.token)}}`;
+        return `{ascii_digits, ${writeToken(token.token)}}`;
       case "year":
         return `{year, ${bool(token.twoDigit)}, ${string(token.minus)}, ${string(token.first)}, ${string(token.minusFirst)}}`;
       case "week_year":
-        return `{week_year, ${string(token.minus)}, ${token.firstDay}, ${token.minimalDays}, ${this.list(
+        return `{week_year, ${string(token.minus)}, ${token.firstDay}, ${token.minimalDays}, ${list(
           token.exceptions.map(([year, d]) => `{${year}, ${d}}`),
         )}}`;
       case "extended_year":
@@ -87,7 +94,7 @@ export class Writer {
       case "day_name":
       case "weekday":
       case "era":
-        return `{${token.t}, ${this.strings(token.names)}}`;
+        return `{${token.t}, ${strings(token.names)}}`;
       case "month_number":
       case "day":
       case "minute":
@@ -96,7 +103,7 @@ export class Writer {
       case "hour":
         return `{hour, ${bool(token.pad)}, ${token.cycle}}`;
       case "day_period":
-        return `{day_period, ${this.strings(token.byHour)}, ${string(token.midnight)}, ${string(token.noon)}}`;
+        return `{day_period, ${strings(token.byHour)}, ${string(token.midnight)}, ${string(token.noon)}}`;
       case "zone":
         return `{zone, ${[
           string(token.zero),
@@ -113,12 +120,12 @@ export class Writer {
     }
   }
 
-  pattern(tokens: Token[]): string {
-    return this.list(tokens.map((t) => this.token(t)));
+  function pattern(tokens: Token[]): string {
+    return list(tokens.map(writeToken));
   }
 
-  glue(pieces: GluePiece[]): string {
-    return this.list(
+  function glue(pieces: GluePiece[]): string {
+    return list(
       pieces.map((p) =>
         p.t === "text"
           ? `{glue_text, ${string(p.value)}}`
@@ -131,69 +138,89 @@ export class Writer {
 
   // One of something for each style, from full to short, like Gleam's
   // `Styles`.
-  styles<T>(items: T[], write: (item: T) => string): string {
+  function styles<T>(items: T[], write: (item: T) => string): string {
     if (items.length !== STYLE_COUNT) {
       throw new Error("A style is missing");
     }
-    return this.shared(`{styles, ${items.map(write).join(", ")}}`);
+
+    return shared(`{styles, ${items.map(write).join(", ")}}`);
   }
 
-  era(era: EraFormats): string {
-    const dates = this.styles(era.dates, (p) => this.pattern(p));
+  function era(era: EraFormats): string {
+    const dates = styles(era.dates, pattern);
     // `combined` is by date style, then time style.
     const combined = era.combined;
+
     const byDate = combined
-      ? `{combined, ${this.styles(
+      ? `{combined, ${styles(
           era.dates.map((_, d) =>
             combined.slice(d * STYLE_COUNT, (d + 1) * STYLE_COUNT),
           ),
-          (times) => this.styles(times, (p) => this.pattern(p)),
+          (times) => styles(times, pattern),
         )}}`
       : "joined";
+
     return `{era_formats, ${era.era}, ${dates}, ${byDate}}`;
   }
 
-  formats(f: Formats): string {
+  function formats(f: Formats): string {
     return `{formats,\n     ${[
-      this.styles(f.dates, (p) => this.pattern(p)),
-      this.styles(f.times, (p) => this.pattern(p)),
-      this.styles(f.glues, (g) => this.glue(g)),
-      this.list(f.eras.map((e) => this.era(e))),
+      styles(f.dates, pattern),
+      styles(f.times, pattern),
+      styles(f.glues, glue),
+      list(f.eras.map(era)),
     ].join(",\n     ")}}`;
   }
 
-  digits(digits: string[]): string {
+  function digits(digits: string[]): string {
     return digits.join("") === "0123456789"
       ? "ascii"
-      : `{digits, ${this.strings(digits)}}`;
+      : `{digits, ${strings(digits)}}`;
   }
 
   // The body of a function returning `term`, with repeated list terms bound
   // to variables. Shorter terms are bound first, so longer ones can use them.
   // Replacing text is safe: a list term always holds a string or a tuple,
   // and the escaped text of a string can't contain `<<"` or `{`.
-  body(term: string): string {
-    const repeated = [...this.counts]
-      .filter(
-        ([t, count]) =>
-          count > 1 && t.length >= SHORTEST_SHARED && term.includes(t),
+  function body(term: string): string {
+    const repeated = [...counts]
+      .flatMap(([t, count]) =>
+        count > 1 && t.length >= SHORTEST_SHARED && term.includes(t) ? [t] : [],
       )
-      .map(([t]) => t)
       .sort((a, b) => a.length - b.length);
+
     const names = new Map(repeated.map((t, n) => [t, `V${n + 1}`]));
-    const replace = (text: string, shorterThan: number) => {
-      for (const t of [...repeated].reverse()) {
-        if (t.length < shorterThan) {
-          text = text.split(t).join(names.get(t)!);
-        }
-      }
-      return text;
-    };
+
+    const replace = (text: string, shorterThan: number) =>
+      repeated
+        .toReversed()
+        .reduce(
+          (replaced, t) =>
+            t.length < shorterThan
+              ? replaced.split(t).join(names.get(t)!)
+              : replaced,
+          text,
+        );
+
     const bindings = repeated.map(
       (t) => `    ${names.get(t)} = ${replace(t, t.length)},\n`,
     );
+
     return `${bindings.join("")}    ${replace(term, Infinity)}`;
   }
+
+  return {
+    list,
+    strings,
+    token: writeToken,
+    pattern,
+    glue,
+    styles,
+    era,
+    formats,
+    digits,
+    body,
+  };
 }
 
 export function module(
@@ -216,23 +243,28 @@ export function math(m: Math_): string {
       (e) =>
         `{era_rule, ${Number.isFinite(e.start) ? e.start : START_OF_TIME}, ${e.era}, ${e.base}, ${e.sign}}`,
     );
+
     const julianBefore = Number.isFinite(m.julianBefore)
       ? m.julianBefore
       : START_OF_TIME;
+
     return `    {proleptic, [\n        ${rules.join(",\n        ")}\n    ], ${julianBefore}}`;
   }
+
   const tuple = (items: (string | number)[]) => `{${items.join(", ")}}`;
+
   const years = [...m.years]
     .reverse()
     .map(
       (y) =>
         `{year_rule, ${y.from}, ${y.era}, ${y.year}, ${y.yearStep}, ${y.extended}, ${y.related}, ${y.cycle}}`,
     );
+
   return `    {table,
      ${bool(m.cyclic)},
      ${tuple(m.starts)},
-     ${tuple(m.shapes)},
-     ${tuple(m.months.map((shape) => `[${shape.map(([n, l]) => `{${n}, ${l}}`).join(", ")}]`))},
+     ${tuple(m.layouts)},
+     ${tuple(m.months.map((layout) => `[${layout.map(([n, l]) => `{${n}, ${l}}`).join(", ")}]`))},
      [${years.join(",\n      ")}],
      [${m.dayZero.map(([d, month]) => `{${d}, ${month}}`).join(", ")}]}`;
 }

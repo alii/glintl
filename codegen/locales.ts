@@ -10,6 +10,7 @@ const RESERVED = new Set(
 // a `_` after names that are Gleam keywords.
 export function moduleName(tag: string): string {
   const name = tag.toLowerCase().replaceAll("-", "_");
+
   return RESERVED.has(name) ? name + "_" : name;
 }
 
@@ -20,6 +21,7 @@ export const LOCALES = cldr.availableLocales.full
   .filter((tag) => tag !== "und")
   .filter((tag) => {
     const resolved = new Intl.DateTimeFormat(tag).resolvedOptions().locale;
+
     return resolved.split("-")[0] === tag.split("-")[0];
   })
   .map((tag): [string, string] => [moduleName(tag), tag]);

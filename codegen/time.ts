@@ -22,5 +22,6 @@ export function offsetString(minutes: number): string {
   const sign = minutes < 0 ? "-" : "+";
   const abs = Math.abs(minutes);
   const pad = (n: number) => String(n).padStart(OFFSET_DIGITS, "0");
+
   return `${sign}${pad(Math.floor(abs / MINUTES_PER_HOUR))}:${pad(abs % MINUTES_PER_HOUR)}`;
 }

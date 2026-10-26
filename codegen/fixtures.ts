@@ -27,14 +27,15 @@ import {
 // Date style and time style, each 0 for none or 1 to 4 for full to short.
 type Pair = [number, number];
 
-const PAIRS: Pair[] = [];
-for (let d = 0; d <= STYLES.length; d++) {
-  for (let t = 0; t <= STYLES.length; t++) {
-    if (d || t) {
-      PAIRS.push([d, t]);
-    }
-  }
-}
+// The numbers from `from` up to but not including `to`.
+const range = (from: number, to: number) =>
+  Array.from({ length: Math.max(to - from, 0) }, (_, i) => from + i);
+
+const STYLE_OR_NONE = range(0, STYLES.length + 1);
+
+const PAIRS: Pair[] = STYLE_OR_NONE.flatMap((d) =>
+  STYLE_OR_NONE.flatMap((t): Pair[] => (d || t ? [[d, t]] : [])),
+);
 
 // Locales with something odd in at least one calendar.
 const EDGE_LOCALES = ["en-GB", "ja", "zh", "ko", "ar-SA", "fa", "gl", "ak"];
@@ -102,12 +103,14 @@ function at(
 // a millennium, then some at random.
 function moments(): Moment[] {
   const next = random(MOMENT_SEED);
+
   const [plusOne, minusEight, plusFiveThirty] = [
     OFFSETS[1]!,
     OFFSETS[2]!,
     OFFSETS[3]!,
   ];
-  const result: Moment[] = [
+
+  return [
     at(PROBE_DAY, 0, 0, 0, 0),
     at(PROBE_DAY, HOURS_PER_HALF_DAY, 0, 0, 0),
     at(PROBE_DAY, HOURS_PER_HALF_DAY, MINUTES_PER_HOUR / 2, 0, 0),
@@ -115,14 +118,14 @@ function moments(): Moment[] {
     at(day(5, ...MID_YEAR), 8, 0, 0, minusEight),
     at(day(-100, 3, 5), 15, 0, 0, plusFiveThirty),
     at(day(1999, MONTHS_PER_YEAR, 31), 23, 0, 0, plusOne),
+    ...range(0, RANDOM_MOMENTS).map(() => {
+      const d =
+        day(1 + Math.floor(next() * RANDOM_MOMENT_YEARS), 1, 1) +
+        Math.floor(next() * DAYS_IN_LONGEST_YEAR);
+
+      return at(d, 0, 0, 0, OFFSETS[Math.floor(next() * OFFSETS.length)]!);
+    }),
   ];
-  for (let i = 0; i < RANDOM_MOMENTS; i++) {
-    const d =
-      day(1 + Math.floor(next() * RANDOM_MOMENT_YEARS), 1, 1) +
-      Math.floor(next() * DAYS_IN_LONGEST_YEAR);
-    result.push(at(d, 0, 0, 0, OFFSETS[Math.floor(next() * OFFSETS.length)]!));
-  }
-  return result;
 }
 
 // The day ICU's calendars switch from Julian dates, and the day before.
@@ -132,11 +135,14 @@ const GREGORIAN_REFORM = day(1582, 10, 15);
 // its table, and odd years.
 function edgeDays(math: Math_): number[] {
   const days = new Set<number>([PROBE_DAY]);
+
   if (math.kind === "proleptic") {
     const starts = math.eras.map((e) => e.start).filter(Number.isFinite);
-    for (const start of starts.slice(0, MOST_ERA_STARTS)) {
+
+    starts.slice(0, MOST_ERA_STARTS).forEach((start) => {
       days.add(start - 1).add(start);
-    }
+    });
+
     days
       .add(day(-1000, ...MID_YEAR))
       .add(day(1, 1, 1))
@@ -145,39 +151,44 @@ function edgeDays(math: Math_): number[] {
     // Years -1, 0 and 1 of the oldest era, which some locales write in odd
     // ways.
     const oldest = math.eras.at(-1)!.era;
-    for (let year = SCAN_FROM; year <= LAST_YEAR; year++) {
+
+    range(SCAN_FROM, LAST_YEAR + 1).forEach((year) => {
       const d = day(year, ...MID_YEAR);
       const date = calendarDate(math, d)!;
+
       if (date.era === oldest && Math.abs(date.year) <= 1) {
         days.add(d);
       }
-    }
+    });
   } else {
     const first = math.starts[0]!;
     const last = math.starts.at(-1)! - 1;
     days.add(first).add(last);
-    for (const d of math.eraDays) {
-      days.add(d);
-    }
+
+    math.eraDays.forEach((d) => days.add(d));
+
     // Every month name, in the years around the probe day.
-    math.shapes.forEach((shape, i) => {
+    math.layouts.forEach((layout, i) => {
       if (
         Math.abs(math.starts[i]! - PROBE_DAY) >
         DAYS_IN_YEAR * SAMPLE_MONTHS_WITHIN_YEARS
       ) {
         return;
       }
-      let start = math.starts[i]!;
-      for (const [, length] of math.months[shape]!) {
+
+      math.months[layout]!.reduce((start, [, length]) => {
         days.add(start + INTO_MONTH);
-        start += length;
-      }
+
+        return start + length;
+      }, math.starts[i]!);
     });
   }
+
   return [...days].sort((a, b) => a - b).slice(0, MOST_EDGE_DAYS);
 }
 
 const formatters = new Map<string, Intl.DateTimeFormat>();
+
 function expected(
   tag: string,
   calendar: string,
@@ -185,19 +196,25 @@ function expected(
   [seconds, offset]: Moment,
 ): string {
   const key = `${tag} ${calendar} ${d} ${t} ${offset}`;
-  let f = formatters.get(key);
-  if (!f) {
-    f = new Intl.DateTimeFormat(tag, {
+  const kept = formatters.get(key);
+
+  const f =
+    kept ??
+    new Intl.DateTimeFormat(tag, {
       calendar,
       timeZone: offsetString(offset),
       dateStyle: d ? STYLES[d - 1] : undefined,
       timeStyle: t ? STYLES[t - 1] : undefined,
     });
+
+  if (!kept) {
     formatters.set(key, f);
+
     if (formatters.size > MOST_FORMATTERS) {
       formatters.clear();
     }
   }
+
   return f.format(seconds * MS_PER_SECOND);
 }
 
@@ -209,74 +226,89 @@ export function fixtures(
   runtime: string,
 ): string {
   const all = moments();
+
+  const mathByName = new Map<string, Math_>(
+    CALENDARS.map(({ id }) => [id, mathFor(id)]),
+  );
+
   // Table calendars only cover years 1 to 4000 on Erlang.
   const covered = (calendar: string, [seconds, offset]: Moment) =>
     calendarDate(
-      mathFor(calendar as CalendarId),
+      mathByName.get(calendar)!,
       Math.floor((seconds + offset * SECONDS_PER_MINUTE) / SECONDS_PER_DAY),
     ) !== undefined;
-  const lines: string[] = [];
-  const add = (
+
+  // The case's line, or none when its calendar doesn't cover the moment.
+  const line = (
     tag: string,
     calendar: string,
     isDefault: boolean,
     pair: Pair,
     moment: Moment,
-  ) => {
-    if (!covered(calendar, moment)) {
-      return;
-    }
-    lines.push(
-      `    #("${tag}", "${isDefault ? "" : calendar}", ${pair[0]}, ${pair[1]}, ${moment[0]}, ${moment[1]}, ${gleamString(
-        expected(tag, calendar, pair, moment),
-      )}),`,
-    );
-  };
+  ): string[] =>
+    covered(calendar, moment)
+      ? [
+          `    #("${tag}", "${isDefault ? "" : calendar}", ${pair[0]}, ${pair[1]}, ${moment[0]}, ${moment[1]}, ${gleamString(
+            expected(tag, calendar, pair, moment),
+          )}),`,
+        ]
+      : [];
 
   // Every locale and style pair in the locale's own calendar.
-  let turn = 0;
-  for (const [tag, calendar] of locales) {
-    for (const pair of PAIRS) {
-      add(tag, calendar, true, pair, all[turn++ % all.length]!);
-    }
-  }
+  const own = locales.flatMap(([tag, calendar]) =>
+    PAIRS.map((pair): [string, string, Pair] => [tag, calendar, pair]),
+  );
+
+  const ownLines = own.flatMap(([tag, calendar, pair], turn) =>
+    line(tag, calendar, true, pair, all[turn % all.length]!),
+  );
 
   // Every locale in every other calendar, with styles and moments taking turns.
-  for (const [tag, calendar] of locales) {
-    for (const { id } of CALENDARS) {
-      if (id !== calendar) {
-        add(
-          tag,
-          id,
-          false,
-          PAIRS[turn % PAIRS.length]!,
-          all[turn++ % all.length]!,
-        );
-      }
-    }
-  }
+  const others = locales.flatMap(([tag, calendar]) =>
+    CALENDARS.flatMap(({ id }): [string, string][] =>
+      id === calendar ? [] : [[tag, id]],
+    ),
+  );
+
+  const otherLines = others.flatMap(([tag, id], i) => {
+    const turn = own.length + i;
+
+    return line(
+      tag,
+      id,
+      false,
+      PAIRS[turn % PAIRS.length]!,
+      all[turn % all.length]!,
+    );
+  });
 
   // The odd days of each calendar, in locales with odd formats.
   // Each date style alone, and the fullest and shortest dates with times.
   const [full, short] = [1, STYLES.length];
+
   const pairs: Pair[] = [
     ...STYLES.map((_, s): Pair => [s + 1, 0]),
     [full, full],
     [short, short],
   ];
-  for (const tag of EDGE_LOCALES) {
+
+  const edgeLines = EDGE_LOCALES.flatMap((tag) => {
     const calendar = locales.find(([t]) => t === tag)?.[1];
+
     if (!calendar) {
-      continue;
+      return [];
     }
-    for (const { id } of CALENDARS) {
-      for (const d of edgeDays(mathFor(id))) {
-        for (const pair of pairs) {
-          add(tag, id, id === calendar, pair, at(d, ...EDGE_TIME, 0));
-        }
-      }
-    }
-  }
+
+    return CALENDARS.flatMap(({ id }) =>
+      edgeDays(mathFor(id)).flatMap((d) =>
+        pairs.flatMap((pair) =>
+          line(tag, id, id === calendar, pair, at(d, ...EDGE_TIME, 0)),
+        ),
+      ),
+    );
+  });
+
+  const lines = [...ownLines, ...otherLines, ...edgeLines];
 
   return `//// Expected output, made with \`Intl.DateTimeFormat\` in ${runtime}.
 //// Generated by \`codegen/generate.ts\`. Do not edit.
@@ -299,10 +331,11 @@ export function calendarFixtures(
   runtime: string,
 ): string {
   const next = random(FIELDS_SEED);
-  const lines: string[] = [];
-  CALENDARS.forEach(({ id }) => {
+
+  const lines = CALENDARS.flatMap(({ id }) => {
     const math = mathFor(id);
     const days = new Set(edgeDays(math));
+
     if (math.kind === "table") {
       const first = math.starts[0]!;
       const last = math.starts.at(-1)!;
@@ -310,36 +343,53 @@ export function calendarFixtures(
         .add(first - 1)
         .add(last)
         .add(last - 1);
+
       // The first day of a year, and the last, for some of the years.
-      for (let i = 0; i < math.starts.length - 1; i += EVERY_NTH_YEAR) {
-        days.add(math.starts[i]!).add(math.starts[i + 1]! - 1);
-      }
-      for (let n = 0; n < RANDOM_FIELD_DAYS; n++) {
+      range(0, math.starts.length - 1)
+        .filter((i) => i % EVERY_NTH_YEAR === 0)
+        .forEach((i) => {
+          days.add(math.starts[i]!).add(math.starts[i + 1]! - 1);
+        });
+
+      range(0, RANDOM_FIELD_DAYS).forEach(() => {
         days.add(first + Math.floor(next() * (last - first)));
-      }
+      });
     } else {
-      for (const era of math.eras) {
-        if (Number.isFinite(era.start)) {
+      math.eras
+        .filter((era) => Number.isFinite(era.start))
+        .forEach((era) => {
           days.add(era.start - 1).add(era.start);
-        }
-      }
-      for (let n = 0; n < RANDOM_FIELD_DAYS; n++) {
+        });
+
+      range(0, RANDOM_FIELD_DAYS).forEach(() => {
         days.add(
           day(SCAN_FROM, 1, 1) +
             Math.floor(next() * (day(LAST_YEAR, 1, 1) - day(SCAN_FROM, 1, 1))),
         );
-      }
+      });
     }
-    for (const d of [...days].sort((a, b) => a - b)) {
-      const c = calendarDate(math, d);
-      const fields = c
-        ? [c.era, c.year, c.extended, c.related, c.cycle, c.month, c.day].join(
-            ", ",
-          )
-        : "";
-      lines.push(`    #("${id}", ${d}, [${fields}]),`);
-    }
+
+    return [...days]
+      .sort((a, b) => a - b)
+      .map((d) => {
+        const c = calendarDate(math, d);
+
+        const fields = c
+          ? [
+              c.era,
+              c.year,
+              c.extended,
+              c.related,
+              c.cycle,
+              c.month,
+              c.day,
+            ].join(", ")
+          : "";
+
+        return `    #("${id}", ${d}, [${fields}]),`;
+      });
   });
+
   return `//// Calendar fields, from glintl's calendar maths after checking it against
 //// \`Intl.DateTimeFormat\` on every day, in ${runtime}.
 //// Generated by \`codegen/generate.ts\`. Do not edit.
