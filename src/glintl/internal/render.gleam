@@ -153,7 +153,7 @@ pub fn render(
     }
     Error(Nil), Fallback(gregorian) ->
       render(gregorian, unix_seconds, offset_minutes)
-    Error(Nil), NoFallback -> ""
+    Error(Nil), NoFallback -> panic as "No calendar covers this day"
   }
 }
 
@@ -211,14 +211,14 @@ fn token(
       )
     ExtendedYear(minus:) -> signed(m.extended, minus, digits)
     RelatedYear -> signed(m.related, "-", digits)
-    YearName(names:) -> at(names, m.cycle, "")
+    YearName(names:) -> at(names, m.cycle)
     MonthNumber(pad:) -> number(m.month + 1, pad, digits)
-    MonthName(names:) -> at(names, m.month, "")
+    MonthName(names:) -> at(names, m.month)
     Day(pad:) -> number(m.day, pad, digits)
-    DayName(names:) -> at(names, m.day, "")
+    DayName(names:) -> at(names, m.day)
     Weekday(names:) ->
-      at(names, modulo(m.epoch_day + thursday, calendar.days_per_week), "")
-    Era(names:) -> at(names, m.era, "")
+      at(names, modulo(m.epoch_day + thursday, calendar.days_per_week))
+    Era(names:) -> at(names, m.era)
     Hour(pad:, cycle:) -> number(hour(m.hour, cycle), pad, digits)
     Minute(pad:) -> number(m.minute, pad, digits)
     Second(pad:) -> number(m.second, pad, digits)
@@ -228,7 +228,7 @@ fn token(
       case m.hour, on_the_hour {
         0, True -> midnight
         hour, True if hour == hours_per_half_day -> noon
-        hour, _ -> at(by_hour, hour, "")
+        hour, _ -> at(by_hour, hour)
       }
     }
     Zone(
@@ -413,7 +413,7 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
       |> string.to_graphemes
       |> list.map(fn(c) {
         case int.parse(c) {
-          Ok(i) -> at(digits, i, c)
+          Ok(i) -> at(digits, i)
           Error(Nil) -> c
         }
       })
@@ -421,11 +421,11 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
   }
 }
 
-fn at(items: List(a), index: Int, default: a) -> a {
+fn at(items: List(a), index: Int) -> a {
   case items, index {
     [item, ..], 0 -> item
-    [_, ..rest], _ -> at(rest, index - 1, default)
-    [], _ -> default
+    [_, ..rest], _ -> at(rest, index - 1)
+    [], _ -> panic as "A name is missing from glintl's data"
   }
 }
 

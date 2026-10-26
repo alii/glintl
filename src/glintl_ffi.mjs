@@ -1,40 +1,19 @@
-// ICU's names for the calendars, by the name of each `glintl.Calendar`.
-const CALENDARS = {
-  Gregorian: "gregory",
-  Iso8601: "iso8601",
-  Buddhist: "buddhist",
-  Japanese: "japanese",
-  RepublicOfChina: "roc",
-  Persian: "persian",
-  Indian: "indian",
-  Hebrew: "hebrew",
-  Chinese: "chinese",
-  Dangi: "dangi",
-  Coptic: "coptic",
-  Ethiopic: "ethiopic",
-  EthiopicAmeteAlem: "ethioaa",
-  IslamicCivil: "islamic-civil",
-  IslamicTabular: "islamic-tbla",
-  IslamicUmmAlQura: "islamic-umalqura",
-};
-
-// Gleam's custom types are classes, named after their constructors, so a
-// `Full` style is "full" and a `DateOnly` is shown with only a date.
-const style = (style) => style.constructor.name.toLowerCase();
-
-export function compile(tag, _data, _calendars, calendar, shown) {
-  const options = { calendar: CALENDARS[calendar.constructor.name] };
-  switch (shown.constructor.name) {
-    case "DateOnly":
-      options.dateStyle = style(shown[0]);
-      break;
-    case "TimeOnly":
-      options.timeStyle = style(shown[0]);
-      break;
-    case "DateAndTime":
-      options.dateStyle = style(shown.date);
-      options.timeStyle = style(shown.time);
-      break;
+export function compile(
+  tag,
+  _data,
+  _calendars,
+  _calendar,
+  _shown,
+  calendar,
+  dateStyle,
+  timeStyle,
+) {
+  const options = { calendar };
+  if (dateStyle !== "") {
+    options.dateStyle = dateStyle;
+  }
+  if (timeStyle !== "") {
+    options.timeStyle = timeStyle;
   }
   return { tag, options, byOffset: new Map() };
 }

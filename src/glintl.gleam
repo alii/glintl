@@ -189,7 +189,21 @@ pub fn format(
 
 fn new(locale: Locale, shown: data.Shown) -> Formatter {
   let Locale(tag:, calendar:, data:, calendars:) = locale
-  Formatter(compile(tag, data, calendars, calendar, shown))
+  let #(date_style, time_style) = case shown {
+    data.DateOnly(date) -> #(intl_style(date), "")
+    data.TimeOnly(time) -> #("", intl_style(time))
+    data.DateAndTime(date:, time:) -> #(intl_style(date), intl_style(time))
+  }
+  Formatter(compile(
+    tag,
+    data,
+    calendars,
+    calendar,
+    shown,
+    icu_calendar(calendar),
+    date_style,
+    time_style,
+  ))
 }
 
 fn internal_style(style: Style) -> data.Style {
@@ -201,6 +215,39 @@ fn internal_style(style: Style) -> data.Style {
   }
 }
 
+/// `dateStyle` and `timeStyle` for `Intl.DateTimeFormat`.
+fn intl_style(style: data.Style) -> String {
+  case style {
+    data.Full -> "full"
+    data.Long -> "long"
+    data.Medium -> "medium"
+    data.Short -> "short"
+  }
+}
+
+/// ICU's name for a calendar.
+fn icu_calendar(calendar: Calendar) -> String {
+  case calendar {
+    Gregorian -> "gregory"
+    Iso8601 -> "iso8601"
+    Buddhist -> "buddhist"
+    Japanese -> "japanese"
+    RepublicOfChina -> "roc"
+    Persian -> "persian"
+    Indian -> "indian"
+    Hebrew -> "hebrew"
+    Chinese -> "chinese"
+    Dangi -> "dangi"
+    Coptic -> "coptic"
+    Ethiopic -> "ethiopic"
+    EthiopicAmeteAlem -> "ethioaa"
+    IslamicCivil -> "islamic-civil"
+    IslamicTabular -> "islamic-tbla"
+    IslamicUmmAlQura -> "islamic-umalqura"
+  }
+}
+
+/// On JavaScript only the strings are used, and `""` means no style.
 @external(javascript, "./glintl_ffi.mjs", "compile")
 fn compile(
   _tag: String,
@@ -208,10 +255,12 @@ fn compile(
   calendars: fn(Calendar) -> data.Formats,
   calendar: Calendar,
   shown: data.Shown,
+  _icu_calendar: String,
+  _date_style: String,
+  _time_style: String,
 ) -> Compiled {
   case data {
-    NoData ->
-      render.compile(empty(), data.Ascii, data.NoMath, shown, render.NoFallback)
+    NoData -> panic as "Locales have data on Erlang"
     Data(digits:, gregorian:) -> {
       let gregorian =
         render.compile(
@@ -268,19 +317,6 @@ pub fn calendar_math(calendar: Calendar) -> data.Math {
     IslamicTabular -> math.islamic_tabular()
     IslamicUmmAlQura -> math.islamic_umm_al_qura()
   }
-}
-
-fn empty() -> data.Formats {
-  data.Formats(
-    dates: empty_styles(),
-    times: empty_styles(),
-    glues: empty_styles(),
-    eras: [],
-  )
-}
-
-fn empty_styles() -> data.Styles(List(a)) {
-  data.Styles(full: [], long: [], medium: [], short: [])
 }
 
 @external(javascript, "./glintl_ffi.mjs", "format")
