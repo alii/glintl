@@ -20,8 +20,8 @@ import {
   day,
   isoWeekday,
 } from "./calendars.ts";
-import { type Moment, join, render } from "./render.ts";
 import { random } from "./random.ts";
+import { type Moment, join, render } from "./render.ts";
 import {
   DAYS_PER_WEEK,
   HOURS_PER_DAY,
@@ -293,8 +293,10 @@ export function derive(
           one === undefined || twoDigit ? "" : valueAt(at(one), i);
         const first = firstValue === local(1, false) ? "" : firstValue;
         const yearMinus = minus(i, year, twoDigit);
-        // ICU 78.3's Japanese writes year -1 as 元 too.
-        const minusOne = days().find((d) => year(d) === -1 && sameEra(d));
+        // ICU 78.3's Japanese writes year -1 as 元 too. Year -1 may only be in
+        // another era, like the Japanese era before Taika.
+        const minusOnes = days().filter((d) => year(d) === -1);
+        const minusOne = minusOnes.find(sameEra) ?? minusOnes[0];
         const minusFirstValue =
           minusOne === undefined || twoDigit ? "" : valueAt(at(minusOne), i);
         const minusFirst =

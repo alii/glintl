@@ -78,7 +78,7 @@ On JavaScript:
 ## Limits
 
 - Today, time zones in Glintl are passed as offsets. You get `GMT+1`, not `British Summer Time`.
-- Today, Glintl does not allow you can't pick single fields like month and year only.
+- Today, Glintl does not allow you to pick single fields like month and year only.
 - On Erlang, calendars with their own months cover the years 1 to 4000. Other dates fall back to Gregorian.
 
 ## Known differences
