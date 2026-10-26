@@ -1,7 +1,7 @@
 # https://gleam.run/writing-gleam/gleam-toml
 
 name = "glintl"
-version = "0.0.2"
+version = "0.0.3"
 
 description = "Format dates and times in many languages, on Erlang and JavaScript."
 licences = ["MIT"]
