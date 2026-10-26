@@ -19,10 +19,13 @@
 //// targets and between JavaScript runtimes.
 
 import gleam/int
-import gleam/list
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
-import glintl/internal/data.{type Data, Data, NoData}
+import glintl/internal/data.{
+  type Calendars, type Data, Calendars, Data, NoCalendars, NoData,
+  gregorian as gregorian_math,
+}
+import glintl/internal/math
 import glintl/internal/render.{type Compiled}
 
 /// A language and region to format for, such as British English.
@@ -30,18 +33,89 @@ import glintl/internal/render.{type Compiled}
 /// Get one from a locale module, like `glintl/locale/en_gb`, or by tag from
 /// `glintl/locales`.
 pub opaque type Locale {
-  Locale(tag: String, data: Data)
+  Locale(
+    tag: String,
+    calendar: Calendar,
+    data: Data,
+    calendars: fn() -> Calendars,
+  )
 }
 
 /// Make a locale. Used by the generated locale modules.
 @internal
-pub fn new_locale(tag: String, data: Data) -> Locale {
-  Locale(tag:, data:)
+pub fn new_locale(
+  tag: String,
+  calendar: Calendar,
+  data: Data,
+  calendars: fn() -> Calendars,
+) -> Locale {
+  Locale(tag:, calendar:, data:, calendars:)
 }
 
 /// The BCP 47 tag of a locale, such as `"en-GB"`.
 pub fn locale_tag(locale: Locale) -> String {
   locale.tag
+}
+
+/// The calendars glintl can format dates in.
+///
+/// Each locale has a default: most use `Gregorian`, Thai uses `Buddhist`,
+/// Persian uses `Persian`, and Saudi Arabic uses `IslamicUmmAlQura`.
+///
+/// On Erlang, calendars with their own months work for years 1 to 4000 of
+/// the Gregorian calendar, and dates outside that are written in the
+/// Gregorian calendar instead. These are every calendar but `Gregorian`,
+/// `Iso8601`, `Buddhist`, `Japanese` and `RepublicOfChina`.
+pub type Calendar {
+  Gregorian
+  /// The Gregorian calendar, with ISO 8601 rules for weeks and patterns.
+  Iso8601
+  /// The Thai solar calendar: Gregorian, with years counted from 543 BC.
+  Buddhist
+  /// Gregorian, with years counted in Japanese eras.
+  Japanese
+  /// The Minguo calendar used in Taiwan: Gregorian, with years counted
+  /// from 1912.
+  RepublicOfChina
+  /// The Solar Hijri calendar used in Iran and Afghanistan.
+  Persian
+  /// The Indian national calendar.
+  Indian
+  Hebrew
+  Chinese
+  /// The Korean calendar.
+  Dangi
+  Coptic
+  /// The Ethiopian calendar, with years counted in the Amete Mihret era.
+  Ethiopic
+  /// The Ethiopian calendar, with years counted in the Amete Alem era.
+  EthiopicAmeteAlem
+  /// The tabular Islamic calendar, counting from 16 July 622 in the Julian
+  /// calendar, as civil tables do.
+  IslamicCivil
+  /// The tabular Islamic calendar, counting from 15 July 622 in the Julian
+  /// calendar, the astronomical start.
+  IslamicTabular
+  /// The Umm al-Qura calendar used in Saudi Arabia.
+  IslamicUmmAlQura
+}
+
+/// The calendar a locale formats dates in.
+pub fn locale_calendar(locale: Locale) -> Calendar {
+  locale.calendar
+}
+
+/// Format dates in another calendar.
+///
+/// ```gleam
+/// en_gb.locale()
+/// |> glintl.with_calendar(glintl.Hebrew)
+/// |> glintl.date_formatter(style: glintl.Long)
+/// |> glintl.format(timestamp.system_time(), offset: duration.hours(1))
+/// // -> "14 Heshvan 5787"
+/// ```
+pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
+  Locale(..locale, calendar:)
 }
 
 /// How much detail to show, from most to least.
@@ -72,12 +146,12 @@ pub opaque type Formatter {
 
 /// Format only the date.
 pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
-  new(locale, style_index(style), 0)
+  new(locale, data.DateOnly(internal_style(style)))
 }
 
 /// Format only the time.
 pub fn time_formatter(locale: Locale, style style: Style) -> Formatter {
-  new(locale, 0, style_index(style))
+  new(locale, data.TimeOnly(internal_style(style)))
 }
 
 /// Format both the date and the time.
@@ -86,7 +160,10 @@ pub fn date_time_formatter(
   date date: Style,
   time time: Style,
 ) -> Formatter {
-  new(locale, style_index(date), style_index(time))
+  new(
+    locale,
+    data.DateAndTime(date: internal_style(date), time: internal_style(time)),
+  )
 }
 
 /// Format a moment in time, as seen from a place `offset` ahead of UTC.
@@ -102,40 +179,147 @@ pub fn format(
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
   let #(offset_seconds, _) = duration.to_seconds_and_nanoseconds(offset)
-  let offset_minutes = int.floor_divide(offset_seconds, 60)
-  let offset_minutes = case offset_minutes {
+  let offset_minutes = case
+    int.floor_divide(offset_seconds, render.seconds_per_minute)
+  {
     Ok(minutes) -> minutes
     Error(_) -> 0
   }
   do_format(formatter.compiled, seconds, nanoseconds, offset_minutes)
 }
 
-fn new(locale: Locale, date: Int, time: Int) -> Formatter {
-  Formatter(compile(locale.tag, locale.data, date, time))
+fn new(locale: Locale, shown: data.Shown) -> Formatter {
+  let Locale(tag:, calendar:, data:, calendars:) = locale
+  Formatter(compile(tag, data, calendars, calendar, shown))
 }
 
-fn style_index(style: Style) -> Int {
+fn internal_style(style: Style) -> data.Style {
   case style {
-    Full -> 1
-    Long -> 2
-    Medium -> 3
-    Short -> 4
+    Full -> data.Full
+    Long -> data.Long
+    Medium -> data.Medium
+    Short -> data.Short
   }
 }
 
-// `date` and `time` are 0 for "not shown", or a `style_index`.
 @external(javascript, "./glintl_ffi.mjs", "compile")
-fn compile(_tag: String, data: Data, date: Int, time: Int) -> Compiled {
+fn compile(
+  _tag: String,
+  data: Data,
+  calendars: fn() -> Calendars,
+  calendar: Calendar,
+  shown: data.Shown,
+) -> Compiled {
   case data {
-    // The patterns are stored in order of date style then time style, with
-    // the empty "no date, no time" pattern left out.
-    Data(digits:, patterns:) ->
-      case list.drop(patterns, date * 5 + time - 1) {
-        [pattern, ..] -> render.compile(pattern, digits)
-        [] -> render.compile([], digits)
+    NoData ->
+      render.compile(empty(), data.Ascii, data.NoMath, shown, render.NoFallback)
+    Data(digits:, gregorian:) -> {
+      let gregorian =
+        render.compile(
+          gregorian,
+          digits,
+          gregorian_math,
+          shown,
+          render.NoFallback,
+        )
+      case other_calendar(calendar, calendars) {
+        Ok(formats) ->
+          render.compile(
+            formats,
+            digits,
+            calendar_math(calendar),
+            shown,
+            render.Fallback(gregorian),
+          )
+        Error(Nil) -> gregorian
       }
-    NoData -> render.compile([], data.Ascii)
+    }
   }
+}
+
+/// A calendar's formats, unless it's Gregorian, which is always loaded.
+fn other_calendar(
+  calendar: Calendar,
+  calendars: fn() -> Calendars,
+) -> Result(data.Formats, Nil) {
+  case calendar {
+    Gregorian -> Error(Nil)
+    _ ->
+      case calendars() {
+        NoCalendars -> Error(Nil)
+        Calendars(
+          iso8601:,
+          buddhist:,
+          japanese:,
+          republic_of_china:,
+          persian:,
+          indian:,
+          hebrew:,
+          chinese:,
+          dangi:,
+          coptic:,
+          ethiopic:,
+          ethiopic_amete_alem:,
+          islamic_civil:,
+          islamic_tabular:,
+          islamic_umm_al_qura:,
+        ) ->
+          case calendar {
+            Gregorian -> Error(Nil)
+            Iso8601 -> Ok(iso8601)
+            Buddhist -> Ok(buddhist)
+            Japanese -> Ok(japanese)
+            RepublicOfChina -> Ok(republic_of_china)
+            Persian -> Ok(persian)
+            Indian -> Ok(indian)
+            Hebrew -> Ok(hebrew)
+            Chinese -> Ok(chinese)
+            Dangi -> Ok(dangi)
+            Coptic -> Ok(coptic)
+            Ethiopic -> Ok(ethiopic)
+            EthiopicAmeteAlem -> Ok(ethiopic_amete_alem)
+            IslamicCivil -> Ok(islamic_civil)
+            IslamicTabular -> Ok(islamic_tabular)
+            IslamicUmmAlQura -> Ok(islamic_umm_al_qura)
+          }
+      }
+  }
+}
+
+/// How a calendar maps days to its own dates. Used by the tests.
+@internal
+pub fn calendar_math(calendar: Calendar) -> data.Math {
+  case calendar {
+    Gregorian -> gregorian_math
+    Iso8601 -> math.iso8601()
+    Buddhist -> math.buddhist()
+    Japanese -> math.japanese()
+    RepublicOfChina -> math.republic_of_china()
+    Persian -> math.persian()
+    Indian -> math.indian()
+    Hebrew -> math.hebrew()
+    Chinese -> math.chinese()
+    Dangi -> math.dangi()
+    Coptic -> math.coptic()
+    Ethiopic -> math.ethiopic()
+    EthiopicAmeteAlem -> math.ethiopic_amete_alem()
+    IslamicCivil -> math.islamic_civil()
+    IslamicTabular -> math.islamic_tabular()
+    IslamicUmmAlQura -> math.islamic_umm_al_qura()
+  }
+}
+
+fn empty() -> data.Formats {
+  data.Formats(
+    dates: empty_styles(),
+    times: empty_styles(),
+    glues: empty_styles(),
+    eras: [],
+  )
+}
+
+fn empty_styles() -> data.Styles(List(a)) {
+  data.Styles(full: [], long: [], medium: [], short: [])
 }
 
 @external(javascript, "./glintl_ffi.mjs", "format")

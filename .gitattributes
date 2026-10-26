@@ -1,0 +1,6 @@
+# Written by codegen/generate.ts. Hidden from diffs, and collapsed on GitHub.
+src/glintl/internal/generated/** linguist-generated=true -diff
+src/glintl/locale/*.gleam linguist-generated=true -diff
+src/glintl/locales.gleam linguist-generated=true -diff
+test/glintl/fixtures.gleam linguist-generated=true -diff
+test/glintl/calendar_fixtures.gleam linguist-generated=true -diff

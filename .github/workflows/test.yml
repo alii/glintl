@@ -1,0 +1,53 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '29'
+          gleam-version: '1.19.1'
+          rebar3-version: '3'
+
+      # The generated data and the JavaScript tests come from this Bun's ICU,
+      # so it must be the same version that generated them.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Check the generator
+        run: |
+          bun install --cwd codegen --frozen-lockfile
+          bun fmt --check --cwd codegen
+          bun check --cwd codegen
+
+      - name: Check the Gleam code
+        run: |
+          gleam format --check src test dev
+          gleam check
+
+      - name: Test on Erlang
+        run: gleam test --target erlang
+
+      - name: Test on JavaScript
+        run: gleam test --target javascript
+
+      - name: Benchmark
+        run: gleam run -m glintl_bench --target erlang
+
+      # Random cases against Intl.DateTimeFormat. The seed is the run number,
+      # so each run checks different cases, and any failure can be repeated.
+      - name: Conformance against Intl
+        run: bun codegen/conformance.ts 5000000 ${{ github.run_number }}
