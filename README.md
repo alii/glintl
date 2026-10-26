@@ -161,6 +161,13 @@ docker run --rm -v "$PWD":/repo -w /repo oven/bun:$(cat .bun-version) bun codege
 gleam format src test
 ```
 
+The conformance run needs Erlang as well, so in Docker, save cases with the pinned Bun and check them with your own Erlang:
+
+```sh
+docker run --rm -v "$PWD":/repo -w /repo oven/bun:$(cat .bun-version) bun codegen/conformance.ts --save cases.tsv 1000000
+bun codegen/conformance.ts --check cases.tsv
+```
+
 CI runs all of these on every push to `master` and every pull request.
 
 Generated files are marked in `.gitattributes`, so git and GitHub leave them out of diffs.
