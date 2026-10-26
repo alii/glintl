@@ -2,6 +2,8 @@
 
 Format dates and times in many languages, on Erlang and JavaScript.
 
+**glintl isn't ready to depend on yet. Expect breaking changes.**
+
 On Erlang it aims to have the same output as JavaScript's `Intl.DateTimeFormat`.
 
 ```sh
@@ -42,8 +44,9 @@ It is recommended to reuse formatters for performance, because making one is exp
 
 ## Locales
 
-- Import the ones you need: `import glintl/locale/ja`.
-- Pick one from a tag with `locales.from_tag("en-GB")`.
+- Prefer importing specific locales if you can: `glintl/locale/en_gb`.
+- You can build a subset of desired locales by importing many.
+- Otherwise use `glintl/locales` and `locales.from_tag("en-GB")` if you need them all, or only know at runtime.
 
   ```gleam
   import glintl/locales
@@ -53,12 +56,12 @@ It is recommended to reuse formatters for performance, because making one is exp
   locales.from_tag("xx") // -> Error(Nil)
   ```
 
-- `glintl/locales` imports every locale. Only use it if you don't know the locale until run time.
+Note that importing `glintl/locales` will load every locale's data, which can be wasteful if you do not need all the locales in your application. Always prefer importing specific locales if you can.
 
 ## Calendars
 
 - Each locale uses its own calendar by default. Thai uses Buddhist.
-- Pick another with `glintl.with_calendar(locale, glintl.Hebrew)`.
+- Use other calendars with `glintl.with_calendar(locale, glintl.Hebrew)`.
 - All of ICU's calendars: Gregorian, ISO 8601, Buddhist, Japanese, Republic of China, Persian, Indian, Hebrew, Chinese, Dangi, Coptic, Ethiopic (2 eras), and 3 Islamic calendars.
 
 ## How it works
@@ -66,7 +69,7 @@ It is recommended to reuse formatters for performance, because making one is exp
 On Erlang:
 
 - Formats come from ICU when glintl is built, not when your app runs.
-- Each locale exists in its own Erlang module. All data is generated to literals, which lets Erlang's compiler take advantage of the [Literal Pool](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool). The result is improve memory usage, because the data can be safely shared by every process, and it is rarely copied or garbage collected.
+- Each locale data is defined as a [literal](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool) in its own module. The result is improved memory usage, because the data can be safely shared by every process and it is rarely copied or garbage collected.
 - We're working on making the start-up cost smaller.
 
 On JavaScript:
@@ -82,7 +85,7 @@ On JavaScript:
 
 ## Known differences
 
-- **Erlang vs JavaScript:** Erlang uses the ICU in Bun on Linux. JavaScript uses your runtime's ICU. Differences can exist, usually manifesting in small details like spaces and commas.
+- **Erlang vs JavaScript:** Because the ICU data bundled in Glintl (for Erlang), and the ICU in your JavaScript runtime may differ, output can change between platforms. This usually manifests in small details like spaces and commas.
 - **ICU bugs glintl copies:** ICU 78.3 puts Chinese New Year 2027 and 2030 a day off. JavaScript does the same.
 - **ICU bug glintl doesn't copy yet:** near AD 284 and AD 622, the Coptic and Islamic calendars can show the wrong year around midnight.
 

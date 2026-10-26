@@ -672,8 +672,6 @@ import glintl/locale/zh_hant_my
 import glintl/locale/zh_latn
 import glintl/locale/zu
 
-/// Every locale glintl has. On Erlang this loads every locale's data, so
-/// use `from_tag` to find one.
 pub fn all() -> List(Locale) {
   [
     af.locale(),

@@ -436,8 +436,6 @@ import gleam/string
 import glintl.{type Locale}
 ${imports}
 
-/// Every locale glintl has. On Erlang this loads every locale's data, so
-/// use \`from_tag\` to find one.
 pub fn all() -> List(Locale) {
   [${list}]
 }
