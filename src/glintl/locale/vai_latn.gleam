@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Vai (Latin), `vai-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vai-Latn", glintl.Gregorian, 333)
+  glintl.new_locale("vai-Latn", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Vai (Latin), `vai-Latn`.
+pub fn locale() -> Locale {
+  glintl.new_locale("vai-Latn", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_vai_latn", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_vai_latn", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

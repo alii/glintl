@@ -1,5 +1,17 @@
-//// `codegen/generate.ts` writes the calendar maths as these Erlang terms, so
-//// keep the two in sync.
+//// `codegen/generate.ts` writes these as Erlang terms, so keep the two in
+//// sync.
+
+/// A locale's Gregorian formats.
+pub type Data {
+  Data(digits: Digits, gregorian: Formats)
+}
+
+pub type Digits {
+  /// `0` to `9`.
+  Ascii
+  /// Ten strings, for zero to nine.
+  Digits(List(String))
+}
 
 /// The same as `glintl.Style`, which this module can't use.
 pub type Style {
@@ -14,6 +26,112 @@ pub type Shown {
   DateOnly(Style)
   TimeOnly(Style)
   DateAndTime(date: Style, time: Style)
+}
+
+/// One of something for each style.
+pub type Styles(a) {
+  Styles(full: a, long: a, medium: a, short: a)
+}
+
+pub type Formats {
+  Formats(
+    dates: Styles(Pattern),
+    times: Styles(Pattern),
+    /// How each date style joins a date and a time.
+    glues: Styles(Glue),
+    eras: List(EraFormats),
+  )
+}
+
+/// Date patterns for an era that ICU formats differently from the rest.
+pub type EraFormats {
+  EraFormats(era: Int, dates: Styles(Pattern), combined: Combined)
+}
+
+pub type Combined {
+  /// The era's dates are joined to times by the usual glue.
+  Joined
+  /// ICU doesn't just join the era's dates and times, so each pair has its
+  /// own pattern, by date style then time style.
+  Combined(Styles(Styles(Pattern)))
+}
+
+/// How a date and a time are joined, like `{date} at {time}`.
+pub type Glue =
+  List(GluePiece)
+
+pub type GluePiece {
+  GlueText(String)
+  GlueDate
+  GlueTime
+}
+
+pub type Pattern =
+  List(Token)
+
+pub type Token {
+  Literal(String)
+  /// A part written with ASCII digits, whatever the locale's digits are.
+  AsciiDigits(Token)
+  /// `first` is how year 1 is written when it isn't a number, like 元, and
+  /// `minus_first` the same for year -1, which ICU 78.3's Japanese also
+  /// writes as 元.
+  Year(two_digit: Bool, minus: String, first: String, minus_first: String)
+  /// ICU's week-based year. Weeks start on `first_day`, 1 for Monday to 7
+  /// for Sunday. `exceptions` holds the first day of years where ICU starts
+  /// them somewhere else, as `#(extended year, day)`.
+  WeekYear(
+    minus: String,
+    first_day: Int,
+    minimal_days: Int,
+    exceptions: List(#(Int, Int)),
+  )
+  /// ICU's extended year, which runs on through eras.
+  ExtendedYear(minus: String)
+  RelatedYear
+  /// Sixty names, for the years of the Chinese cycle.
+  YearName(names: List(String))
+  MonthNumber(pad: Bool)
+  /// Names by month number. In calendars with leap months this includes them.
+  MonthName(names: List(String))
+  Day(pad: Bool)
+  /// Names for days 0 to 30. Day 0 only happens on the few days where ICU's
+  /// Chinese calendar goes wrong.
+  DayName(names: List(String))
+  /// Seven names, Sunday first.
+  Weekday(names: List(String))
+  /// Names by era number.
+  Era(names: List(String))
+  Hour(pad: Bool, cycle: HourCycle)
+  Minute(pad: Bool)
+  Second(pad: Bool)
+  /// One name per hour. Some locales have special words for exactly
+  /// midnight and noon.
+  DayPeriod(by_hour: List(String), midnight: String, noon: String)
+  /// Such as `GMT+5:30`.
+  Zone(
+    zero: String,
+    positive: String,
+    positive_suffix: String,
+    positive_whole_suffix: String,
+    negative: String,
+    negative_suffix: String,
+    negative_whole_suffix: String,
+    pad_hours: Bool,
+    separator: String,
+    optional_minutes: Bool,
+  )
+}
+
+pub type HourCycle {
+  /// 0 to 11.
+  H11
+  /// 1 to 12.
+  H12
+  /// 0 to 23.
+  H23
+  /// 1 to 24.
+  H24
 }
 
 /// How a calendar maps days to its own dates. The same for every locale.

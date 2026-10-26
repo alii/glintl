@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Kashmiri (Devanagari), `ks-Deva`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ks-Deva", glintl.Gregorian, 179)
+  glintl.new_locale("ks-Deva", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Kashmiri (Devanagari), `ks-Deva`.
+pub fn locale() -> Locale {
+  glintl.new_locale("ks-Deva", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_ks_deva", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_ks_deva", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

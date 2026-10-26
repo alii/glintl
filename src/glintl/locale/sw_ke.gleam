@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Swahili (Kenya), `sw-KE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sw-KE", glintl.Gregorian, 304)
+  glintl.new_locale("sw-KE", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Swahili (Kenya), `sw-KE`.
+pub fn locale() -> Locale {
+  glintl.new_locale("sw-KE", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_sw_ke", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_sw_ke", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

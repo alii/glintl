@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Occitan (Spain), `oc-ES`.
 pub fn locale() -> Locale {
-  glintl.new_locale("oc-ES", glintl.Gregorian, 239)
+  glintl.new_locale("oc-ES", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Occitan (Spain), `oc-ES`.
+pub fn locale() -> Locale {
+  glintl.new_locale("oc-ES", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_oc", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_oc", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

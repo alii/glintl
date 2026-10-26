@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Serbian (Latin, Montenegro), `sr-Latn-ME`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sr-Latn-ME", glintl.Gregorian, 295)
+  glintl.new_locale("sr-Latn-ME", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Serbian (Latin, Montenegro), `sr-Latn-ME`.
+pub fn locale() -> Locale {
+  glintl.new_locale("sr-Latn-ME", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_sr_latn_me", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_sr_latn_me", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

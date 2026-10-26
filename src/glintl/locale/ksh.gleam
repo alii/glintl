@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Colognian, `ksh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksh", glintl.Gregorian, 182)
+  glintl.new_locale("ksh", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Colognian, `ksh`.
+pub fn locale() -> Locale {
+  glintl.new_locale("ksh", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_ksh", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_ksh", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

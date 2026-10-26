@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Tswana, `tn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tn", glintl.Gregorian, 316)
+  glintl.new_locale("tn", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Tswana, `tn`.
+pub fn locale() -> Locale {
+  glintl.new_locale("tn", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_tn", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_tn", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

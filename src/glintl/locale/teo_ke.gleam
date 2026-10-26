@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Teso (Kenya), `teo-KE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("teo-KE", glintl.Gregorian, 310)
+  glintl.new_locale("teo-KE", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Teso (Kenya), `teo-KE`.
+pub fn locale() -> Locale {
+  glintl.new_locale("teo-KE", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_teo", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_teo", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

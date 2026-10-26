@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Swampy Cree, `csw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("csw", glintl.Gregorian, 47)
+  glintl.new_locale("csw", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Swampy Cree, `csw`.
+pub fn locale() -> Locale {
+  glintl.new_locale("csw", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_csw", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_csw", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

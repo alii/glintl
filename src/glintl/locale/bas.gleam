@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Basaa, `bas`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bas", glintl.Gregorian, 20)
+  glintl.new_locale("bas", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Basaa, `bas`.
+pub fn locale() -> Locale {
+  glintl.new_locale("bas", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_bas", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_bas", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Tasawaq, `twq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("twq", glintl.Gregorian, 322)
+  glintl.new_locale("twq", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Tasawaq, `twq`.
+pub fn locale() -> Locale {
+  glintl.new_locale("twq", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_twq", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_twq", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

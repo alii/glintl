@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Nheengatu (Colombia), `yrl-CO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yrl-CO", glintl.Gregorian, 347)
+  glintl.new_locale("yrl-CO", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Nheengatu (Colombia), `yrl-CO`.
+pub fn locale() -> Locale {
+  glintl.new_locale("yrl-CO", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_yrl_co", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_yrl", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

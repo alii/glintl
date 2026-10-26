@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Makonde, `kde`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kde", glintl.Gregorian, 162)
+  glintl.new_locale("kde", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Makonde, `kde`.
+pub fn locale() -> Locale {
+  glintl.new_locale("kde", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_kde", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_kde", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

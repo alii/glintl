@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Chakma (India), `ccp-IN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ccp-IN", glintl.Gregorian, 39)
+  glintl.new_locale("ccp-IN", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Chakma (India), `ccp-IN`.
+pub fn locale() -> Locale {
+  glintl.new_locale("ccp-IN", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_ccp", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_ccp", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

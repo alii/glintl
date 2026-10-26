@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Belarusian (Taraskievica orthography), `be-tarask`.
 pub fn locale() -> Locale {
-  glintl.new_locale("be-tarask", glintl.Gregorian, 21)
+  glintl.new_locale("be-tarask", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Belarusian (Taraskievica orthography), `be-tarask`.
+pub fn locale() -> Locale {
+  glintl.new_locale("be-tarask", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_be", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_be", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

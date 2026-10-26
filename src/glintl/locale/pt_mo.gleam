@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Portuguese (Macao SAR China), `pt-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-MO", glintl.Gregorian, 254)
+  glintl.new_locale("pt-MO", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Portuguese (Macao SAR China), `pt-MO`.
+pub fn locale() -> Locale {
+  glintl.new_locale("pt-MO", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_pt_mo", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_pt_ao", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

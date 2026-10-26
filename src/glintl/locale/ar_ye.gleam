@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Arabic (Yemen), `ar-YE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ar-YE", glintl.Gregorian, 7)
+  glintl.new_locale("ar-YE", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Arabic (Yemen), `ar-YE`.
+pub fn locale() -> Locale {
+  glintl.new_locale("ar-YE", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_ar_bh", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_ar_bh", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

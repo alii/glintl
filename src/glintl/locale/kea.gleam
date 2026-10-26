@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Kabuverdianu, `kea`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kea", glintl.Gregorian, 163)
+  glintl.new_locale("kea", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Kabuverdianu, `kea`.
+pub fn locale() -> Locale {
+  glintl.new_locale("kea", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_kea", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_kea", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

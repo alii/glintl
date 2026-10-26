@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Santali (Ol Chiki), `sat-Olck`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat-Olck", glintl.Gregorian, 266)
+  glintl.new_locale("sat-Olck", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Santali (Ol Chiki), `sat-Olck`.
+pub fn locale() -> Locale {
+  glintl.new_locale("sat-Olck", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_sat", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_sat", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

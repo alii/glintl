@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Norwegian Bokmål, `nb`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nb", glintl.Gregorian, 226)
+  glintl.new_locale("nb", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Norwegian Bokmål, `nb`.
+pub fn locale() -> Locale {
+  glintl.new_locale("nb", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_nb", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_nb", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

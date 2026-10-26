@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Swiss French, `fr-CH`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-CH", glintl.Gregorian, 123)
+  glintl.new_locale("fr-CH", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Swiss French, `fr-CH`.
+pub fn locale() -> Locale {
+  glintl.new_locale("fr-CH", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_fr_ch", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_fr_ch", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

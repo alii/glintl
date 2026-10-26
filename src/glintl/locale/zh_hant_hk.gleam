@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Chinese (Traditional, Hong Kong SAR China), `zh-Hant-HK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zh-Hant-HK", glintl.Gregorian, 359)
+  glintl.new_locale("zh-Hant-HK", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Chinese (Traditional, Hong Kong SAR China), `zh-Hant-HK`.
+pub fn locale() -> Locale {
+  glintl.new_locale("zh-Hant-HK", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_zh_hant_hk", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_zh_hant_hk", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

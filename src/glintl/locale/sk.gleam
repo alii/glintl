@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Slovak, `sk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sk", glintl.Gregorian, 281)
+  glintl.new_locale("sk", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Slovak, `sk`.
+pub fn locale() -> Locale {
+  glintl.new_locale("sk", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_sk", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_sk", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

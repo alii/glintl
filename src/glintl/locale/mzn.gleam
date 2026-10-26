@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Mazanderani, `mzn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mzn", glintl.Persian, 224)
+  glintl.new_locale("mzn", glintl.Persian, data(), calendars)
 }
+
+@target(javascript)
+/// Mazanderani, `mzn`.
+pub fn locale() -> Locale {
+  glintl.new_locale("mzn", glintl.Persian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_mzn", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_mzn", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

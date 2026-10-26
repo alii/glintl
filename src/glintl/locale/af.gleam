@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Afrikaans, `af`.
 pub fn locale() -> Locale {
-  glintl.new_locale("af", glintl.Gregorian, 1)
+  glintl.new_locale("af", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Afrikaans, `af`.
+pub fn locale() -> Locale {
+  glintl.new_locale("af", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_af", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_af", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

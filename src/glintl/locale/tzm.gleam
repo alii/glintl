@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Central Atlas Tamazight, `tzm`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tzm", glintl.Gregorian, 324)
+  glintl.new_locale("tzm", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Central Atlas Tamazight, `tzm`.
+pub fn locale() -> Locale {
+  glintl.new_locale("tzm", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_tzm", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_tzm", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

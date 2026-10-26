@@ -4,7 +4,22 @@
 
 import glintl.{type Locale}
 
+@target(erlang)
 /// Punjabi (Gurmukhi), `pa-Guru`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pa-Guru", glintl.Gregorian, 244)
+  glintl.new_locale("pa-Guru", glintl.Gregorian, data(), calendars)
 }
+
+@target(javascript)
+/// Punjabi (Gurmukhi), `pa-Guru`.
+pub fn locale() -> Locale {
+  glintl.new_locale("pa-Guru", glintl.Gregorian)
+}
+
+@target(erlang)
+@external(erlang, "glintl_generated_pa", "data")
+fn data() -> glintl.LocaleData
+
+@target(erlang)
+@external(erlang, "glintl_generated_calendars_pa", "calendar")
+fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats
