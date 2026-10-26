@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Standard Moroccan Tamazight, `zgh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zgh", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("zgh", glintl.Gregorian, 352)
 }
-
-@target(javascript)
-/// Standard Moroccan Tamazight, `zgh`.
-pub fn locale() -> Locale {
-  glintl.new_locale("zgh", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_zgh", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_zgh", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

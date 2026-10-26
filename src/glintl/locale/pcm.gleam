@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Nigerian Pidgin, `pcm`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pcm", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("pcm", glintl.Gregorian, 246)
 }
-
-@target(javascript)
-/// Nigerian Pidgin, `pcm`.
-pub fn locale() -> Locale {
-  glintl.new_locale("pcm", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_pcm", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_pcm", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

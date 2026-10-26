@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Northern Luri, `lrc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lrc", glintl.Persian, data(), calendars)
+  glintl.new_locale("lrc", glintl.Persian, 198)
 }
-
-@target(javascript)
-/// Northern Luri, `lrc`.
-pub fn locale() -> Locale {
-  glintl.new_locale("lrc", glintl.Persian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_lrc", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_lrc", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

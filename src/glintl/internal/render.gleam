@@ -1,133 +1,354 @@
-//// Only used on Erlang.
+//// Formats moments with the tables `codegen/pack.ts` writes to
+//// `glintl_generated_data`. Only used on Erlang.
+////
+//// Each distinct token is stored once, and a pattern is its tokens' numbers.
+//// A formatter only points at these literals, so nothing is copied.
 
 import gleam/int
-import gleam/list
-import gleam/string
 import glintl/internal/calendar
 import glintl/internal/data.{
-  type Combined, type Digits, type EraFormats, type EraRule, type Formats,
-  type Glue, type Local, type Math, type Pattern, type Shown, type Style,
-  type Styles, type Token, Ascii, AsciiDigits, Combined, DateAndTime, DateOnly,
-  Day, DayName, DayPeriod, Digits, Era, EraFormats, EraRule, ExtendedYear,
-  Formats, Full, GlueDate, GlueText, GlueTime, H11, H12, H23, H24, Hour, Joined,
-  Literal, Local, Long, Medium, Minute, MonthName, MonthNumber, NoMath,
-  Proleptic, RelatedYear, Second, Short, Styles, Table, TimeOnly, WeekYear,
-  Weekday, Year, YearName, Zone,
+  type EraRule, type Local, type Math, EraRule, Local, NoMath, Proleptic, Table,
 }
 
 pub const seconds_per_minute = 60
-
-const minutes_per_hour = 60
 
 const seconds_per_hour = 3600
 
 pub const seconds_per_day = 86_400
 
-const hours_per_half_day = 12
-
-const hours_per_day = 24
-
-/// 1970-01-01 was a Thursday, and weekdays are numbered from Sunday.
-const thursday = 4
-
-/// Two digit years show the year modulo this.
-const two_digit_years = 100
-
-/// Numbers below this have one digit, so are padded to two.
-const ten = 10
-
 /// The longest a year can be in a calendar with Gregorian months.
 const days_in_longest_year = 366
 
+@target(erlang)
+const minutes_per_hour = 60
+
+@target(erlang)
+const hours_per_half_day = 12
+
+@target(erlang)
+const hours_per_day = 24
+
+@target(erlang)
+/// 1970-01-01 was a Thursday, and weekdays are numbered from Sunday.
+const thursday = 4
+
+@target(erlang)
+/// Two digit years show the year modulo this.
+const two_digit_years = 100
+
+@target(erlang)
+const ten = 10
+
+@target(erlang)
+/// Pattern numbers in formats are this many bytes.
+const number_bytes = 2
+
+@target(erlang)
+const style_count = 4
+
+@target(erlang)
+/// Formats are stored by style, in this order.
+const styles = [data.Full, data.Long, data.Medium, data.Short]
+
+@target(erlang)
+type HourCycle {
+  /// 0 to 11.
+  H11
+  /// 1 to 12.
+  H12
+  /// 0 to 23.
+  H23
+  /// 1 to 24.
+  H24
+}
+
+@target(erlang)
+/// A pattern, as `codegen/pack.ts` writes it.
+type Pattern {
+  /// `tokens` are 16-bit numbers in the tokens table.
+  Pattern(has_minute: Bool, has_second: Bool, tokens: BitArray)
+}
+
+@target(erlang)
+type Token {
+  Literal(String)
+  /// A part written with ASCII digits, whatever the locale's digits are.
+  AsciiDigits(Token)
+  /// `first` and `minus_first` are names for years 1 and -1, like 元, or "".
+  Year(two_digit: Bool, minus: String, first: String, minus_first: String)
+  /// ICU's week-based year.
+  WeekYear(
+    minus: String,
+    first_day: Int,
+    minimal_days: Int,
+    exceptions: List(#(Int, Int)),
+  )
+  ExtendedYear(minus: String)
+  RelatedYear
+  YearName(Names)
+  MonthName(Names)
+  DayName(Names)
+  Weekday(Names)
+  Era(Names)
+  MonthNumber(pad: Bool)
+  Day(pad: Bool)
+  Minute(pad: Bool)
+  Second(pad: Bool)
+  Hour(pad: Bool, cycle: HourCycle)
+  DayPeriod(by_hour: Names, midnight: String, noon: String)
+  Zone(
+    zero: String,
+    positive: String,
+    positive_suffix: String,
+    positive_whole_suffix: String,
+    negative: String,
+    negative_suffix: String,
+    negative_whole_suffix: String,
+    pad_hours: Bool,
+    separator: String,
+    optional_minutes: Bool,
+  )
+  GlueDate
+  GlueTime
+}
+
+@target(erlang)
+type Names =
+  data.HomogenousUnknownLengthTuple(String)
+
+@target(erlang)
 /// A formatter's patterns, ready to render.
-pub type Compiled {
+pub opaque type Compiled {
   Compiled(
     main: Prepared,
     /// Patterns for eras that ICU formats differently.
     eras: List(#(Int, Prepared)),
-    digits: Digits,
-    math: Math,
+    /// The locale's number in the digits table, or 0 for ASCII digits.
+    digits: Int,
+    /// Fetched when formatting, so a copied formatter stays small.
+    math: fn() -> Math,
     /// Used for days outside a table calendar's years.
     fallback: Fallback,
   )
 }
 
-pub type Fallback {
-  Fallback(Compiled)
+@target(erlang)
+type Fallback {
+  /// Built only if a day needs it, as that's rare.
+  Fallback(fn() -> Compiled)
   NoFallback
 }
 
-pub type Prepared {
-  Prepared(pattern: Pattern, has_minute: Bool, has_second: Bool)
+@target(erlang)
+/// Tokens to render. In a glue pattern, `date` and `time` are what it joins.
+type Prepared {
+  Prepared(
+    tokens: BitArray,
+    date: BitArray,
+    time: BitArray,
+    has_minute: Bool,
+    has_second: Bool,
+  )
 }
 
-pub fn compile(
-  formats: Formats,
-  digits: Digits,
-  math: Math,
-  shown: Shown,
+// --- Tables ------------------------------------------------------------------
+
+@target(erlang)
+@external(erlang, "glintl_generated_data", "tokens")
+fn tokens() -> data.HomogenousUnknownLengthTuple(Token)
+
+@target(erlang)
+@external(erlang, "glintl_generated_data", "digits")
+fn digits_table() -> data.HomogenousUnknownLengthTuple(Names)
+
+@target(erlang)
+@external(erlang, "glintl_generated_data", "patterns")
+fn patterns() -> data.HomogenousUnknownLengthTuple(Pattern)
+
+@target(erlang)
+@external(erlang, "glintl_generated_data", "formats")
+fn formats() -> data.HomogenousUnknownLengthTuple(BitArray)
+
+@target(erlang)
+@external(erlang, "glintl_generated_data", "locales")
+fn locales() -> data.HomogenousUnknownLengthTuple(BitArray)
+
+@target(erlang)
+@external(erlang, "erlang", "element")
+fn element(index: Int, tuple: data.HomogenousUnknownLengthTuple(a)) -> a
+
+@target(erlang)
+@external(erlang, "erlang", "tuple_size")
+fn tuple_size(tuple: data.HomogenousUnknownLengthTuple(a)) -> Int
+
+@target(erlang)
+/// The number at `index` in packed 16-bit numbers.
+fn number_at(bits: BitArray, index: Int) -> Int {
+  case bits {
+    <<_:bytes-size(index * number_bytes), n:16, _:bits>> -> n
+    _ -> 0
+  }
+}
+
+// --- Compiling ---------------------------------------------------------------
+
+@target(erlang)
+fn gregorian_math() -> Math {
+  data.gregorian
+}
+
+@target(erlang)
+/// A formatter for a locale's Gregorian formats.
+pub fn compile(locale: Int, shown: data.Shown) -> Compiled {
+  let entry = element(locale, locales())
+  compile_formats(entry, 0, gregorian_math, shown, NoFallback)
+}
+
+@target(erlang)
+/// A formatter for another calendar, the `position`th in the locale's
+/// formats, which falls back to Gregorian outside the calendar's years.
+pub fn compile_other(
+  locale: Int,
+  position: Int,
+  math: fn() -> Math,
+  shown: data.Shown,
+) -> Compiled {
+  let entry = element(locale, locales())
+  let gregorian = fn() {
+    compile_formats(entry, 0, gregorian_math, shown, NoFallback)
+  }
+  compile_formats(entry, position, math, shown, Fallback(gregorian))
+}
+
+@target(erlang)
+/// A locale entry is its digits number, then formats for each calendar.
+fn compile_formats(
+  entry: BitArray,
+  position: Int,
+  math: fn() -> Math,
+  shown: data.Shown,
   fallback: Fallback,
 ) -> Compiled {
-  let Formats(dates:, times:, glues:, eras:) = formats
-  let main = pattern(dates, times, glues, Joined, shown)
-  let eras = case shown {
-    TimeOnly(_) -> []
-    DateOnly(_) | DateAndTime(..) ->
-      list.map(eras, fn(era: EraFormats) {
-        let EraFormats(era:, dates:, combined:) = era
-        #(era, prepare(pattern(dates, times, glues, combined, shown)))
-      })
+  let digits = number_at(entry, 0)
+  let formats = element(number_at(entry, position + 1), formats())
+  let #(dates, formats) = split(formats)
+  let #(times, formats) = split(formats)
+  let #(glues, formats) = split(formats)
+  let main = prepare(dates, times, glues, <<>>, shown)
+  let eras = case shown, formats {
+    data.TimeOnly(_), _ -> []
+    _, <<count, eras:bits>> -> eras_of(eras, count, times, glues, shown)
+    _, _ -> []
   }
-  Compiled(main: prepare(main), eras:, digits:, math:, fallback:)
+  Compiled(main:, eras:, digits:, math:, fallback:)
 }
 
-fn pattern(
-  dates: Styles(Pattern),
-  times: Styles(Pattern),
-  glues: Styles(Glue),
-  combined: Combined,
-  shown: Shown,
-) -> Pattern {
+@target(erlang)
+/// Splits off a pattern number for each style.
+fn split(bits: BitArray) -> #(BitArray, BitArray) {
+  case bits {
+    <<each:bytes-size(style_count * number_bytes), rest:bits>> -> #(each, rest)
+    _ -> #(<<>>, <<>>)
+  }
+}
+
+@target(erlang)
+/// Each era is its number, its dates, then a flag and, if set, a pattern for
+/// each date style and time style.
+fn eras_of(
+  bits: BitArray,
+  count: Int,
+  times: BitArray,
+  glues: BitArray,
+  shown: data.Shown,
+) -> List(#(Int, Prepared)) {
+  let each = style_count * number_bytes
+  case count, bits {
+    0, _ -> []
+    _,
+      <<
+        era,
+        dates:bytes-size(each),
+        1,
+        both:bytes-size(each * style_count),
+        rest:bits,
+      >>
+    -> [
+      #(era, prepare(dates, times, glues, both, shown)),
+      ..eras_of(rest, count - 1, times, glues, shown)
+    ]
+    _, <<era, dates:bytes-size(each), _, rest:bits>> -> [
+      #(era, prepare(dates, times, glues, <<>>, shown)),
+      ..eras_of(rest, count - 1, times, glues, shown)
+    ]
+    _, _ -> []
+  }
+}
+
+@target(erlang)
+/// `combined` holds a pattern for each date and time style, when ICU doesn't
+/// just glue them together.
+fn prepare(
+  dates: BitArray,
+  times: BitArray,
+  glues: BitArray,
+  combined: BitArray,
+  shown: data.Shown,
+) -> Prepared {
+  let pick = fn(bits, style) {
+    element(number_at(bits, position(style)), patterns())
+  }
   case shown, combined {
-    TimeOnly(time), _ -> pick(times, time)
-    DateOnly(date), _ -> pick(dates, date)
-    DateAndTime(date:, time:), Combined(both) -> pick(pick(both, date), time)
-    DateAndTime(date:, time:), Joined -> {
-      let date_pattern = pick(dates, date)
+    data.TimeOnly(time), _ -> single(pick(times, time))
+    data.DateOnly(date), _ -> single(pick(dates, date))
+    data.DateAndTime(date:, time:), <<>> -> {
+      let Pattern(tokens: glue, ..) = pick(glues, date)
+      let Pattern(tokens: date_tokens, has_minute:, has_second:) =
+        pick(dates, date)
       let time_pattern = pick(times, time)
-      list.flat_map(pick(glues, date), fn(piece) {
-        case piece {
-          GlueText(text) -> [Literal(text)]
-          GlueDate -> date_pattern
-          GlueTime -> time_pattern
-        }
-      })
+      Prepared(
+        tokens: glue,
+        date: date_tokens,
+        time: time_pattern.tokens,
+        has_minute: has_minute || time_pattern.has_minute,
+        has_second: has_second || time_pattern.has_second,
+      )
+    }
+    data.DateAndTime(date:, time:), _ -> {
+      let index = position(date) * style_count + position(time)
+      single(element(number_at(combined, index), patterns()))
     }
   }
 }
 
-fn pick(styles: Styles(a), style: Style) -> a {
-  let Styles(full:, long:, medium:, short:) = styles
-  case style {
-    Full -> full
-    Long -> long
-    Medium -> medium
-    Short -> short
-  }
-}
-
-fn prepare(pattern: Pattern) -> Prepared {
+@target(erlang)
+fn single(pattern: Pattern) -> Prepared {
   Prepared(
-    pattern:,
-    has_minute: list.any(pattern, fn(t) {
-      t == Minute(True) || t == Minute(False)
-    }),
-    has_second: list.any(pattern, fn(t) {
-      t == Second(True) || t == Second(False)
-    }),
+    tokens: pattern.tokens,
+    date: <<>>,
+    time: <<>>,
+    has_minute: pattern.has_minute,
+    has_second: pattern.has_second,
   )
 }
 
+@target(erlang)
+fn position(style: data.Style) -> Int {
+  index_of(styles, style, 0)
+}
+
+@target(erlang)
+fn index_of(items: List(a), item: a, index: Int) -> Int {
+  case items {
+    [first, ..] if first == item -> index
+    [_, ..rest] -> index_of(rest, item, index + 1)
+    [] -> index
+  }
+}
+
+// --- Rendering ---------------------------------------------------------------
+
+@target(erlang)
 pub fn render(
   compiled: Compiled,
   unix_seconds: Int,
@@ -137,58 +358,80 @@ pub fn render(
   let epoch_day = floor_divide(seconds, seconds_per_day)
   let rest = seconds - epoch_day * seconds_per_day
   case
-    local(compiled.math, epoch_day, rest, offset_minutes, unix_seconds),
+    local(compiled.math(), epoch_day, rest, offset_minutes, unix_seconds),
     compiled.fallback
   {
     Ok(local), _ -> {
-      let Prepared(pattern:, has_minute:, has_second:) = case compiled.eras {
+      let prepared = case compiled.eras {
         [] -> compiled.main
         eras ->
-          case list.key_find(eras, local.era) {
+          case key_find(eras, local.era) {
             Ok(prepared) -> prepared
             Error(Nil) -> compiled.main
           }
       }
-      tokens(pattern, local, compiled.digits, has_minute, has_second, "")
+      walk(prepared.tokens, prepared, local, compiled.digits, "")
     }
     Error(Nil), Fallback(gregorian) ->
-      render(gregorian, unix_seconds, offset_minutes)
+      render(gregorian(), unix_seconds, offset_minutes)
     Error(Nil), NoFallback -> panic as "No calendar covers this day"
   }
 }
 
-fn tokens(
-  pattern: Pattern,
-  local: Local,
-  digits: Digits,
-  has_minute: Bool,
-  has_second: Bool,
-  acc: String,
-) -> String {
-  case pattern {
-    [] -> acc
-    [part, ..rest] ->
-      tokens(
-        rest,
-        local,
-        digits,
-        has_minute,
-        has_second,
-        acc <> token(part, local, digits, has_minute, has_second),
-      )
+@target(erlang)
+fn key_find(pairs: List(#(Int, a)), key: Int) -> Result(a, Nil) {
+  case pairs {
+    [#(k, value), ..] if k == key -> Ok(value)
+    [_, ..rest] -> key_find(rest, key)
+    [] -> Error(Nil)
   }
 }
 
-fn token(
-  part: Token,
+@target(erlang)
+fn walk(
+  bits: BitArray,
+  prepared: Prepared,
   m: Local,
-  digits: Digits,
-  has_minute: Bool,
-  has_second: Bool,
+  digits: Int,
+  acc: String,
 ) -> String {
-  case part {
+  case bits {
+    <<id:16, rest:bits>> ->
+      case element(id, tokens()) {
+        GlueDate ->
+          walk(
+            rest,
+            prepared,
+            m,
+            digits,
+            walk(prepared.date, prepared, m, digits, acc),
+          )
+        GlueTime ->
+          walk(
+            rest,
+            prepared,
+            m,
+            digits,
+            walk(prepared.time, prepared, m, digits, acc),
+          )
+        token ->
+          walk(
+            rest,
+            prepared,
+            m,
+            digits,
+            acc <> text(token, prepared, m, digits),
+          )
+      }
+    _ -> acc
+  }
+}
+
+@target(erlang)
+fn text(token: Token, prepared: Prepared, m: Local, digits: Int) -> String {
+  case token {
     Literal(text) -> text
-    AsciiDigits(inner) -> token(inner, m, Ascii, has_minute, has_second)
+    AsciiDigits(inner) -> text(inner, prepared, m, 0)
     Year(two_digit: True, minus:, ..) -> {
       let sign = case m.year < 0 {
         True -> minus
@@ -196,13 +439,18 @@ fn token(
       }
       sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
-    Year(two_digit: False, minus:, first:, minus_first:) ->
-      case m.year, first, minus_first {
-        1, "", _ | -1, _, "" -> signed(m.year, minus, digits)
-        1, first, _ -> first
-        -1, _, minus_first -> minus_first
-        year, _, _ -> signed(year, minus, digits)
+    Year(two_digit: False, minus:, first:, minus_first:) -> {
+      // Year 1 and -1 can have a name, like 元.
+      let named = case m.year {
+        1 -> first
+        -1 -> minus_first
+        _ -> ""
       }
+      case named {
+        "" -> signed(m.year, minus, digits)
+        named -> named
+      }
+    }
     WeekYear(minus:, first_day:, minimal_days:, exceptions:) ->
       signed(
         calendar.week_year(m, first_day, minimal_days, exceptions),
@@ -211,24 +459,27 @@ fn token(
       )
     ExtendedYear(minus:) -> signed(m.extended, minus, digits)
     RelatedYear -> signed(m.related, "-", digits)
-    YearName(names:) -> at(names, m.cycle)
+    YearName(names) -> pick(names, m.cycle, m.cycle + 1, digits)
+    MonthName(names) -> pick(names, m.month, m.month + 1, digits)
+    DayName(names) -> pick(names, m.day, m.day, digits)
+    Weekday(names) -> {
+      let weekday = modulo(m.epoch_day + thursday, calendar.days_per_week)
+      pick(names, weekday, weekday, digits)
+    }
+    Era(names) -> pick(names, m.era, m.era, digits)
     MonthNumber(pad:) -> number(m.month + 1, pad, digits)
-    MonthName(names:) -> at(names, m.month)
     Day(pad:) -> number(m.day, pad, digits)
-    DayName(names:) -> at(names, m.day)
-    Weekday(names:) ->
-      at(names, modulo(m.epoch_day + thursday, calendar.days_per_week))
-    Era(names:) -> at(names, m.era)
-    Hour(pad:, cycle:) -> number(hour(m.hour, cycle), pad, digits)
     Minute(pad:) -> number(m.minute, pad, digits)
     Second(pad:) -> number(m.second, pad, digits)
+    Hour(pad:, cycle:) -> number(hour(m.hour, cycle), pad, digits)
     DayPeriod(by_hour:, midnight:, noon:) -> {
       let on_the_hour =
-        { !has_minute || m.minute == 0 } && { !has_second || m.second == 0 }
+        { !prepared.has_minute || m.minute == 0 }
+        && { !prepared.has_second || m.second == 0 }
       case m.hour, on_the_hour {
         0, True -> midnight
         hour, True if hour == hours_per_half_day -> noon
-        hour, _ -> at(by_hour, hour)
+        hour, _ -> pick_or(by_hour, hour, "")
       }
     }
     Zone(
@@ -265,7 +516,82 @@ fn token(
           }
         }
       }
+    GlueDate | GlueTime -> ""
   }
+}
+
+@target(erlang)
+/// A name from a token, or `otherwise` as a number if there are too few.
+fn pick(names: Names, index: Int, otherwise: Int, digits: Int) -> String {
+  case index >= 0 && index < tuple_size(names) {
+    True -> element(index + 1, names)
+    False -> number(otherwise, False, digits)
+  }
+}
+
+@target(erlang)
+fn pick_or(names: Names, index: Int, otherwise: String) -> String {
+  case index >= 0 && index < tuple_size(names) {
+    True -> element(index + 1, names)
+    False -> otherwise
+  }
+}
+
+// --- Numbers -----------------------------------------------------------------
+
+@target(erlang)
+fn hour(hour: Int, cycle: HourCycle) -> Int {
+  case cycle {
+    H23 -> hour
+    H11 -> hour % hours_per_half_day
+    H12 ->
+      case hour % hours_per_half_day {
+        0 -> hours_per_half_day
+        h -> h
+      }
+    H24 ->
+      case hour {
+        0 -> hours_per_day
+        h -> h
+      }
+  }
+}
+
+@target(erlang)
+fn signed(n: Int, minus: String, digits: Int) -> String {
+  case n < 0 {
+    True -> minus <> number(-n, False, digits)
+    False -> number(n, False, digits)
+  }
+}
+
+@target(erlang)
+/// `n` in the locale's digits, or ASCII digits if `digits` is 0.
+fn number(n: Int, pad: Bool, digits: Int) -> String {
+  case digits, pad && n < ten {
+    0, False -> int.to_string(n)
+    0, True -> "0" <> int.to_string(n)
+    _, False -> local_digits(n, digits)
+    _, True -> digit(0, digits) <> local_digits(n, digits)
+  }
+}
+
+@target(erlang)
+fn local_digits(n: Int, digits: Int) -> String {
+  case n < ten {
+    True -> digit(n, digits)
+    False -> local_digits(n / ten, digits) <> digit(n % ten, digits)
+  }
+}
+
+@target(erlang)
+fn digit(d: Int, digits: Int) -> String {
+  pick_or(element(digits, digits_table()), d, int.to_string(d))
+}
+
+@target(erlang)
+fn modulo(n: Int, by: Int) -> Int {
+  { n % by + by } % by
 }
 
 // --- Calendars --------------------------------------------------------------
@@ -324,11 +650,24 @@ fn local(
         next_year_start:,
       ))
     }
-    Table(cyclic:, starts:, shapes:, months:, years:, day_zero:) ->
+    Table(
+      cyclic:,
+      first_day:,
+      end_day:,
+      start_count:,
+      starts:,
+      layouts:,
+      months:,
+      years:,
+      day_zero:,
+    ) ->
       calendar.table_local(
         cyclic:,
+        first_day:,
+        end_day:,
+        start_count:,
         starts:,
-        shapes:,
+        layouts:,
         months:,
         years:,
         day_zero:,
@@ -373,64 +712,6 @@ fn civil_from_days(days: Int) -> #(Int, Int, Int) {
     False -> year
   }
   #(year, month, day)
-}
-
-// --- Numbers and lists -------------------------------------------------------
-
-fn hour(hour: Int, cycle: data.HourCycle) -> Int {
-  case cycle {
-    H23 -> hour
-    H11 -> hour % hours_per_half_day
-    H12 ->
-      case hour % hours_per_half_day {
-        0 -> hours_per_half_day
-        h -> h
-      }
-    H24 ->
-      case hour {
-        0 -> hours_per_day
-        h -> h
-      }
-  }
-}
-
-fn signed(n: Int, minus: String, digits: Digits) -> String {
-  case n < 0 {
-    True -> minus <> number(-n, False, digits)
-    False -> number(n, False, digits)
-  }
-}
-
-fn number(n: Int, pad: Bool, digits: Digits) -> String {
-  let text = case pad && n < ten {
-    True -> "0" <> int.to_string(n)
-    False -> int.to_string(n)
-  }
-  case digits {
-    Ascii -> text
-    Digits(digits) ->
-      text
-      |> string.to_graphemes
-      |> list.map(fn(c) {
-        case int.parse(c) {
-          Ok(i) -> at(digits, i)
-          Error(Nil) -> c
-        }
-      })
-      |> string.concat
-  }
-}
-
-fn at(items: List(a), index: Int) -> a {
-  case items, index {
-    [item, ..], 0 -> item
-    [_, ..rest], _ -> at(rest, index - 1)
-    [], _ -> panic as "A name is missing from glintl's data"
-  }
-}
-
-fn modulo(n: Int, by: Int) -> Int {
-  { n % by + by } % by
 }
 
 fn floor_divide(n: Int, by: Int) -> Int {

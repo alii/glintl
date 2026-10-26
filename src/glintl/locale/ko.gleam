@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Korean, `ko`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ko", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ko", glintl.Gregorian, 174)
 }
-
-@target(javascript)
-/// Korean, `ko`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ko", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ko", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ko", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

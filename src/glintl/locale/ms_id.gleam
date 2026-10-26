@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Malay (Indonesia), `ms-ID`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ms-ID", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ms-ID", glintl.Gregorian, 220)
 }
-
-@target(javascript)
-/// Malay (Indonesia), `ms-ID`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ms-ID", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ms_id", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ms_id", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

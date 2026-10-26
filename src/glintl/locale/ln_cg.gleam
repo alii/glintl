@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Lingala (Congo - Brazzaville), `ln-CG`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ln-CG", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ln-CG", glintl.Gregorian, 196)
 }
-
-@target(javascript)
-/// Lingala (Congo - Brazzaville), `ln-CG`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ln-CG", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ln", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ln", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

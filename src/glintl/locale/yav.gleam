@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Yangben, `yav`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yav", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("yav", glintl.Gregorian, 342)
 }
-
-@target(javascript)
-/// Yangben, `yav`.
-pub fn locale() -> Locale {
-  glintl.new_locale("yav", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_yav", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_yav", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

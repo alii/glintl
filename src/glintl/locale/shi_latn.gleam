@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Tachelhit (Latin), `shi-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("shi-Latn", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("shi-Latn", glintl.Gregorian, 278)
 }
-
-@target(javascript)
-/// Tachelhit (Latin), `shi-Latn`.
-pub fn locale() -> Locale {
-  glintl.new_locale("shi-Latn", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_shi_latn", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_shi_latn", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

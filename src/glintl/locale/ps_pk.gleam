@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Pashto (Pakistan), `ps-PK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ps-PK", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ps-PK", glintl.Gregorian, 251)
 }
-
-@target(javascript)
-/// Pashto (Pakistan), `ps-PK`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ps-PK", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ps_pk", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ps_pk", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

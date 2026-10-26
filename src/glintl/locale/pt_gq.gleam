@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Portuguese (Equatorial Guinea), `pt-GQ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-GQ", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("pt-GQ", glintl.Gregorian, 253)
 }
-
-@target(javascript)
-/// Portuguese (Equatorial Guinea), `pt-GQ`.
-pub fn locale() -> Locale {
-  glintl.new_locale("pt-GQ", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_pt_ao", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_pt_ao", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

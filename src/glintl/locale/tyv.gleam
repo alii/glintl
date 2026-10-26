@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Tuvinian, `tyv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tyv", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("tyv", glintl.Gregorian, 323)
 }
-
-@target(javascript)
-/// Tuvinian, `tyv`.
-pub fn locale() -> Locale {
-  glintl.new_locale("tyv", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_tyv", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_tyv", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

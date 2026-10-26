@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Interlingue, `ie`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ie", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("ie", glintl.Gregorian, 149)
 }
-
-@target(javascript)
-/// Interlingue, `ie`.
-pub fn locale() -> Locale {
-  glintl.new_locale("ie", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_ie", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_ie", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

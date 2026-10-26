@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Turkish (Cyprus), `tr-CY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tr-CY", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("tr-CY", glintl.Gregorian, 320)
 }
-
-@target(javascript)
-/// Turkish (Cyprus), `tr-CY`.
-pub fn locale() -> Locale {
-  glintl.new_locale("tr-CY", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_tr_cy", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_tr", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

@@ -27,9 +27,12 @@ const julian_day_of_unix_epoch = 2_440_588
 
 pub fn table_local(
   cyclic cyclic: Bool,
+  first_day first: Int,
+  end_day end: Int,
+  start_count count: Int,
   starts starts: HomogenousUnknownLengthTuple(Int),
-  shapes shapes: HomogenousUnknownLengthTuple(Int),
-  months months: HomogenousUnknownLengthTuple(List(#(Int, Int))),
+  layouts layouts: HomogenousUnknownLengthTuple(Int),
+  months months: HomogenousUnknownLengthTuple(BitArray),
   years years: List(YearRule),
   day_zero day_zero: List(#(Int, Int)),
   epoch_day epoch_day: Int,
@@ -40,24 +43,21 @@ pub fn table_local(
   unix_seconds unix_seconds: Int,
 ) -> Result(Local, Nil) {
   // `starts` ends with the day after the last year.
-  let count = size(starts)
-  let first = nth(starts, 0)
-  let end = nth(starts, count - 1)
   let last_year = count - 2
   case epoch_day < first || epoch_day >= end, years {
     True, _ | _, [] -> Error(Nil)
     False, [newest, ..older] -> {
       // Guess the year from the average year length, then step to it.
       let guess = { epoch_day - first } * { count - 1 } / { end - first }
-      let i = find_year(starts, int.clamp(guess, 0, last_year), epoch_day)
-      let start = nth(starts, i)
-      let shape = nth(months, nth(shapes, i))
+      let #(i, start, next_start) =
+        find_year(starts, int.clamp(guess, 0, last_year), epoch_day)
+      let layout = nth(months, nth(layouts, i))
       let #(month, day) = case day_zero {
-        [] -> month_and_day(shape, epoch_day - start)
+        [] -> month_and_day(layout, epoch_day - start)
         _ ->
           case list.key_find(day_zero, epoch_day) {
             Ok(month) -> #(month, 0)
-            Error(Nil) -> month_and_day(shape, epoch_day - start)
+            Error(Nil) -> month_and_day(layout, epoch_day - start)
           }
       }
       let YearRule(from:, era:, year:, year_step:, extended:, related:, cycle:) =
@@ -82,7 +82,7 @@ pub fn table_local(
         month:,
         day:,
         year_start: start,
-        next_year_start: nth(starts, i + 1),
+        next_year_start: next_start,
       ))
     }
   }
@@ -97,25 +97,31 @@ fn year_rule(rule: YearRule, older: List(YearRule), year: Int) -> YearRule {
   }
 }
 
+/// The year holding `epoch_day`, stepping from year `i`, with its first day
+/// and the next year's.
 fn find_year(
   starts: HomogenousUnknownLengthTuple(Int),
   i: Int,
   epoch_day: Int,
-) -> Int {
-  case nth(starts, i) > epoch_day, nth(starts, i + 1) <= epoch_day {
+) -> #(Int, Int, Int) {
+  let start = nth(starts, i)
+  let next = nth(starts, i + 1)
+  case start > epoch_day, next <= epoch_day {
     True, _ -> find_year(starts, i - 1, epoch_day)
     _, True -> find_year(starts, i + 1, epoch_day)
-    _, _ -> i
+    _, _ -> #(i, start, next)
   }
 }
 
 /// The month and day of the month, `days` days into a year.
-fn month_and_day(shape: List(#(Int, Int)), days: Int) -> #(Int, Int) {
-  case shape {
-    [#(_, length), ..others] if days >= length && others != [] ->
-      month_and_day(others, days - length)
-    [#(month, _), ..] -> #(month, days + 1)
-    [] -> #(0, days + 1)
+fn month_and_day(layout: BitArray, days: Int) -> #(Int, Int) {
+  case layout {
+    <<month, length, others:bits>> ->
+      case days >= length, others {
+        True, <<_, _, _:bits>> -> month_and_day(others, days - length)
+        _, _ -> #(month, days + 1)
+      }
+    _ -> #(0, days + 1)
   }
 }
 
@@ -246,9 +252,4 @@ fn element(
   tuple _tuple: HomogenousUnknownLengthTuple(a),
 ) -> a {
   panic as "element(index, tuple) can only be used on Erlang"
-}
-
-@external(erlang, "erlang", "tuple_size")
-fn size(tuple _tuple: HomogenousUnknownLengthTuple(a)) -> Int {
-  panic as "size(tuple) can only be used on Erlang"
 }

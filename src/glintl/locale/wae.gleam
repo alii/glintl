@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Walser, `wae`.
 pub fn locale() -> Locale {
-  glintl.new_locale("wae", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("wae", glintl.Gregorian, 337)
 }
-
-@target(javascript)
-/// Walser, `wae`.
-pub fn locale() -> Locale {
-  glintl.new_locale("wae", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_wae", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_wae", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

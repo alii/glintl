@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Southern Sotho (Lesotho), `st-LS`.
 pub fn locale() -> Locale {
-  glintl.new_locale("st-LS", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("st-LS", glintl.Gregorian, 298)
 }
-
-@target(javascript)
-/// Southern Sotho (Lesotho), `st-LS`.
-pub fn locale() -> Locale {
-  glintl.new_locale("st-LS", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_st_ls", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_st", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

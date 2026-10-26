@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Odia, `or`.
 pub fn locale() -> Locale {
-  glintl.new_locale("or", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("or", glintl.Gregorian, 242)
 }
-
-@target(javascript)
-/// Odia, `or`.
-pub fn locale() -> Locale {
-  glintl.new_locale("or", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_or", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_or", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

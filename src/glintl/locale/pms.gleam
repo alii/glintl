@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Piedmontese, `pms`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pms", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("pms", glintl.Gregorian, 248)
 }
-
-@target(javascript)
-/// Piedmontese, `pms`.
-pub fn locale() -> Locale {
-  glintl.new_locale("pms", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_pms", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_pms", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

@@ -34,8 +34,8 @@ pub opaque type Locale {
   Locale(
     tag: String,
     calendar: Calendar,
-    data: LocaleData,
-    calendars: fn(Calendar) -> CalendarFormats,
+    /// The locale's number in glintl's packed data.
+    data: Int,
   )
 }
 
@@ -45,31 +45,17 @@ pub opaque type Locale {
   Locale(tag: String, calendar: Calendar)
 }
 
-/// For the generated locale modules, so they only import this module.
-@internal
-pub type LocaleData =
-  data.Data
-
-@internal
-pub type CalendarFormats =
-  data.Formats
-
 @target(erlang)
 /// Make a locale. Used by the generated locale modules.
 @internal
-pub fn new_locale(
-  tag: String,
-  calendar: Calendar,
-  data: LocaleData,
-  calendars: fn(Calendar) -> CalendarFormats,
-) -> Locale {
-  Locale(tag:, calendar:, data:, calendars:)
+pub fn new_locale(tag: String, calendar: Calendar, data: Int) -> Locale {
+  Locale(tag:, calendar:, data:)
 }
 
 @target(javascript)
 /// Make a locale. Used by the generated locale modules.
 @internal
-pub fn new_locale(tag: String, calendar: Calendar) -> Locale {
+pub fn new_locale(tag: String, calendar: Calendar, _data: Int) -> Locale {
   Locale(tag:, calendar:)
 }
 
@@ -221,21 +207,48 @@ pub fn format(
 
 @target(erlang)
 fn new(locale: Locale, shown: data.Shown) -> Formatter {
-  let Locale(calendar:, data:, calendars:, ..) = locale
-  let data.Data(digits:, gregorian:) = data
-  let gregorian =
-    render.compile(gregorian, digits, gregorian_math, shown, render.NoFallback)
-  Formatter(case other_calendar(calendar, calendars) {
-    Ok(formats) ->
-      render.compile(
-        formats,
-        digits,
-        calendar_math(calendar),
+  let Locale(calendar:, data:, ..) = locale
+  Formatter(case calendar {
+    Gregorian -> render.compile(data, shown)
+    _ ->
+      render.compile_other(
+        data,
+        position(calendar_order, calendar, 0),
+        fn() { calendar_math(calendar) },
         shown,
-        render.Fallback(gregorian),
       )
-    Error(Nil) -> gregorian
   })
+}
+
+@target(erlang)
+/// The order of each locale's formats in the packed data, the same as
+/// `CALENDARS` in `codegen/calendars.ts`.
+const calendar_order = [
+  Gregorian,
+  Iso8601,
+  Buddhist,
+  Japanese,
+  RepublicOfChina,
+  Persian,
+  Indian,
+  Hebrew,
+  Chinese,
+  Dangi,
+  Coptic,
+  Ethiopic,
+  EthiopicAmeteAlem,
+  IslamicCivil,
+  IslamicTabular,
+  IslamicUmmAlQura,
+]
+
+@target(erlang)
+fn position(calendars: List(Calendar), calendar: Calendar, index: Int) -> Int {
+  case calendars {
+    [first, ..] if first == calendar -> index
+    [_, ..rest] -> position(rest, calendar, index + 1)
+    [] -> index
+  }
 }
 
 @target(javascript)
@@ -303,18 +316,6 @@ fn icu_calendar(calendar: Calendar) -> String {
     IslamicCivil -> "islamic-civil"
     IslamicTabular -> "islamic-tbla"
     IslamicUmmAlQura -> "islamic-umalqura"
-  }
-}
-
-@target(erlang)
-/// A calendar's formats, unless it's Gregorian.
-fn other_calendar(
-  calendar: Calendar,
-  calendars: fn(Calendar) -> CalendarFormats,
-) -> Result(CalendarFormats, Nil) {
-  case calendar {
-    Gregorian -> Error(Nil)
-    _ -> Ok(calendars(calendar))
   }
 }
 

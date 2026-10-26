@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Māori, `mi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mi", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("mi", glintl.Gregorian, 212)
 }
-
-@target(javascript)
-/// Māori, `mi`.
-pub fn locale() -> Locale {
-  glintl.new_locale("mi", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_mi", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_mi", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats

@@ -4,22 +4,7 @@
 
 import glintl.{type Locale}
 
-@target(erlang)
 /// Makhuwa, `vmw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vmw", glintl.Gregorian, data(), calendars)
+  glintl.new_locale("vmw", glintl.Gregorian, 336)
 }
-
-@target(javascript)
-/// Makhuwa, `vmw`.
-pub fn locale() -> Locale {
-  glintl.new_locale("vmw", glintl.Gregorian)
-}
-
-@target(erlang)
-@external(erlang, "glintl_generated_vmw", "data")
-fn data() -> glintl.LocaleData
-
-@target(erlang)
-@external(erlang, "glintl_generated_calendars_vmw", "calendar")
-fn calendars(calendar: glintl.Calendar) -> glintl.CalendarFormats
