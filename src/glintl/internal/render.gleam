@@ -5,14 +5,39 @@ import gleam/list
 import gleam/string
 import glintl/internal/calendar
 import glintl/internal/data.{
-  type Digits, type EraFormats, type Formats, type Local, type Math,
-  type Pattern, type Token, Ascii, AsciiDigits, Day, DayName, DayPeriod, Digits,
-  Era, EraFormats, EraRule, ExtendedYear, Formats, GlueDate, GlueText, GlueTime,
-  H11, H12, H23, H24, Hour, Literal, Local, Minute, MonthName, MonthNumber,
-  NoMath, Proleptic, RelatedYear, Second, Table, WeekYear, Weekday, Year,
-  YearName, Zone,
+  type Combined, type Digits, type EraFormats, type EraRule, type Formats,
+  type Glue, type Local, type Math, type Pattern, type Shown, type Style,
+  type Styles, type Token, Ascii, AsciiDigits, Combined, DateAndTime, DateOnly,
+  Day, DayName, DayPeriod, Digits, Era, EraFormats, EraRule, ExtendedYear,
+  Formats, Full, GlueDate, GlueText, GlueTime, H11, H12, H23, H24, Hour, Joined,
+  Literal, Local, Long, Medium, Minute, MonthName, MonthNumber, NoMath,
+  Proleptic, RelatedYear, Second, Short, Styles, Table, TimeOnly, WeekYear,
+  Weekday, Year, YearName, Zone,
 }
-import glintl/internal/math
+
+pub const seconds_per_minute = 60
+
+const minutes_per_hour = 60
+
+const seconds_per_hour = 3600
+
+pub const seconds_per_day = 86_400
+
+const hours_per_half_day = 12
+
+const hours_per_day = 24
+
+/// 1970-01-01 was a Thursday, and weekdays are numbered from Sunday.
+const thursday = 4
+
+/// Two digit years show the year modulo this.
+const two_digit_years = 100
+
+/// Numbers below this have one digit, so are padded to two.
+const ten = 10
+
+/// The longest a year can be in a calendar with Gregorian months.
+const days_in_longest_year = 366
 
 /// A formatter's patterns, ready to render.
 pub type Compiled {
@@ -36,43 +61,41 @@ pub type Prepared {
   Prepared(pattern: Pattern, has_minute: Bool, has_second: Bool)
 }
 
-/// `date` and `time` are 0 for "not shown", or 1 to 4 for full to short.
 pub fn compile(
   formats: Formats,
   digits: Digits,
   math: Math,
-  date: Int,
-  time: Int,
+  shown: Shown,
   fallback: Fallback,
 ) -> Compiled {
   let Formats(dates:, times:, glues:, eras:) = formats
-  let main = pattern(dates, times, glues, [], date, time)
-  let eras = case date {
-    0 -> []
-    _ ->
+  let main = pattern(dates, times, glues, Joined, shown)
+  let eras = case shown {
+    TimeOnly(_) -> []
+    DateOnly(_) | DateAndTime(..) ->
       list.map(eras, fn(era: EraFormats) {
         let EraFormats(era:, dates:, combined:) = era
-        #(era, prepare(pattern(dates, times, glues, combined, date, time)))
+        #(era, prepare(pattern(dates, times, glues, combined, shown)))
       })
   }
   Compiled(main: prepare(main), eras:, digits:, math:, fallback:)
 }
 
 fn pattern(
-  dates: List(Pattern),
-  times: List(Pattern),
-  glues: List(data.Glue),
-  combined: List(Pattern),
-  date: Int,
-  time: Int,
+  dates: Styles(Pattern),
+  times: Styles(Pattern),
+  glues: Styles(Glue),
+  combined: Combined,
+  shown: Shown,
 ) -> Pattern {
-  case date, time, combined {
-    0, time, _ -> at(times, time - 1, [])
-    date, 0, _ -> at(dates, date - 1, [])
-    date, time, [] -> {
-      let date_pattern = at(dates, date - 1, [])
-      let time_pattern = at(times, time - 1, [])
-      list.flat_map(at(glues, date - 1, []), fn(piece) {
+  case shown, combined {
+    TimeOnly(time), _ -> pick(times, time)
+    DateOnly(date), _ -> pick(dates, date)
+    DateAndTime(date:, time:), Combined(both) -> pick(pick(both, date), time)
+    DateAndTime(date:, time:), Joined -> {
+      let date_pattern = pick(dates, date)
+      let time_pattern = pick(times, time)
+      list.flat_map(pick(glues, date), fn(piece) {
         case piece {
           GlueText(text) -> [Literal(text)]
           GlueDate -> date_pattern
@@ -80,7 +103,16 @@ fn pattern(
         }
       })
     }
-    date, time, combined -> at(combined, { date - 1 } * 4 + time - 1, [])
+  }
+}
+
+fn pick(styles: Styles(a), style: Style) -> a {
+  let Styles(full:, long:, medium:, short:) = styles
+  case style {
+    Full -> full
+    Long -> long
+    Medium -> medium
+    Short -> short
   }
 }
 
@@ -101,9 +133,9 @@ pub fn render(
   unix_seconds: Int,
   offset_minutes: Int,
 ) -> String {
-  let seconds = unix_seconds + offset_minutes * 60
-  let epoch_day = floor_divide(seconds, 86_400)
-  let rest = seconds - epoch_day * 86_400
+  let seconds = unix_seconds + offset_minutes * seconds_per_minute
+  let epoch_day = floor_divide(seconds, seconds_per_day)
+  let rest = seconds - epoch_day * seconds_per_day
   case
     local(compiled.math, epoch_day, rest, offset_minutes, unix_seconds),
     compiled.fallback
@@ -162,11 +194,11 @@ fn token(
         True -> minus
         False -> ""
       }
-      sign <> number(int.absolute_value(m.year) % 100, True, digits)
+      sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
     Year(two_digit: False, minus:, first:) ->
       case m.year, first {
-        1, "" -> number(1, False, digits)
+        1, "" -> number(m.year, False, digits)
         1, first -> first
         year, _ -> signed(year, minus, digits)
       }
@@ -183,8 +215,8 @@ fn token(
     MonthName(names:) -> at(names, m.month, "")
     Day(pad:) -> number(m.day, pad, digits)
     DayName(names:) -> at(names, m.day, "")
-    // 1970-01-01 was a Thursday, and Sunday is 0.
-    Weekday(names:) -> at(names, modulo(m.epoch_day + 4, 7), "")
+    Weekday(names:) ->
+      at(names, modulo(m.epoch_day + thursday, calendar.days_per_week), "")
     Era(names:) -> at(names, m.era, "")
     Hour(pad:, cycle:) -> number(hour(m.hour, cycle), pad, digits)
     Minute(pad:) -> number(m.minute, pad, digits)
@@ -194,7 +226,7 @@ fn token(
         { !has_minute || m.minute == 0 } && { !has_second || m.second == 0 }
       case m.hour, on_the_hour {
         0, True -> midnight
-        12, True -> noon
+        hour, True if hour == hours_per_half_day -> noon
         hour, _ -> at(by_hour, hour, "")
       }
     }
@@ -220,8 +252,8 @@ fn token(
             False -> #(positive, positive_suffix, positive_whole_suffix)
           }
           let offset = int.absolute_value(offset)
-          let hours = number(offset / 60, pad_hours, digits)
-          case offset % 60, optional_minutes {
+          let hours = number(offset / minutes_per_hour, pad_hours, digits)
+          case offset % minutes_per_hour, optional_minutes {
             0, True -> sign <> hours <> whole_suffix
             minutes, _ ->
               sign
@@ -240,8 +272,8 @@ fn token(
 /// A day's era, year, extended year, related year, cycle year, month and day
 /// in a calendar, or `[]` if the calendar doesn't cover it. For tests.
 @internal
-pub fn calendar_fields(calendar: Int, epoch_day: Int) -> List(Int) {
-  case local(math.math(calendar), epoch_day, 0, 0, epoch_day * 86_400) {
+pub fn calendar_fields(math: Math, epoch_day: Int) -> List(Int) {
+  case local(math, epoch_day, 0, 0, epoch_day * seconds_per_day) {
     Ok(m) -> [m.era, m.year, m.extended, m.related, m.cycle, m.month, m.day]
     Error(Nil) -> []
   }
@@ -254,13 +286,25 @@ fn local(
   offset_minutes: Int,
   unix_seconds: Int,
 ) -> Result(Local, Nil) {
-  let hour = rest / 3600
-  let minute = rest % 3600 / 60
-  let second = rest % 60
+  let hour = rest / seconds_per_hour
+  let minute = rest % seconds_per_hour / seconds_per_minute
+  let second = rest % seconds_per_minute
   case math {
-    Proleptic(eras:) -> {
-      let #(y, m, d) = civil_from_days(epoch_day)
-      let EraRule(era:, base:, sign:, ..) = era_rule(eras, epoch_day)
+    Proleptic(eras: [newest, ..older], julian_before:) -> {
+      let #(y, m, d) = case epoch_day < julian_before {
+        True -> calendar.julian_from_days(epoch_day)
+        False -> civil_from_days(epoch_day)
+      }
+      // Near the Julian switch a year can start in one calendar and end in
+      // the other, so its bounds are worked out here. Elsewhere `week_year`
+      // works them out only if needed.
+      let #(year_start, next_year_start) = case
+        epoch_day < julian_before + days_in_longest_year
+      {
+        True -> calendar.year_bounds(y, julian_before)
+        False -> #(data.start_of_time, data.start_of_time)
+      }
+      let EraRule(era:, base:, sign:, ..) = era_rule(newest, older, epoch_day)
       Ok(Local(
         epoch_day:,
         hour:,
@@ -275,8 +319,8 @@ fn local(
         cycle: 0,
         month: m - 1,
         day: d,
-        year_start: 0,
-        next_year_start: 0,
+        year_start:,
+        next_year_start:,
       ))
     }
     Table(cyclic:, starts:, shapes:, months:, years:, day_zero:) ->
@@ -294,30 +338,26 @@ fn local(
         offset_minutes:,
         unix_seconds:,
       )
-    NoMath -> Error(Nil)
+    Proleptic(eras: [], ..) | NoMath -> Error(Nil)
   }
 }
 
-/// The era a day is in. Eras are newest first, and the last starts at the
+/// The era a day is in. Eras are newest first, and the oldest starts at the
 /// start of time.
-fn era_rule(eras: List(data.EraRule), epoch_day: Int) -> data.EraRule {
-  case eras {
-    [rule] -> rule
-    [rule, ..rest] ->
-      case rule.start <= epoch_day {
-        True -> rule
-        False -> era_rule(rest, epoch_day)
-      }
-    [] -> EraRule(start: 0, era: 0, base: 0, sign: 1)
+fn era_rule(rule: EraRule, older: List(EraRule), epoch_day: Int) -> EraRule {
+  case older, rule.start <= epoch_day {
+    [], _ | _, True -> rule
+    [next, ..rest], False -> era_rule(next, rest, epoch_day)
   }
 }
 
-/// Days since 1970-01-01 to a proleptic Gregorian date.
-/// From Howard Hinnant's `civil_from_days`.
+/// Days since 1970-01-01 to a proleptic Gregorian date. From Howard Hinnant's
+/// `civil_from_days`, whose other numbers are part of the published
+/// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
 fn civil_from_days(days: Int) -> #(Int, Int, Int) {
-  let z = days + 719_468
-  let era = floor_divide(z, 146_097)
-  let doe = z - era * 146_097
+  let z = days + calendar.days_from_march_of_year_zero
+  let era = floor_divide(z, calendar.days_per_400_years)
+  let doe = z - era * calendar.days_per_400_years
   let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
   let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
   let mp = { 5 * doy + 2 } / 153
@@ -339,15 +379,15 @@ fn civil_from_days(days: Int) -> #(Int, Int, Int) {
 fn hour(hour: Int, cycle: data.HourCycle) -> Int {
   case cycle {
     H23 -> hour
-    H11 -> hour % 12
+    H11 -> hour % hours_per_half_day
     H12 ->
-      case hour % 12 {
-        0 -> 12
+      case hour % hours_per_half_day {
+        0 -> hours_per_half_day
         h -> h
       }
     H24 ->
       case hour {
-        0 -> 24
+        0 -> hours_per_day
         h -> h
       }
   }
@@ -361,7 +401,7 @@ fn signed(n: Int, minus: String, digits: Digits) -> String {
 }
 
 fn number(n: Int, pad: Bool, digits: Digits) -> String {
-  let text = case pad && n < 10 {
+  let text = case pad && n < ten {
     True -> "0" <> int.to_string(n)
     False -> int.to_string(n)
   }

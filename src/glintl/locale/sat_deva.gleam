@@ -10,10 +10,10 @@ pub fn locale() -> Locale {
   glintl.new_locale("sat-Deva", glintl.Gregorian, data(), calendars)
 }
 
-@external(erlang, "glintl_generated_sat_deva", "data")
-@external(javascript, "../internal/generated/javascript/sat_deva.mjs", "data")
+@external(erlang, "glintl_generated_sat", "data")
+@external(javascript, "../internal/generated/javascript/sat.mjs", "data")
 fn data() -> Data
 
-@external(erlang, "glintl_generated_calendars_sat_deva", "data")
-@external(javascript, "../internal/generated/javascript/sat_deva.mjs", "calendars")
+@external(erlang, "glintl_generated_calendars_sat", "data")
+@external(javascript, "../internal/generated/javascript/sat.mjs", "calendars")
 fn calendars() -> Calendars

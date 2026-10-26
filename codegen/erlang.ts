@@ -5,11 +5,25 @@
 // bound to variables first; the compiler folds them back into the literal.
 
 import type { Math_ } from "./calendars.ts";
-import type { EraFormats, Formats, GluePiece, Token } from "./patterns.ts";
+import {
+  type EraFormats,
+  type Formats,
+  type GluePiece,
+  STYLES,
+  type Token,
+} from "./patterns.ts";
+
+const STYLE_COUNT = STYLES.length;
 
 // Characters that are hard to see are escaped, everything else is written as
 // it is so the files are easy to review.
 const INVISIBLE = /[\p{Cc}\p{Cf}\p{Z}]/u;
+
+const HEXADECIMAL = 16;
+
+// Terms shorter than this are written out each time, as a variable would
+// barely be shorter.
+const SHORTEST_SHARED = 24;
 
 export function escape(s: string, hex: (code: string) => string): string {
   return [...s]
@@ -18,7 +32,7 @@ export function escape(s: string, hex: (code: string) => string): string {
       if (c === '"') return '\\"';
       if (c === " ") return c;
       if (INVISIBLE.test(c))
-        return hex(c.codePointAt(0)!.toString(16).toUpperCase());
+        return hex(c.codePointAt(0)!.toString(HEXADECIMAL).toUpperCase());
       return c;
     })
     .join("");
@@ -108,17 +122,33 @@ export class Writer {
     );
   }
 
+  // One of something for each style, from full to short, like Gleam's
+  // `Styles`.
+  styles<T>(items: T[], write: (item: T) => string): string {
+    if (items.length !== STYLE_COUNT) throw new Error("A style is missing");
+    return this.shared(`{styles, ${items.map(write).join(", ")}}`);
+  }
+
   era(era: EraFormats): string {
-    return `{era_formats, ${era.era}, ${this.list(era.dates.map((p) => this.pattern(p)))}, ${this.list(
-      (era.combined ?? []).map((p) => this.pattern(p)),
-    )}}`;
+    const dates = this.styles(era.dates, (p) => this.pattern(p));
+    // `combined` is by date style, then time style.
+    const combined = era.combined;
+    const byDate = combined
+      ? `{combined, ${this.styles(
+          era.dates.map((_, d) =>
+            combined.slice(d * STYLE_COUNT, (d + 1) * STYLE_COUNT),
+          ),
+          (times) => this.styles(times, (p) => this.pattern(p)),
+        )}}`
+      : "joined";
+    return `{era_formats, ${era.era}, ${dates}, ${byDate}}`;
   }
 
   formats(f: Formats): string {
     return `{formats,\n     ${[
-      this.list(f.dates.map((p) => this.pattern(p))),
-      this.list(f.times.map((p) => this.pattern(p))),
-      this.list(f.glues.map((g) => this.glue(g))),
+      this.styles(f.dates, (p) => this.pattern(p)),
+      this.styles(f.times, (p) => this.pattern(p)),
+      this.styles(f.glues, (g) => this.glue(g)),
       this.list(f.eras.map((e) => this.era(e))),
     ].join(",\n     ")}}`;
   }
@@ -135,7 +165,10 @@ export class Writer {
   // and the escaped text of a string can't contain `<<"` or `{`.
   body(term: string): string {
     const repeated = [...this.counts]
-      .filter(([t, count]) => count > 1 && t.length >= 24 && term.includes(t))
+      .filter(
+        ([t, count]) =>
+          count > 1 && t.length >= SHORTEST_SHARED && term.includes(t),
+      )
       .map(([t]) => t)
       .sort((a, b) => a.length - b.length);
     const names = new Map(repeated.map((t, n) => [t, `V${n + 1}`]));
@@ -171,7 +204,10 @@ export function math(m: Math_): string {
       (e) =>
         `{era_rule, ${Number.isFinite(e.start) ? e.start : START_OF_TIME}, ${e.era}, ${e.base}, ${e.sign}}`,
     );
-    return `    {proleptic, [\n        ${rules.join(",\n        ")}\n    ]}`;
+    const julianBefore = Number.isFinite(m.julianBefore)
+      ? m.julianBefore
+      : START_OF_TIME;
+    return `    {proleptic, [\n        ${rules.join(",\n        ")}\n    ], ${julianBefore}}`;
   }
   const tuple = (items: (string | number)[]) => `{${items.join(", ")}}`;
   const years = [...m.years]

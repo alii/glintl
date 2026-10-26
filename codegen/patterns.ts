@@ -7,11 +7,33 @@ import {
   type Table,
   DAY_MS,
   FIRST_DAY,
+  INTO_MONTH,
   LAST_DAY,
+  LAST_YEAR,
+  LONGEST_LUNAR_MONTH,
+  MID_YEAR,
+  MONTHS_PER_YEAR,
+  SCAN_FROM,
   calendarDate,
+  civil,
+  civilDay,
   day,
+  isoWeekday,
 } from "./calendars.ts";
 import { type Moment, join, render } from "./render.ts";
+import { random } from "./random.ts";
+import {
+  DAYS_PER_WEEK,
+  HOURS_PER_DAY,
+  HOURS_PER_HALF_DAY,
+  MINUTES_PER_HOUR,
+  MS_PER_SECOND,
+  ONE_DIGIT_BELOW,
+  SECONDS_PER_DAY,
+  SECONDS_PER_MINUTE,
+  TWO_DIGIT_YEARS,
+  offsetString,
+} from "./time.ts";
 
 // Mirrors `src/glintl/internal/data.gleam`.
 export type Token =
@@ -56,10 +78,53 @@ export type Style = (typeof STYLES)[number];
 
 type Local = (n: number, pad: boolean) => string;
 
-// 2026-03-05, a Thursday, at 09:07:04: every number is different.
+// 2026-03-05, a Thursday, at 09:07:04: every number is different, and the
+// hour, minute and second are under ten, to show their padding.
 const PROBE_DAY = day(2026, 3, 5);
-const at = (epochDay: number, hour = 9, minute = 7, second = 4) =>
-  new Date(epochDay * DAY_MS + ((hour * 60 + minute) * 60 + second) * 1000);
+const PROBE_TIME: [number, number, number] = [9, 7, 4];
+const at = (
+  epochDay: number,
+  hour = PROBE_TIME[0],
+  minute = PROBE_TIME[1],
+  second = PROBE_TIME[2],
+) =>
+  new Date(
+    epochDay * DAY_MS +
+      ((hour * MINUTES_PER_HOUR + minute) * SECONDS_PER_MINUTE + second) *
+        MS_PER_SECOND,
+  );
+
+// A day of the month under ten, to see whether days are padded.
+const PADDED_DAY = 5;
+
+// A day this far into each year, to sample it.
+const INTO_YEAR = 10;
+
+// The middle of a month, to sample its name.
+const MID_MONTH_DAY = 15;
+
+// Week-based years are checked around the start of each year from here.
+const WEEK_YEARS_FROM = -100;
+
+// Every rule for week-based years has some days in a week that count as the
+// year's first.
+const MINIMAL_DAYS = Array.from({ length: DAYS_PER_WEEK }, (_, n) => n + 1);
+
+// Years where ICU starts a week-based year away from the rule are kept as
+// exceptions, but more than one in this many means the rule is wrong.
+const EXCEPTIONS_AT_MOST_ONE_IN = 10;
+
+// Years 2 to 9 show whether a year is padded to two digits. Year 1 is left
+// out, as some patterns write it as a word.
+const SMALLEST_PADDED_YEAR = 2;
+
+// Time zones to probe with. 11:47 has distinct digits and minutes, to find
+// both in the text, and 1:47 shows whether hours are padded.
+const ZONE_HOURS = 11;
+const ZONE_MINUTES = 47;
+const ZONE_SHORT_HOURS = 1;
+const zoneOffset = (sign: "+" | "-", hours: number, minutes: number) =>
+  offsetString((sign === "-" ? -1 : 1) * (hours * MINUTES_PER_HOUR + minutes));
 const PROBE = at(PROBE_DAY);
 
 export function localDigits(tag: string): string[] {
@@ -68,7 +133,7 @@ export function localDigits(tag: string): string[] {
     numberingSystem,
     useGrouping: false,
   });
-  return Array.from({ length: 10 }, (_, i) => nf.format(i));
+  return Array.from({ length: ONE_DIGIT_BELOW }, (_, i) => nf.format(i));
 }
 
 export function defaultCalendar(tag: string): string {
@@ -93,9 +158,10 @@ function formatter(tag: string, calendar: CalendarId, options: Options) {
 // numbers: negative ones, or the first year of an era.
 function sampleDays(math: Math_): number[] {
   if (math.kind === "table")
-    return math.starts.slice(0, -1).map((start) => start + 10);
+    return math.starts.slice(0, -1).map((start) => start + INTO_YEAR);
   const days: number[] = [];
-  for (let year = -5000; year <= 4000; year++) days.push(day(year, 7, 1));
+  for (let year = SCAN_FROM; year <= LAST_YEAR; year++)
+    days.push(day(year, ...MID_YEAR));
   for (const era of math.eras)
     if (Number.isFinite(era.start)) days.push(era.start, era.start + 1);
   return days;
@@ -132,10 +198,12 @@ export function derive(
       .map((c) => (active.includes(c) ? String(active.indexOf(c)) : c))
       .join("");
   const local: Local = (n, pad) =>
-    [...String(n).padStart(pad ? 2 : 1, "0")].map((c) => active[+c]).join("");
+    [...(pad && n < ONE_DIGIT_BELOW ? `0${n}` : String(n))]
+      .map((c) => active[+c])
+      .join("");
   const numeric = (s: string) => /^\d+$/.test(toAscii(s));
   const padded = (value: string, n: number) => {
-    if (value === local(n, true) && n < 10) return true;
+    if (value === local(n, true) && n < ONE_DIGIT_BELOW) return true;
     if (value === local(n, false)) return false;
     throw new Error(`${name}: can't read number ${value}`);
   };
@@ -156,7 +224,7 @@ export function derive(
     if (negative === undefined) return "-";
     const value = valueAt(at(negative), i);
     const digitsPart = twoDigit
-      ? local(-year(negative)! % 100, true)
+      ? local(-year(negative)! % TWO_DIGIT_YEARS, true)
       : local(-year(negative)!, false);
     if (!value.endsWith(digitsPart))
       throw new Error(
@@ -194,20 +262,22 @@ export function derive(
         const abs = Math.abs(date.year);
         let twoDigit: boolean;
         if (
-          abs >= 100 &&
-          value.endsWith(local(abs % 100, true)) &&
+          abs >= TWO_DIGIT_YEARS &&
+          value.endsWith(local(abs % TWO_DIGIT_YEARS, true)) &&
           !value.endsWith(local(abs, false))
         )
           twoDigit = true;
         else if (value.endsWith(local(abs, false))) {
           // Years under 100 look the same either way, unless one under 10 is
-          // padded. Year 1 is left out, as some patterns write it as a word.
+          // padded.
           const small = days().find((d) => {
             const y = Math.abs(year(d) ?? 0);
-            return sameEra(d) && y >= 2 && y < 10;
+            return (
+              sameEra(d) && y >= SMALLEST_PADDED_YEAR && y < ONE_DIGIT_BELOW
+            );
           });
           twoDigit =
-            abs < 100 &&
+            abs < TWO_DIGIT_YEARS &&
             small !== undefined &&
             valueAt(at(small), i).endsWith(local(Math.abs(year(small)!), true));
         } else throw new Error(`${name}: odd year ${value}`);
@@ -224,33 +294,38 @@ export function derive(
         const yearStarts =
           math.kind === "table"
             ? math.starts.slice(0, -1)
-            : Array.from({ length: 4100 }, (_, n) => day(n - 100, 1, 1));
+            : Array.from({ length: LAST_YEAR - WEEK_YEARS_FROM }, (_, n) =>
+                civilDay(WEEK_YEARS_FROM + n, 1, 1, math.julianBefore),
+              );
         // Where ICU starts each week-based year: the first day near the start
         // of the year that shows it.
         const observed = yearStarts.flatMap(
           (start): [number, number, number][] => {
             const extended = calendarDate(math, start)!.extended;
             const text = number(extended, "-", local);
-            for (let d = start - 7; d <= start + 7; d++)
+            for (let d = start - DAYS_PER_WEEK; d <= start + DAYS_PER_WEEK; d++)
               if (calendarDate(math, d) && valueAt(at(d), i) === text)
                 return [[start, extended, d]];
             return [];
           },
         );
         const ruleStart = (start: number, m: number) => {
-          const weekday = ((((start + 3) % 7) + 7) % 7) + 1;
-          const weekStart = start - ((weekday - firstDay + 7) % 7);
-          return 7 - (start - weekStart) >= m ? weekStart : weekStart + 7;
+          const weekday = isoWeekday(start);
+          const weekStart =
+            start - ((weekday - firstDay + DAYS_PER_WEEK) % DAYS_PER_WEEK);
+          return DAYS_PER_WEEK - (start - weekStart) >= m
+            ? weekStart
+            : weekStart + DAYS_PER_WEEK;
         };
         const misses = (m: number) =>
           observed.filter(([start, , d]) => ruleStart(start, m) !== d);
-        const minimalDays = [1, 2, 3, 4, 5, 6, 7].reduce((best, m) =>
+        const minimalDays = MINIMAL_DAYS.reduce((best, m) =>
           misses(m).length < misses(best).length ? m : best,
         );
         const exceptions = misses(minimalDays).map(
           ([, extended, d]): [number, number] => [extended, d],
         );
-        if (exceptions.length > observed.length / 10)
+        if (exceptions.length > observed.length / EXCEPTIONS_AT_MOST_ONE_IN)
           throw new Error(`${name}: odd week-based year`);
         const extended = (d: number) => calendarDate(math, d)?.extended;
         return {
@@ -276,9 +351,13 @@ export function derive(
         };
       case "month":
         if (math.kind === "proleptic") {
-          const year = new Date(probeDay * DAY_MS).getUTCFullYear();
-          const names = Array.from({ length: 12 }, (_, m) =>
-            valueAt(at(day(year, m + 1, 5)), i),
+          // The probe's own year, which can be Julian.
+          const year = civil(probeDay, math.julianBefore)[0];
+          const names = Array.from({ length: MONTHS_PER_YEAR }, (_, m) =>
+            valueAt(
+              at(civilDay(year, m + 1, MID_MONTH_DAY, math.julianBefore)),
+              i,
+            ),
           );
           // Some locales write some months in other digits, so numbers are
           // only numbers if every month follows the same rule.
@@ -298,8 +377,8 @@ export function derive(
       case "day": {
         if (numeric(value)) {
           // Padding only shows on days 1 to 9.
-          const early = probeDay - date.day + 5;
-          return { t: "day", pad: padded(valueAt(at(early), i), 5) };
+          const early = probeDay - date.day + PADDED_DAY;
+          return { t: "day", pad: padded(valueAt(at(early), i), PADDED_DAY) };
         }
         if (math.kind !== "table")
           throw new Error(`${name}: day names without a table`);
@@ -311,18 +390,18 @@ export function derive(
           t: "day_name",
           names: [
             zero ? valueAt(at(zero[0]), i) : "",
-            ...Array.from({ length: 30 }, (_, n) =>
+            ...Array.from({ length: LONGEST_LUNAR_MONTH }, (_, n) =>
               valueAt(at(longMonth + n), i),
             ),
           ],
         };
       }
       case "weekday": {
-        // The Sunday before the probe. 1970-01-01 was a Thursday.
-        const sunday = probeDay - ((((probeDay + 4) % 7) + 7) % 7);
+        // The Sunday before the probe, as weekday names start on Sunday.
+        const sunday = probeDay - (isoWeekday(probeDay) % DAYS_PER_WEEK);
         return {
           t: "weekday",
-          names: Array.from({ length: 7 }, (_, d) =>
+          names: Array.from({ length: DAYS_PER_WEEK }, (_, d) =>
             valueAt(at(sunday + d), i),
           ),
         };
@@ -332,27 +411,27 @@ export function derive(
       case "hour": {
         const hourAt = (h: number) => +toAscii(valueAt(at(probeDay, h), i));
         const cycle =
-          hourAt(0) === 12
+          hourAt(0) === HOURS_PER_HALF_DAY
             ? "h12"
-            : hourAt(0) === 24
+            : hourAt(0) === HOURS_PER_DAY
               ? "h24"
-              : hourAt(12) === 0
+              : hourAt(HOURS_PER_HALF_DAY) === 0
                 ? "h11"
                 : "h23";
-        return { t: "hour", pad: padded(value, 9), cycle };
+        return { t: "hour", pad: padded(value, PROBE_TIME[0]), cycle };
       }
       case "minute":
-        return { t: "minute", pad: padded(value, 7) };
+        return { t: "minute", pad: padded(value, PROBE_TIME[1]) };
       case "second":
-        return { t: "second", pad: padded(value, 4) };
+        return { t: "second", pad: padded(value, PROBE_TIME[2]) };
       case "dayPeriod":
         return {
           t: "day_period",
-          byHour: Array.from({ length: 24 }, (_, h) =>
+          byHour: Array.from({ length: HOURS_PER_DAY }, (_, h) =>
             valueAt(at(probeDay, h), i),
           ),
           midnight: valueAt(at(probeDay, 0, 0, 0), i),
-          noon: valueAt(at(probeDay, 12, 0, 0), i),
+          noon: valueAt(at(probeDay, HOURS_PER_HALF_DAY, 0, 0), i),
         };
       case "timeZoneName":
         return deriveZone(tag, calendar, options, i, local, probeDay);
@@ -394,34 +473,40 @@ function deriveZone(
     formatter(tag, calendar, { ...options, timeZone }).formatToParts(
       at(probeDay),
     )[i]!.value;
-  const zero = zone("+00:00");
-  const full = zone("+11:47");
-  const h11 = local(11, false);
-  const m47 = local(47, true);
-  const hAt = full.indexOf(h11);
-  const mAt = full.indexOf(m47, hAt + h11.length);
+  const zero = zone(zoneOffset("+", 0, 0));
+  const full = zone(zoneOffset("+", ZONE_HOURS, ZONE_MINUTES));
+  const hourDigits = local(ZONE_HOURS, false);
+  const minuteDigits = local(ZONE_MINUTES, true);
+  const hAt = full.indexOf(hourDigits);
+  const mAt = full.indexOf(minuteDigits, hAt + hourDigits.length);
   if (hAt < 0 || mAt < 0) throw new Error(`${name}: odd zone ${full}`);
   const positive = full.slice(0, hAt);
-  const separator = full.slice(hAt + h11.length, mAt);
-  const suffix = full.slice(mAt + m47.length);
+  const separator = full.slice(hAt + hourDigits.length, mAt);
+  const suffix = full.slice(mAt + minuteDigits.length);
 
-  const negativeFull = zone("-11:47");
-  const negative = negativeFull.slice(0, negativeFull.indexOf(h11));
+  const negativeFull = zone(zoneOffset("-", ZONE_HOURS, ZONE_MINUTES));
+  const negative = negativeFull.slice(0, negativeFull.indexOf(hourDigits));
   const negativeSuffix = negativeFull.slice(
-    negative.length + h11.length + separator.length + m47.length,
+    negative.length +
+      hourDigits.length +
+      separator.length +
+      minuteDigits.length,
   );
-  if (negativeFull !== negative + h11 + separator + m47 + negativeSuffix)
+  if (
+    negativeFull !==
+    negative + hourDigits + separator + minuteDigits + negativeSuffix
+  )
     throw new Error(`${name}: odd negative zone ${negativeFull}`);
 
   // With minutes left out, some locales also change the suffix.
-  const whole = zone("+11:00");
-  const negativeWhole = zone("-11:00");
+  const whole = zone(zoneOffset("+", ZONE_HOURS, 0));
+  const negativeWhole = zone(zoneOffset("-", ZONE_HOURS, 0));
   const optionalMinutes = !whole.includes(separator + local(0, true));
   const wholeSuffix = (text: string, prefix: string) => {
-    const minutes = optionalMinutes ? "" : separator + local(0, true);
-    if (!text.startsWith(prefix + h11 + minutes))
+    const wholeMinutes = optionalMinutes ? "" : separator + local(0, true);
+    if (!text.startsWith(prefix + hourDigits + wholeMinutes))
       throw new Error(`${name}: odd whole hour zone ${text}`);
-    return text.slice((prefix + h11 + minutes).length);
+    return text.slice((prefix + hourDigits + wholeMinutes).length);
   };
 
   return {
@@ -433,7 +518,9 @@ function deriveZone(
     negative,
     negativeSuffix,
     negativeWholeSuffix: wholeSuffix(negativeWhole, negative),
-    padHours: zone("+01:47").startsWith(positive + local(1, true)),
+    padHours: zone(zoneOffset("+", ZONE_SHORT_HOURS, ZONE_MINUTES)).startsWith(
+      positive + local(ZONE_SHORT_HOURS, true),
+    ),
     separator,
     optionalMinutes,
   };
@@ -504,10 +591,10 @@ function findOccurrences(math: Table) {
   const longMonths: number[] = [];
   math.shapes.forEach((shape, i) => {
     let start = math.starts[i]!;
-    cycles[calendarDate(math, start)!.cycle]?.push(start + 10);
+    cycles[calendarDate(math, start)!.cycle]?.push(start + INTO_YEAR);
     for (const [month, length] of math.months[shape]!) {
-      months[month]!.push(start + 4);
-      if (length === 30) longMonths.push(start);
+      months[month]!.push(start + INTO_MONTH);
+      if (length === LONGEST_LUNAR_MONTH) longMonths.push(start);
       start += length;
     }
   });
@@ -549,15 +636,27 @@ export type Formats = {
 
 const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-// Seeded, so the generated files only change when ICU does.
-function random(seed: number): () => number {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// How many days to check a calendar's patterns on, besides the odd ones:
+// some at random, the first years of a few eras, and a few negative years.
+const RANDOM_CHECK_DAYS = 40;
+const FIRST_YEAR_CHECK_DAYS = 12;
+const NEGATIVE_YEAR_CHECK_DAYS = 3;
+
+// Days after the start of an era to check it on, so a check isn't just the
+// day it starts.
+const DAYS_INTO_ERA = [40, 100, 400];
+
+const RANDOM_SEED = 7;
+
+// Time zone offsets, in minutes, to check times with: +11:47, -3:30 and +1.
+const CHECK_OFFSETS = [707, -210, 60];
+
+// An offset to check dates with times, +5:30.
+const DATE_AND_TIME_OFFSET = 330;
+
+// A year to check times before 1970 in, as ICU only names the zero offset
+// from 1970.
+const BEFORE_1970 = 1960;
 
 // Days to check a calendar's patterns on: each era, each month near today,
 // odd years, the edges of the table, and some at random.
@@ -567,12 +666,12 @@ function checkDays(math: Math_): number[] {
   const cached = checkDayCache.get(math);
   if (cached) return cached;
   const days = new Set<number>([PROBE_DAY]);
-  const next = random(7);
+  const next = random(RANDOM_SEED);
   const [from, to] =
     math.kind === "table"
       ? [math.starts[0]!, math.starts.at(-1)! - 1]
-      : [day(-5000, 1, 1), LAST_DAY];
-  for (let n = 0; n < 40; n++)
+      : [day(SCAN_FROM, 1, 1), LAST_DAY];
+  for (let n = 0; n < RANDOM_CHECK_DAYS; n++)
     days.add(from + Math.floor(next() * (to - from)));
   days.add(from).add(to);
   if (math.kind === "proleptic") {
@@ -581,17 +680,14 @@ function checkDays(math: Math_): number[] {
         days
           .add(era.start)
           .add(era.start - 1)
-          .add(era.start + 40);
+          .add(era.start + DAYS_INTO_ERA[0]!);
     days
-      .add(day(-5000, 6, 1))
-      .add(day(-1, 6, 1))
+      .add(day(SCAN_FROM, ...MID_YEAR))
+      .add(day(-1, ...MID_YEAR))
       .add(FIRST_DAY);
   } else {
     for (const d of math.eraDays)
-      days
-        .add(d)
-        .add(d + 100)
-        .add(d + 400);
+      for (const into of [0, ...DAYS_INTO_ERA.slice(1)]) days.add(d + into);
     for (const list of occurrences(math).months)
       days.add(nearest(list, PROBE_DAY));
     for (const list of occurrences(math).cycles)
@@ -602,11 +698,16 @@ function checkDays(math: Math_): number[] {
   let negatives = 0;
   for (const d of sampleDays(math)) {
     const year = calendarDate(math, d)?.year;
-    if (year === 1 && firsts++ < 12) days.add(d);
-    if (year !== undefined && year < 0 && negatives++ < 3) days.add(d);
+    if (year === 1 && firsts++ < FIRST_YEAR_CHECK_DAYS) days.add(d);
+    if (
+      year !== undefined &&
+      year < 0 &&
+      negatives++ < NEGATIVE_YEAR_CHECK_DAYS
+    )
+      days.add(d);
   }
   const result = [...days].filter(
-    (d) => d >= day(-5000, 1, 1) && calendarDate(math, d) !== undefined,
+    (d) => d >= day(SCAN_FROM, 1, 1) && calendarDate(math, d) !== undefined,
   );
   checkDayCache.set(math, result);
   return result;
@@ -616,9 +717,9 @@ function moment(
   math: Math_,
   epochDay: number,
   offsetMinutes: number,
-  hour = 9,
-  minute = 7,
-  second = 4,
+  hour = PROBE_TIME[0],
+  minute = PROBE_TIME[1],
+  second = PROBE_TIME[2],
 ): Moment {
   return {
     epochDay,
@@ -628,18 +729,11 @@ function moment(
     second,
     offsetMinutes,
     unixSeconds:
-      epochDay * 86400 +
-      (hour * 60 + minute) * 60 +
+      epochDay * SECONDS_PER_DAY +
+      (hour * MINUTES_PER_HOUR + minute) * SECONDS_PER_MINUTE +
       second -
-      offsetMinutes * 60,
+      offsetMinutes * SECONDS_PER_MINUTE,
   };
-}
-
-function offsetString(minutes: number): string {
-  const sign = minutes < 0 ? "-" : "+";
-  const abs = Math.abs(minutes);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }
 
 function icu(
@@ -651,7 +745,7 @@ function icu(
   return formatter(tag, calendar, {
     ...options,
     timeZone: offsetString(m.offsetMinutes),
-  }).format(m.unixSeconds * 1000);
+  }).format(m.unixSeconds * MS_PER_SECOND);
 }
 
 export function formats(
@@ -739,15 +833,19 @@ export function formats(
   }
 
   // Times, with offsets, at midnight and noon, and before 1970.
+  const [lastHour, lastMinute, lastSecond] = [
+    HOURS_PER_DAY - 1,
+    MINUTES_PER_HOUR - 1,
+    SECONDS_PER_MINUTE - 1,
+  ];
   const timeMoments = [
     moment(math, PROBE_DAY, 0),
-    moment(math, PROBE_DAY, 707),
-    moment(math, PROBE_DAY, -210),
-    moment(math, PROBE_DAY, 60, 0, 0, 0),
-    moment(math, PROBE_DAY, 60, 12, 0, 0),
-    moment(math, PROBE_DAY, 0, 23, 59, 59),
+    ...CHECK_OFFSETS.map((offset) => moment(math, PROBE_DAY, offset)),
+    moment(math, PROBE_DAY, CHECK_OFFSETS[2]!, 0, 0, 0),
+    moment(math, PROBE_DAY, CHECK_OFFSETS[2]!, HOURS_PER_HALF_DAY, 0, 0),
+    moment(math, PROBE_DAY, 0, lastHour, lastMinute, lastSecond),
   ];
-  const before1970 = day(1960, 6, 1);
+  const before1970 = day(BEFORE_1970, ...MID_YEAR);
   if (calendarDate(math, before1970))
     timeMoments.push(moment(math, before1970, 0));
   STYLES.forEach((timeStyle, s) => {
@@ -763,7 +861,7 @@ export function formats(
     f.combined?.[ds * STYLES.length + ts] ??
     join(f.dates[ds]!, result.glues[ds]!, result.times[ts]!);
   const combinedMismatch = (f: EraFormats, d: number) => {
-    const m = moment(math, d, 330);
+    const m = moment(math, d, DATE_AND_TIME_OFFSET);
     for (const [ds, dateStyle] of STYLES.entries())
       for (const [ts, timeStyle] of STYLES.entries()) {
         const ours = render(combinedFor(f, ds, ts), digits, m);

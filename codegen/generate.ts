@@ -11,16 +11,17 @@ import { $ } from "bun";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
-import cldr from "cldr-core/availableLocales.json" with { type: "json" };
 import {
   CALENDARS,
   type CalendarId,
+  FIRST_DAY,
   type Math_,
   calendarMath,
   checkEveryDay,
 } from "./calendars.ts";
 import * as erlang from "./erlang.ts";
 import { calendarFixtures, fixtures } from "./fixtures.ts";
+import { LOCALES } from "./locales.ts";
 import {
   type Formats,
   defaultCalendar,
@@ -31,28 +32,6 @@ import {
 const ROOT = join(import.meta.dir, "..");
 const CACHE = join(import.meta.dir, ".cache");
 const RUNTIME = `Bun ${Bun.version}, ICU ${process.versions.icu}`;
-
-const RESERVED = new Set(
-  "as assert auto case const delegate derive echo else fn if implement import let macro opaque panic pub test todo type use".split(
-    " ",
-  ),
-);
-
-function moduleName(tag: string): string {
-  const name = tag.toLowerCase().replaceAll("-", "_");
-  return RESERVED.has(name) ? name + "_" : name;
-}
-
-// JavaScript can't list the locales it has, so we ask it about each of
-// CLDR's. Those it has no data for fall back to another language, which we
-// can't tell apart from a real locale, so they are left out.
-export const LOCALES = cldr.availableLocales.full
-  .filter((tag) => tag !== "und")
-  .filter((tag) => {
-    const resolved = new Intl.DateTimeFormat(tag).resolvedOptions().locale;
-    return resolved.split("-")[0] === tag.split("-")[0];
-  })
-  .map((tag): [string, string] => [moduleName(tag), tag]);
 
 // Every calendar ICU has must be one glintl knows, or the Gleam `Calendar`
 // type is out of date.
@@ -138,11 +117,17 @@ if (mathExits.some((code) => code !== 0)) throw new Error("A calendar failed");
 // formatters load nothing extra. It must still match ICU.
 const gregorianMath = mathFor("gregory");
 const gregorian = JSON.stringify(
-  gregorianMath.kind === "proleptic" && gregorianMath.eras,
+  gregorianMath.kind === "proleptic" && [
+    gregorianMath.eras,
+    gregorianMath.julianBefore,
+  ],
 );
 const expected = JSON.stringify([
-  { start: -719162, era: 0, base: 0, sign: 1 },
-  { start: -Infinity, era: 1, base: 1, sign: -1 },
+  [
+    { start: FIRST_DAY, era: 0, base: 0, sign: 1 },
+    { start: -Infinity, era: 1, base: 1, sign: -1 },
+  ],
+  -Infinity,
 ]);
 if (gregorian !== expected)
   throw new Error(
@@ -192,10 +177,11 @@ for (const [name, tag] of LOCALES) {
   );
   const others = new erlang.Writer();
   const othersBody = others.body(
-    `{calendars, [\n    ${data.formats
+    // A record with a field for each calendar but Gregorian, in order.
+    `{calendars,\n    ${data.formats
       .slice(1)
       .map((f) => others.formats(f))
-      .join(",\n    ")}\n    ]}`,
+      .join(",\n    ")}}`,
   );
   const baseShared = bases.get(baseBody) ?? { name, tags: [] };
   bases.set(baseBody, baseShared);
@@ -318,11 +304,11 @@ function gleamLocalesModule(): string {
 //// This module refers to every locale, which has a cost:
 ////
 //// - On JavaScript, bundlers can't leave out the locales you don't use, so
-////   your bundle grows by about 14 KB gzipped. It's not more because each
+////   your bundle grows by about 13 KB gzipped. It's not more because each
 ////   locale is just its tag: the formats come from the runtime's \`Intl\`.
-//// - On Erlang, \`from_tag\` loads this module and the data for the one
-////   locale it finds, about 0.7 MB. \`all\` loads every locale's data, about
-////   8 MB more.
+//// - On Erlang, \`from_tag\` loads this module and the data for the locale it
+////   finds, about 0.5 MB. \`all\` loads every locale's data, about 11 MB: see
+////   its documentation before using it.
 ////
 //// If you know which locales you need, import them from \`glintl/locale/\`
 //// instead.
@@ -334,7 +320,26 @@ import gleam/string
 import glintl.{type Locale}
 ${imports}
 
-/// Every locale glintl has. On Erlang this loads all their data.
+/// Every locale glintl has.
+///
+/// On JavaScript this is cheap, as each locale is just its tag.
+///
+/// On Erlang it's expensive:
+///
+/// - It loads every locale's data: about 350 modules and 11 MB of memory.
+///   The BEAM doesn't unload modules by itself, so that memory stays in use
+///   until the app stops.
+/// - The first call takes about 0.3 seconds while the modules load. In a
+///   request handler, that's one very slow request.
+/// - Each call builds a new list of every locale, so searching it on every
+///   request allocates every time.
+///
+/// To find one locale, use \`from_tag\`, which only loads that locale's data.
+/// Use \`all\` when you really need every locale, such as in a test that
+/// checks them all.
+///
+/// Other calendars' data is only loaded when a formatter uses it, so \`all\`
+/// doesn't load it.
 pub fn all() -> List(Locale) {
   [${list}]
 }
@@ -391,7 +396,9 @@ await write(
   calendarFixtures(mathFor, RUNTIME),
 );
 rmSync(CACHE, { recursive: true, force: true });
-await $`gleam format src test`.cwd(ROOT);
+// Gleam isn't in the Bun Docker image, so formatting can be left for later.
+if (Bun.which("gleam")) await $`gleam format src test`.cwd(ROOT);
+else console.log("Gleam isn't installed: run `gleam format src test` next.");
 console.log(
   `Generated ${LOCALES.length} locales (${bases.size} Gregorian and ${calendarSets.size} calendar data modules) with ${RUNTIME}.`,
 );

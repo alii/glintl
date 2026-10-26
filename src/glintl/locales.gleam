@@ -4,11 +4,11 @@
 //// This module refers to every locale, which has a cost:
 ////
 //// - On JavaScript, bundlers can't leave out the locales you don't use, so
-////   your bundle grows by about 14 KB gzipped. It's not more because each
+////   your bundle grows by about 13 KB gzipped. It's not more because each
 ////   locale is just its tag: the formats come from the runtime's `Intl`.
-//// - On Erlang, `from_tag` loads this module and the data for the one
-////   locale it finds, about 0.7 MB. `all` loads every locale's data, about
-////   8 MB more.
+//// - On Erlang, `from_tag` loads this module and the data for the locale it
+////   finds, about 0.5 MB. `all` loads every locale's data, about 11 MB: see
+////   its documentation before using it.
 ////
 //// If you know which locales you need, import them from `glintl/locale/`
 //// instead.
@@ -51,7 +51,6 @@ import glintl/locale/ar_sy
 import glintl/locale/ar_td
 import glintl/locale/ar_tn
 import glintl/locale/ar_ye
-import glintl/locale/arn
 import glintl/locale/as_
 import glintl/locale/asa
 import glintl/locale/ast
@@ -83,7 +82,6 @@ import glintl/locale/bs
 import glintl/locale/bs_cyrl
 import glintl/locale/bs_latn
 import glintl/locale/bua
-import glintl/locale/byn
 import glintl/locale/ca
 import glintl/locale/ca_ad
 import glintl/locale/ca_es_valencia
@@ -94,12 +92,9 @@ import glintl/locale/ccp_in
 import glintl/locale/ce
 import glintl/locale/ceb
 import glintl/locale/cgg
-import glintl/locale/cho
 import glintl/locale/chr
-import glintl/locale/cic
 import glintl/locale/ckb
 import glintl/locale/ckb_ir
-import glintl/locale/co
 import glintl/locale/cs
 import glintl/locale/csw
 import glintl/locale/cv
@@ -118,7 +113,6 @@ import glintl/locale/dje
 import glintl/locale/doi
 import glintl/locale/dsb
 import glintl/locale/dua
-import glintl/locale/dv
 import glintl/locale/dyo
 import glintl/locale/dz
 import glintl/locale/ebu
@@ -369,7 +363,6 @@ import glintl/locale/ga_gb
 import glintl/locale/gaa
 import glintl/locale/gd
 import glintl/locale/gl
-import glintl/locale/gn
 import glintl/locale/gsw
 import glintl/locale/gsw_fr
 import glintl/locale/gsw_li
@@ -388,7 +381,6 @@ import glintl/locale/hi_latn
 import glintl/locale/hr
 import glintl/locale/hr_ba
 import glintl/locale/hsb
-import glintl/locale/ht
 import glintl/locale/hu
 import glintl/locale/hy
 import glintl/locale/ia
@@ -396,24 +388,18 @@ import glintl/locale/id
 import glintl/locale/ie
 import glintl/locale/ig
 import glintl/locale/ii
-import glintl/locale/io
 import glintl/locale/is
 import glintl/locale/it
 import glintl/locale/it_ch
 import glintl/locale/it_sm
 import glintl/locale/it_va
-import glintl/locale/iu
-import glintl/locale/iu_latn
 import glintl/locale/ja
-import glintl/locale/jbo
 import glintl/locale/jgo
 import glintl/locale/jmc
 import glintl/locale/jv
 import glintl/locale/ka
 import glintl/locale/kab
-import glintl/locale/kaj
 import glintl/locale/kam
-import glintl/locale/kcg
 import glintl/locale/kde
 import glintl/locale/kea
 import glintl/locale/kgp
@@ -434,8 +420,6 @@ import glintl/locale/ko_kp
 import glintl/locale/kok
 import glintl/locale/kok_deva
 import glintl/locale/kok_latn
-import glintl/locale/kpe
-import glintl/locale/kpe_gn
 import glintl/locale/ks
 import glintl/locale/ks_arab
 import glintl/locale/ks_deva
@@ -483,7 +467,6 @@ import glintl/locale/mg
 import glintl/locale/mgh
 import glintl/locale/mgo
 import glintl/locale/mi
-import glintl/locale/mic
 import glintl/locale/mk
 import glintl/locale/ml
 import glintl/locale/mn
@@ -492,7 +475,6 @@ import glintl/locale/mn_mong_mn
 import glintl/locale/mni
 import glintl/locale/mni_beng
 import glintl/locale/mni_mtei
-import glintl/locale/moh
 import glintl/locale/mr
 import glintl/locale/ms
 import glintl/locale/ms_arab
@@ -502,9 +484,7 @@ import glintl/locale/ms_id
 import glintl/locale/ms_sg
 import glintl/locale/mt
 import glintl/locale/mua
-import glintl/locale/mus
 import glintl/locale/my
-import glintl/locale/myv
 import glintl/locale/mzn
 import glintl/locale/naq
 import glintl/locale/nb
@@ -526,11 +506,8 @@ import glintl/locale/nn
 import glintl/locale/nnh
 import glintl/locale/no
 import glintl/locale/nqo
-import glintl/locale/nr
 import glintl/locale/nso
 import glintl/locale/nus
-import glintl/locale/nv
-import glintl/locale/ny
 import glintl/locale/nyn
 import glintl/locale/oc
 import glintl/locale/oc_es
@@ -539,7 +516,6 @@ import glintl/locale/om_ke
 import glintl/locale/or
 import glintl/locale/os
 import glintl/locale/os_ru
-import glintl/locale/osa
 import glintl/locale/pa
 import glintl/locale/pa_arab
 import glintl/locale/pa_guru
@@ -565,9 +541,6 @@ import glintl/locale/qu
 import glintl/locale/qu_bo
 import glintl/locale/qu_ec
 import glintl/locale/raj
-import glintl/locale/rhg
-import glintl/locale/rhg_rohg
-import glintl/locale/rhg_rohg_bd
 import glintl/locale/rm
 import glintl/locale/rn
 import glintl/locale/ro
@@ -625,8 +598,6 @@ import glintl/locale/sr_latn
 import glintl/locale/sr_latn_ba
 import glintl/locale/sr_latn_me
 import glintl/locale/sr_latn_xk
-import glintl/locale/ss
-import glintl/locale/ss_sz
 import glintl/locale/st
 import glintl/locale/st_ls
 import glintl/locale/su
@@ -652,7 +623,6 @@ import glintl/locale/tg
 import glintl/locale/th
 import glintl/locale/ti
 import glintl/locale/ti_er
-import glintl/locale/tig
 import glintl/locale/tk
 import glintl/locale/tn
 import glintl/locale/tn_bw
@@ -660,8 +630,6 @@ import glintl/locale/to
 import glintl/locale/tok
 import glintl/locale/tr
 import glintl/locale/tr_cy
-import glintl/locale/trv
-import glintl/locale/ts
 import glintl/locale/tt
 import glintl/locale/twq
 import glintl/locale/tyv
@@ -677,14 +645,11 @@ import glintl/locale/uz_latn
 import glintl/locale/vai
 import glintl/locale/vai_latn
 import glintl/locale/vai_vaii
-import glintl/locale/ve
 import glintl/locale/vec
 import glintl/locale/vi
 import glintl/locale/vmw
 import glintl/locale/vun
-import glintl/locale/wa
 import glintl/locale/wae
-import glintl/locale/wal
 import glintl/locale/wo
 import glintl/locale/xh
 import glintl/locale/xnr
@@ -716,7 +681,26 @@ import glintl/locale/zh_hant_my
 import glintl/locale/zh_latn
 import glintl/locale/zu
 
-/// Every locale glintl has. On Erlang this loads all their data.
+/// Every locale glintl has.
+///
+/// On JavaScript this is cheap, as each locale is just its tag.
+///
+/// On Erlang it's expensive:
+///
+/// - It loads every locale's data: about 350 modules and 11 MB of memory.
+///   The BEAM doesn't unload modules by itself, so that memory stays in use
+///   until the app stops.
+/// - The first call takes about 0.3 seconds while the modules load. In a
+///   request handler, that's one very slow request.
+/// - Each call builds a new list of every locale, so searching it on every
+///   request allocates every time.
+///
+/// To find one locale, use `from_tag`, which only loads that locale's data.
+/// Use `all` when you really need every locale, such as in a test that
+/// checks them all.
+///
+/// Other calendars' data is only loaded when a formatter uses it, so `all`
+/// doesn't load it.
 pub fn all() -> List(Locale) {
   [
     af.locale(),
@@ -752,7 +736,6 @@ pub fn all() -> List(Locale) {
     ar_td.locale(),
     ar_tn.locale(),
     ar_ye.locale(),
-    arn.locale(),
     as_.locale(),
     asa.locale(),
     ast.locale(),
@@ -784,7 +767,6 @@ pub fn all() -> List(Locale) {
     bs_cyrl.locale(),
     bs_latn.locale(),
     bua.locale(),
-    byn.locale(),
     ca.locale(),
     ca_ad.locale(),
     ca_es_valencia.locale(),
@@ -795,12 +777,9 @@ pub fn all() -> List(Locale) {
     ce.locale(),
     ceb.locale(),
     cgg.locale(),
-    cho.locale(),
     chr.locale(),
-    cic.locale(),
     ckb.locale(),
     ckb_ir.locale(),
-    co.locale(),
     cs.locale(),
     csw.locale(),
     cv.locale(),
@@ -819,7 +798,6 @@ pub fn all() -> List(Locale) {
     doi.locale(),
     dsb.locale(),
     dua.locale(),
-    dv.locale(),
     dyo.locale(),
     dz.locale(),
     ebu.locale(),
@@ -1070,7 +1048,6 @@ pub fn all() -> List(Locale) {
     gaa.locale(),
     gd.locale(),
     gl.locale(),
-    gn.locale(),
     gsw.locale(),
     gsw_fr.locale(),
     gsw_li.locale(),
@@ -1089,7 +1066,6 @@ pub fn all() -> List(Locale) {
     hr.locale(),
     hr_ba.locale(),
     hsb.locale(),
-    ht.locale(),
     hu.locale(),
     hy.locale(),
     ia.locale(),
@@ -1097,24 +1073,18 @@ pub fn all() -> List(Locale) {
     ie.locale(),
     ig.locale(),
     ii.locale(),
-    io.locale(),
     is.locale(),
     it.locale(),
     it_ch.locale(),
     it_sm.locale(),
     it_va.locale(),
-    iu.locale(),
-    iu_latn.locale(),
     ja.locale(),
-    jbo.locale(),
     jgo.locale(),
     jmc.locale(),
     jv.locale(),
     ka.locale(),
     kab.locale(),
-    kaj.locale(),
     kam.locale(),
-    kcg.locale(),
     kde.locale(),
     kea.locale(),
     kgp.locale(),
@@ -1135,8 +1105,6 @@ pub fn all() -> List(Locale) {
     kok.locale(),
     kok_deva.locale(),
     kok_latn.locale(),
-    kpe.locale(),
-    kpe_gn.locale(),
     ks.locale(),
     ks_arab.locale(),
     ks_deva.locale(),
@@ -1184,7 +1152,6 @@ pub fn all() -> List(Locale) {
     mgh.locale(),
     mgo.locale(),
     mi.locale(),
-    mic.locale(),
     mk.locale(),
     ml.locale(),
     mn.locale(),
@@ -1193,7 +1160,6 @@ pub fn all() -> List(Locale) {
     mni.locale(),
     mni_beng.locale(),
     mni_mtei.locale(),
-    moh.locale(),
     mr.locale(),
     ms.locale(),
     ms_arab.locale(),
@@ -1203,9 +1169,7 @@ pub fn all() -> List(Locale) {
     ms_sg.locale(),
     mt.locale(),
     mua.locale(),
-    mus.locale(),
     my.locale(),
-    myv.locale(),
     mzn.locale(),
     naq.locale(),
     nb.locale(),
@@ -1227,11 +1191,8 @@ pub fn all() -> List(Locale) {
     nnh.locale(),
     no.locale(),
     nqo.locale(),
-    nr.locale(),
     nso.locale(),
     nus.locale(),
-    nv.locale(),
-    ny.locale(),
     nyn.locale(),
     oc.locale(),
     oc_es.locale(),
@@ -1240,7 +1201,6 @@ pub fn all() -> List(Locale) {
     or.locale(),
     os.locale(),
     os_ru.locale(),
-    osa.locale(),
     pa.locale(),
     pa_arab.locale(),
     pa_guru.locale(),
@@ -1266,9 +1226,6 @@ pub fn all() -> List(Locale) {
     qu_bo.locale(),
     qu_ec.locale(),
     raj.locale(),
-    rhg.locale(),
-    rhg_rohg.locale(),
-    rhg_rohg_bd.locale(),
     rm.locale(),
     rn.locale(),
     ro.locale(),
@@ -1326,8 +1283,6 @@ pub fn all() -> List(Locale) {
     sr_latn_ba.locale(),
     sr_latn_me.locale(),
     sr_latn_xk.locale(),
-    ss.locale(),
-    ss_sz.locale(),
     st.locale(),
     st_ls.locale(),
     su.locale(),
@@ -1353,7 +1308,6 @@ pub fn all() -> List(Locale) {
     th.locale(),
     ti.locale(),
     ti_er.locale(),
-    tig.locale(),
     tk.locale(),
     tn.locale(),
     tn_bw.locale(),
@@ -1361,8 +1315,6 @@ pub fn all() -> List(Locale) {
     tok.locale(),
     tr.locale(),
     tr_cy.locale(),
-    trv.locale(),
-    ts.locale(),
     tt.locale(),
     twq.locale(),
     tyv.locale(),
@@ -1378,14 +1330,11 @@ pub fn all() -> List(Locale) {
     vai.locale(),
     vai_latn.locale(),
     vai_vaii.locale(),
-    ve.locale(),
     vec.locale(),
     vi.locale(),
     vmw.locale(),
     vun.locale(),
-    wa.locale(),
     wae.locale(),
-    wal.locale(),
     wo.locale(),
     xh.locale(),
     xnr.locale(),
@@ -1481,7 +1430,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "ar-td" -> Ok(ar_td.locale())
     "ar-tn" -> Ok(ar_tn.locale())
     "ar-ye" -> Ok(ar_ye.locale())
-    "arn" -> Ok(arn.locale())
     "as" -> Ok(as_.locale())
     "asa" -> Ok(asa.locale())
     "ast" -> Ok(ast.locale())
@@ -1513,7 +1461,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "bs-cyrl" -> Ok(bs_cyrl.locale())
     "bs-latn" -> Ok(bs_latn.locale())
     "bua" -> Ok(bua.locale())
-    "byn" -> Ok(byn.locale())
     "ca" -> Ok(ca.locale())
     "ca-ad" -> Ok(ca_ad.locale())
     "ca-es-valencia" -> Ok(ca_es_valencia.locale())
@@ -1524,12 +1471,9 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "ce" -> Ok(ce.locale())
     "ceb" -> Ok(ceb.locale())
     "cgg" -> Ok(cgg.locale())
-    "cho" -> Ok(cho.locale())
     "chr" -> Ok(chr.locale())
-    "cic" -> Ok(cic.locale())
     "ckb" -> Ok(ckb.locale())
     "ckb-ir" -> Ok(ckb_ir.locale())
-    "co" -> Ok(co.locale())
     "cs" -> Ok(cs.locale())
     "csw" -> Ok(csw.locale())
     "cv" -> Ok(cv.locale())
@@ -1548,7 +1492,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "doi" -> Ok(doi.locale())
     "dsb" -> Ok(dsb.locale())
     "dua" -> Ok(dua.locale())
-    "dv" -> Ok(dv.locale())
     "dyo" -> Ok(dyo.locale())
     "dz" -> Ok(dz.locale())
     "ebu" -> Ok(ebu.locale())
@@ -1799,7 +1742,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "gaa" -> Ok(gaa.locale())
     "gd" -> Ok(gd.locale())
     "gl" -> Ok(gl.locale())
-    "gn" -> Ok(gn.locale())
     "gsw" -> Ok(gsw.locale())
     "gsw-fr" -> Ok(gsw_fr.locale())
     "gsw-li" -> Ok(gsw_li.locale())
@@ -1818,7 +1760,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "hr" -> Ok(hr.locale())
     "hr-ba" -> Ok(hr_ba.locale())
     "hsb" -> Ok(hsb.locale())
-    "ht" -> Ok(ht.locale())
     "hu" -> Ok(hu.locale())
     "hy" -> Ok(hy.locale())
     "ia" -> Ok(ia.locale())
@@ -1826,24 +1767,18 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "ie" -> Ok(ie.locale())
     "ig" -> Ok(ig.locale())
     "ii" -> Ok(ii.locale())
-    "io" -> Ok(io.locale())
     "is" -> Ok(is.locale())
     "it" -> Ok(it.locale())
     "it-ch" -> Ok(it_ch.locale())
     "it-sm" -> Ok(it_sm.locale())
     "it-va" -> Ok(it_va.locale())
-    "iu" -> Ok(iu.locale())
-    "iu-latn" -> Ok(iu_latn.locale())
     "ja" -> Ok(ja.locale())
-    "jbo" -> Ok(jbo.locale())
     "jgo" -> Ok(jgo.locale())
     "jmc" -> Ok(jmc.locale())
     "jv" -> Ok(jv.locale())
     "ka" -> Ok(ka.locale())
     "kab" -> Ok(kab.locale())
-    "kaj" -> Ok(kaj.locale())
     "kam" -> Ok(kam.locale())
-    "kcg" -> Ok(kcg.locale())
     "kde" -> Ok(kde.locale())
     "kea" -> Ok(kea.locale())
     "kgp" -> Ok(kgp.locale())
@@ -1864,8 +1799,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "kok" -> Ok(kok.locale())
     "kok-deva" -> Ok(kok_deva.locale())
     "kok-latn" -> Ok(kok_latn.locale())
-    "kpe" -> Ok(kpe.locale())
-    "kpe-gn" -> Ok(kpe_gn.locale())
     "ks" -> Ok(ks.locale())
     "ks-arab" -> Ok(ks_arab.locale())
     "ks-deva" -> Ok(ks_deva.locale())
@@ -1913,7 +1846,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "mgh" -> Ok(mgh.locale())
     "mgo" -> Ok(mgo.locale())
     "mi" -> Ok(mi.locale())
-    "mic" -> Ok(mic.locale())
     "mk" -> Ok(mk.locale())
     "ml" -> Ok(ml.locale())
     "mn" -> Ok(mn.locale())
@@ -1922,7 +1854,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "mni" -> Ok(mni.locale())
     "mni-beng" -> Ok(mni_beng.locale())
     "mni-mtei" -> Ok(mni_mtei.locale())
-    "moh" -> Ok(moh.locale())
     "mr" -> Ok(mr.locale())
     "ms" -> Ok(ms.locale())
     "ms-arab" -> Ok(ms_arab.locale())
@@ -1932,9 +1863,7 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "ms-sg" -> Ok(ms_sg.locale())
     "mt" -> Ok(mt.locale())
     "mua" -> Ok(mua.locale())
-    "mus" -> Ok(mus.locale())
     "my" -> Ok(my.locale())
-    "myv" -> Ok(myv.locale())
     "mzn" -> Ok(mzn.locale())
     "naq" -> Ok(naq.locale())
     "nb" -> Ok(nb.locale())
@@ -1956,11 +1885,8 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "nnh" -> Ok(nnh.locale())
     "no" -> Ok(no.locale())
     "nqo" -> Ok(nqo.locale())
-    "nr" -> Ok(nr.locale())
     "nso" -> Ok(nso.locale())
     "nus" -> Ok(nus.locale())
-    "nv" -> Ok(nv.locale())
-    "ny" -> Ok(ny.locale())
     "nyn" -> Ok(nyn.locale())
     "oc" -> Ok(oc.locale())
     "oc-es" -> Ok(oc_es.locale())
@@ -1969,7 +1895,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "or" -> Ok(or.locale())
     "os" -> Ok(os.locale())
     "os-ru" -> Ok(os_ru.locale())
-    "osa" -> Ok(osa.locale())
     "pa" -> Ok(pa.locale())
     "pa-arab" -> Ok(pa_arab.locale())
     "pa-guru" -> Ok(pa_guru.locale())
@@ -1995,9 +1920,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "qu-bo" -> Ok(qu_bo.locale())
     "qu-ec" -> Ok(qu_ec.locale())
     "raj" -> Ok(raj.locale())
-    "rhg" -> Ok(rhg.locale())
-    "rhg-rohg" -> Ok(rhg_rohg.locale())
-    "rhg-rohg-bd" -> Ok(rhg_rohg_bd.locale())
     "rm" -> Ok(rm.locale())
     "rn" -> Ok(rn.locale())
     "ro" -> Ok(ro.locale())
@@ -2055,8 +1977,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "sr-latn-ba" -> Ok(sr_latn_ba.locale())
     "sr-latn-me" -> Ok(sr_latn_me.locale())
     "sr-latn-xk" -> Ok(sr_latn_xk.locale())
-    "ss" -> Ok(ss.locale())
-    "ss-sz" -> Ok(ss_sz.locale())
     "st" -> Ok(st.locale())
     "st-ls" -> Ok(st_ls.locale())
     "su" -> Ok(su.locale())
@@ -2082,7 +2002,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "th" -> Ok(th.locale())
     "ti" -> Ok(ti.locale())
     "ti-er" -> Ok(ti_er.locale())
-    "tig" -> Ok(tig.locale())
     "tk" -> Ok(tk.locale())
     "tn" -> Ok(tn.locale())
     "tn-bw" -> Ok(tn_bw.locale())
@@ -2090,8 +2009,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "tok" -> Ok(tok.locale())
     "tr" -> Ok(tr.locale())
     "tr-cy" -> Ok(tr_cy.locale())
-    "trv" -> Ok(trv.locale())
-    "ts" -> Ok(ts.locale())
     "tt" -> Ok(tt.locale())
     "twq" -> Ok(twq.locale())
     "tyv" -> Ok(tyv.locale())
@@ -2107,14 +2024,11 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "vai" -> Ok(vai.locale())
     "vai-latn" -> Ok(vai_latn.locale())
     "vai-vaii" -> Ok(vai_vaii.locale())
-    "ve" -> Ok(ve.locale())
     "vec" -> Ok(vec.locale())
     "vi" -> Ok(vi.locale())
     "vmw" -> Ok(vmw.locale())
     "vun" -> Ok(vun.locale())
-    "wa" -> Ok(wa.locale())
     "wae" -> Ok(wae.locale())
-    "wal" -> Ok(wal.locale())
     "wo" -> Ok(wo.locale())
     "xh" -> Ok(xh.locale())
     "xnr" -> Ok(xnr.locale())
@@ -2149,7 +2063,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "agq-cm" -> Ok(agq.locale())
     "ak-gh" -> Ok(ak.locale())
     "am-et" -> Ok(am.locale())
-    "arn-cl" -> Ok(arn.locale())
     "as-in" -> Ok(as_.locale())
     "asa-tz" -> Ok(asa.locale())
     "ast-es" -> Ok(ast.locale())
@@ -2172,17 +2085,13 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "brx-in" -> Ok(brx.locale())
     "bs-ba" -> Ok(bs.locale())
     "bua-ru" -> Ok(bua.locale())
-    "byn-er" -> Ok(byn.locale())
     "ca-es" -> Ok(ca.locale())
     "ccp-bd" -> Ok(ccp.locale())
     "ce-ru" -> Ok(ce.locale())
     "ceb-ph" -> Ok(ceb.locale())
     "cgg-ug" -> Ok(cgg.locale())
-    "cho-us" -> Ok(cho.locale())
     "chr-us" -> Ok(chr.locale())
-    "cic-us" -> Ok(cic.locale())
     "ckb-iq" -> Ok(ckb.locale())
-    "co-fr" -> Ok(co.locale())
     "cs-cz" -> Ok(cs.locale())
     "csw-ca" -> Ok(csw.locale())
     "cv-ru" -> Ok(cv.locale())
@@ -2194,7 +2103,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "doi-in" -> Ok(doi.locale())
     "dsb-de" -> Ok(dsb.locale())
     "dua-cm" -> Ok(dua.locale())
-    "dv-mv" -> Ok(dv.locale())
     "dyo-sn" -> Ok(dyo.locale())
     "dz-bt" -> Ok(dz.locale())
     "ebu-ke" -> Ok(ebu.locale())
@@ -2229,7 +2137,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "gaa-gh" -> Ok(gaa.locale())
     "gd-gb" -> Ok(gd.locale())
     "gl-es" -> Ok(gl.locale())
-    "gn-py" -> Ok(gn.locale())
     "gsw-ch" -> Ok(gsw.locale())
     "gu-in" -> Ok(gu.locale())
     "guz-ke" -> Ok(guz.locale())
@@ -2241,7 +2148,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "hi-in" -> Ok(hi.locale())
     "hr-hr" -> Ok(hr.locale())
     "hsb-de" -> Ok(hsb.locale())
-    "ht-ht" -> Ok(ht.locale())
     "hu-hu" -> Ok(hu.locale())
     "hy-am" -> Ok(hy.locale())
     "ia-001" -> Ok(ia.locale())
@@ -2249,20 +2155,15 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "ie-ee" -> Ok(ie.locale())
     "ig-ng" -> Ok(ig.locale())
     "ii-cn" -> Ok(ii.locale())
-    "io-001" -> Ok(io.locale())
     "is-is" -> Ok(is.locale())
     "it-it" -> Ok(it.locale())
-    "iu-ca" -> Ok(iu.locale())
     "ja-jp" -> Ok(ja.locale())
-    "jbo-001" -> Ok(jbo.locale())
     "jgo-cm" -> Ok(jgo.locale())
     "jmc-tz" -> Ok(jmc.locale())
     "jv-id" -> Ok(jv.locale())
     "ka-ge" -> Ok(ka.locale())
     "kab-dz" -> Ok(kab.locale())
-    "kaj-ng" -> Ok(kaj.locale())
     "kam-ke" -> Ok(kam.locale())
-    "kcg-ng" -> Ok(kcg.locale())
     "kde-tz" -> Ok(kde.locale())
     "kea-cv" -> Ok(kea.locale())
     "kgp-br" -> Ok(kgp.locale())
@@ -2276,7 +2177,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "kn-in" -> Ok(kn.locale())
     "ko-kr" -> Ok(ko.locale())
     "kok-in" -> Ok(kok.locale())
-    "kpe-lr" -> Ok(kpe.locale())
     "ks-in" -> Ok(ks.locale())
     "ksb-tz" -> Ok(ksb.locale())
     "ksf-cm" -> Ok(ksf.locale())
@@ -2309,20 +2209,16 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "mgh-mz" -> Ok(mgh.locale())
     "mgo-cm" -> Ok(mgo.locale())
     "mi-nz" -> Ok(mi.locale())
-    "mic-ca" -> Ok(mic.locale())
     "mk-mk" -> Ok(mk.locale())
     "ml-in" -> Ok(ml.locale())
     "mn-mn" -> Ok(mn.locale())
     "mn-cn" -> Ok(mn_mong.locale())
     "mni-in" -> Ok(mni.locale())
-    "moh-ca" -> Ok(moh.locale())
     "mr-in" -> Ok(mr.locale())
     "ms-my" -> Ok(ms.locale())
     "mt-mt" -> Ok(mt.locale())
     "mua-cm" -> Ok(mua.locale())
-    "mus-us" -> Ok(mus.locale())
     "my-mm" -> Ok(my.locale())
-    "myv-ru" -> Ok(myv.locale())
     "mzn-ir" -> Ok(mzn.locale())
     "naq-na" -> Ok(naq.locale())
     "nb-no" -> Ok(nb.locale())
@@ -2335,18 +2231,15 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "nnh-cm" -> Ok(nnh.locale())
     "no-no" -> Ok(no.locale())
     "nqo-gn" -> Ok(nqo.locale())
-    "nr-za" -> Ok(nr.locale())
     "nso-za" -> Ok(nso.locale())
     "nus-ss" -> Ok(nus.locale())
-    "nv-us" -> Ok(nv.locale())
-    "ny-mw" -> Ok(ny.locale())
     "nyn-ug" -> Ok(nyn.locale())
     "oc-fr" -> Ok(oc.locale())
     "om-et" -> Ok(om.locale())
     "or-in" -> Ok(or.locale())
     "os-ge" -> Ok(os.locale())
-    "osa-us" -> Ok(osa.locale())
     "pa-in" -> Ok(pa.locale())
+    "pa-pk" -> Ok(pa_arab.locale())
     "pcm-ng" -> Ok(pcm.locale())
     "pl-pl" -> Ok(pl.locale())
     "pms-it" -> Ok(pms.locale())
@@ -2355,8 +2248,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "pt-br" -> Ok(pt.locale())
     "qu-pe" -> Ok(qu.locale())
     "raj-in" -> Ok(raj.locale())
-    "rhg-mm" -> Ok(rhg.locale())
-    "rhg-bd" -> Ok(rhg_rohg_bd.locale())
     "rm-ch" -> Ok(rm.locale())
     "rn-bi" -> Ok(rn.locale())
     "ro-ro" -> Ok(ro.locale())
@@ -2390,7 +2281,6 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "sr-ba" -> Ok(sr_cyrl_ba.locale())
     "sr-xk" -> Ok(sr_cyrl_xk.locale())
     "sr-me" -> Ok(sr_latn_me.locale())
-    "ss-za" -> Ok(ss.locale())
     "st-za" -> Ok(st.locale())
     "su-id" -> Ok(su.locale())
     "sv-se" -> Ok(sv.locale())
@@ -2403,14 +2293,11 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "tg-tj" -> Ok(tg.locale())
     "th-th" -> Ok(th.locale())
     "ti-et" -> Ok(ti.locale())
-    "tig-er" -> Ok(tig.locale())
     "tk-tm" -> Ok(tk.locale())
     "tn-za" -> Ok(tn.locale())
     "to-to" -> Ok(to.locale())
     "tok-001" -> Ok(tok.locale())
     "tr-tr" -> Ok(tr.locale())
-    "trv-tw" -> Ok(trv.locale())
-    "ts-za" -> Ok(ts.locale())
     "tt-ru" -> Ok(tt.locale())
     "twq-ne" -> Ok(twq.locale())
     "tyv-ru" -> Ok(tyv.locale())
@@ -2421,14 +2308,11 @@ fn exact(tag: String) -> Result(Locale, Nil) {
     "uz-uz" -> Ok(uz.locale())
     "uz-af" -> Ok(uz_arab.locale())
     "vai-lr" -> Ok(vai.locale())
-    "ve-za" -> Ok(ve.locale())
     "vec-it" -> Ok(vec.locale())
     "vi-vn" -> Ok(vi.locale())
     "vmw-mz" -> Ok(vmw.locale())
     "vun-tz" -> Ok(vun.locale())
-    "wa-be" -> Ok(wa.locale())
     "wae-ch" -> Ok(wae.locale())
-    "wal-et" -> Ok(wal.locale())
     "wo-sn" -> Ok(wo.locale())
     "xh-za" -> Ok(xh.locale())
     "xnr-in" -> Ok(xnr.locale())

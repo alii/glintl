@@ -2,6 +2,8 @@
 
 Format dates and times in many languages, on Erlang and JavaScript.
 
+Every locale and calendar is loaded lazily, the first time you use it, so you only pay for the ones you need.
+
 ```sh
 gleam add glintl gleam_time
 ```
@@ -87,25 +89,34 @@ glintl copies ICU, mistakes included, so the output matches JavaScript. When the
 
 As a separate check of ICU itself, its dates were compared once with the algorithms from Reingold and Dershowitz's _Calendrical Calculations_ (4th edition), on every day from year 1 to 4000. Coptic, Ethiopic, Hebrew, Persian (the 33-year rule) and the tabular Islamic calendars match on every day. The Chinese and Dangi (Korean) calendars match on every day from 1900 to 2100 except these, where glintl follows ICU:
 
-| When | Calendar | ICU | The book |
-| --- | --- | --- | --- |
-| 1906, 1914, 1916, 1920 | Chinese | Starts some months a day earlier | Uses Beijing local time, as China did before 1929 |
-| 1904, 1905, 1908, 1911 | Dangi | Starts some months a day earlier | Uses the time zones Korea used then: Seoul local time until 1908, then UTC+8:30 |
-| August 2033 | Both | Puts the leap month elsewhere | The well-known "2033 problem" |
-| 28 September 2057, 7 August 2097 | Chinese | Calls the day "day 0" | Day 1 of the month |
-| 13 January 2097 | Dangi | Calls the day "day 0" | Day 1 of the month |
+| When                             | Calendar | ICU                              | The book                                                                        |
+| -------------------------------- | -------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| 1906, 1914, 1916, 1920           | Chinese  | Starts some months a day earlier | Uses Beijing local time, as China did before 1929                               |
+| 1904, 1905, 1908, 1911           | Dangi    | Starts some months a day earlier | Uses the time zones Korea used then: Seoul local time until 1908, then UTC+8:30 |
+| August 2033                      | Both     | Puts the leap month elsewhere    | The well-known "2033 problem"                                                   |
+| 28 September 2057, 7 August 2097 | Chinese  | Calls the day "day 0"            | Day 1 of the month                                                              |
+| 13 January 2097                  | Dangi    | Calls the day "day 0"            | Day 1 of the month                                                              |
 
 The Umm al-Qura calendar follows Saudi Arabia's official tables, so it isn't compared with the book's rule.
 
 ## How it works
 
-On Erlang, `codegen/generate.ts` writes ICU information to Erlang modules as literals, this lets BEAM share the ICU data between processes without ever copying or garbage collecting them. This saves memory usage and cpu time.
+On Erlang, the formats come from ICU when the package is generated, not when your app runs. `codegen/generate.ts` writes them to Erlang modules as literals: constant data that the BEAM keeps once and shares with every process, without copying it or garbage collecting it.
 
-On JavaScript, Glintl simply defers to `Intl.DateTimeFormat` via Gleam's FFI. Therefore no locale information from Glintl is included in a bundle.
+Each locale's data is its own module, and the BEAM loads a module the first time something calls it. So importing `glintl/locale/fr` costs nothing until `fr.locale()` runs, and a locale's data for calendars other than Gregorian is a separate module again, loaded only when you make a formatter for one of them. The same goes for each calendar's maths. A loaded module stays loaded until the app stops. Releases that load every module at boot, in Erlang's "embedded mode", lose the laziness and pay for every locale upfront.
+
+On JavaScript, glintl uses the runtime's `Intl.DateTimeFormat`, so a locale is just its tag and there is no locale data in your bundle. Locale modules you don't import are left out by bundlers, and the runtime loads its own locale data as it needs it.
 
 ## Differences between targets
 
-Output across the two targets can differ because Glintl on Erlang uses the ICU that glintl was generated while Glintl on JavaScript defers to the runtime. These differences usually manifest in small details like commas or spaces.
+Output across the two targets can differ because Glintl on Erlang uses the ICU that glintl was generated with, while Glintl on JavaScript defers to the runtime. glintl is generated with Bun on Linux, the version in `.bun-version`. Most differences are small details like commas or spaces, but runtimes package ICU differently, so some are bigger. For example:
+
+| Runtime                               | ICU  | Before 15 October 1582 in the Buddhist, Japanese and ROC calendars | ISO 8601 month names |
+| ------------------------------------- | ---- | ------------------------------------------------------------------ | -------------------- |
+| Bun 1.4.4 on Linux, which glintl uses | 78.3 | Julian dates                                                       | Missing              |
+| Node 26 on macOS                      | 78.3 | Julian dates                                                       | Missing              |
+| Node 26 on Linux                      | 78.3 | Julian dates                                                       | Present              |
+| Bun 1.4.4 canary on macOS             | 78.1 | Gregorian dates                                                    | Present              |
 
 ## Limits
 
@@ -128,16 +139,26 @@ bun fmt --cwd codegen
 bun lint --cwd codegen
 bun check --cwd codegen
 
-# Run the generator. It checks every calendar against ICU on every day, and
-# every locale's formats, so it takes about 10 minutes.
-bun codegen/generate.ts
-
 # Run Gleam tests
 gleam test --target erlang
 gleam test --target javascript
 
 # Measure how much formatting allocates, and how long it takes
 gleam run -m glintl_bench
+
+# Check glintl on Erlang against Intl.DateTimeFormat on random cases
+bun codegen/conformance.ts 1000000
 ```
+
+The generated data, the JavaScript tests and the conformance run all depend on Bun's ICU, which differs between Bun builds and systems. They must use the Bun in `.bun-version` on Linux, as CI does. On other systems, run them in Docker:
+
+```sh
+# Run the generator. It checks every calendar against ICU on every day, and
+# every locale's formats, so it takes about 10 minutes.
+docker run --rm -v "$PWD":/repo -w /repo oven/bun:$(cat .bun-version) bun codegen/generate.ts
+gleam format src test
+```
+
+CI runs all of these on every push to `master` and every pull request.
 
 Generated files are marked in `.gitattributes`, so git and GitHub leave them out of diffs.

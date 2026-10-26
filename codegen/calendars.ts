@@ -1,7 +1,60 @@
 // Works out how each calendar maps days to its own eras, years, months and
 // days, by asking ICU about every month from 0001 to 4000.
 
-export const DAY_MS = 86_400_000;
+import { DAYS_PER_WEEK, MS_PER_SECOND, SECONDS_PER_DAY } from "./time.ts";
+
+export const DAY_MS = SECONDS_PER_DAY * MS_PER_SECOND;
+
+// Noon, to read a day without being near either end of it.
+export const NOON_MS = DAY_MS / 2;
+
+export const MONTHS_PER_YEAR = 12;
+
+// The Chinese and Dangi calendars name years in a cycle of this many.
+export const YEARS_IN_CYCLE = 60;
+
+// The longest month in the lunar calendars, so day names cover days 1 to
+// this.
+export const LONGEST_LUNAR_MONTH = 30;
+
+// Table calendars cover whole years between these, and eras are looked for
+// from `SCAN_FROM`, assumed not to change before it.
+export const FIRST_YEAR = 1;
+export const LAST_YEAR = 4000;
+export const SCAN_FROM = -5000;
+
+// Era rules are also checked this far outside the years scanned.
+const CHECK_FROM_YEAR = -9000;
+const CHECK_TO_YEAR = 9999;
+
+// The era rules are checked on every this many days: a prime, so the days
+// drift through months and weekdays.
+const CHECK_EVERY = 997;
+
+// 1 July, far from both ends of a year.
+export const MID_YEAR: [number, number] = [7, 1];
+
+// Every month is at least this long, apart from the five or six extra days
+// at the end of the Coptic and Ethiopic years.
+const SHORTEST_MONTH = 29;
+
+// A few days into a month, to sample its name, still inside the shortest
+// months.
+export const INTO_MONTH = 4;
+
+// Around the middle of a month, to check a second day in each.
+const MID_MONTH = 14;
+
+// ICU switches from the Julian calendar somewhere between these dates.
+const JULIAN_SEARCH: [[number, number, number], [number, number, number]] = [
+  [1000, 6, 15],
+  [1800, 1, 1],
+];
+
+// The Julian day number of 1970-01-01, and Richards' algorithm's offset
+// from it, in the Explanatory Supplement to the Astronomical Almanac. The
+// algorithm's other numbers are part of it as published.
+const JULIAN_DAY_OF_UNIX_EPOCH = 2_440_588;
 
 export type CalendarId =
   | "gregory"
@@ -57,12 +110,77 @@ export function astronomicalYear(epochDay: number): number {
   return new Date(epochDay * DAY_MS).getUTCFullYear();
 }
 
-// Table calendars cover whole years inside this range.
-export const FIRST_DAY = day(1, 1, 1);
-export const LAST_DAY = day(4000, 12, 31);
+// A Julian date, as [astronomical year, month, day], for days since
+// 1970-01-01. From Richards' algorithm, with floor division throughout.
+export function julianFromDays(epochDay: number): [number, number, number] {
+  const c = epochDay + JULIAN_DAY_OF_UNIX_EPOCH + 32082;
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  return [
+    d - 4800 + Math.floor(m / 10),
+    m + 3 - 12 * Math.floor(m / 10),
+    e - Math.floor((153 * m + 2) / 5) + 1,
+  ];
+}
 
-// Eras are looked for from here, and assumed not to change before.
-const SCAN_FROM = -5000;
+export function daysFromJulian(
+  year: number,
+  month: number,
+  dayOfMonth: number,
+): number {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  return (
+    dayOfMonth +
+    Math.floor((153 * m + 2) / 5) +
+    365 * y +
+    Math.floor(y / 4) -
+    32083 -
+    JULIAN_DAY_OF_UNIX_EPOCH
+  );
+}
+
+// A day's [year, month, day] in a calendar with Gregorian months, which is
+// Julian before `julianBefore` in some of them, like ICU's default.
+export function civil(
+  epochDay: number,
+  julianBefore: number,
+): [number, number, number] {
+  if (epochDay < julianBefore) return julianFromDays(epochDay);
+  const date = new Date(epochDay * DAY_MS);
+  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()];
+}
+
+// The day a civil date falls on, the inverse of `civil`.
+export function civilDay(
+  year: number,
+  month: number,
+  dayOfMonth: number,
+  julianBefore: number,
+): number {
+  const julian = daysFromJulian(year, month, dayOfMonth);
+  return julian < julianBefore ? julian : day(year, month, dayOfMonth);
+}
+
+// Where ICU switches from the Julian calendar, or -Infinity if it doesn't.
+function julianSwitch(calendar: CalendarId): number {
+  const matches = (d: number) =>
+    fields(calendar, d).day === new Date(d * DAY_MS).getUTCDate();
+  let low = day(...JULIAN_SEARCH[0]);
+  if (matches(low)) return -Infinity;
+  let high = day(...JULIAN_SEARCH[1]);
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (matches(middle)) high = middle;
+    else low = middle + 1;
+  }
+  return low;
+}
+
+export const FIRST_DAY = day(FIRST_YEAR, 1, 1);
+export const LAST_DAY = day(LAST_YEAR, MONTHS_PER_YEAR, 31);
 
 // One day in a calendar, as ICU sees it. Names are English, and only used
 // to tell values apart.
@@ -119,7 +237,7 @@ function reader(calendar: CalendarId): (epochDay: number) => Fields {
   });
   const cyclic = calendar === "chinese" || calendar === "dangi";
   return (epochDay) => {
-    const date = new Date(epochDay * DAY_MS + DAY_MS / 2);
+    const date = new Date(epochDay * DAY_MS + NOON_MS);
     // Typed as strings, as TypeScript doesn't know "relatedYear" yet.
     const parts = new Map<string, string>(
       english.formatToParts(date).map((p) => [p.type, p.value]),
@@ -170,7 +288,7 @@ export function weekYear(
     galicians.set(calendar, galician);
   }
   const unknown = galician
-    .formatToParts(new Date(epochDay * DAY_MS + DAY_MS / 2))
+    .formatToParts(new Date(epochDay * DAY_MS + NOON_MS))
     .find((p) => p.type === "unknown");
   return unknown && parseNumber(unknown.value);
 }
@@ -194,16 +312,36 @@ export type Proleptic = {
   eraDays: number[];
   // English era names, by era number, to check against ICU.
   eraNames: string[];
+  // Days before this are in the Julian calendar, as ICU does by default for
+  // calendars other than Gregorian. -Infinity if never.
+  julianBefore: number;
 };
 
 export function proleptic(calendar: CalendarId): Proleptic {
   const at = (d: number) => fields(calendar, d);
+  const julianBefore = julianSwitch(calendar);
+  const yearOf = (d: number) => civil(d, julianBefore)[0];
   // Find the first day of each era, checking every month. An era can change
   // more than once in a month.
   const starts: number[] = [];
   let previous = at(day(SCAN_FROM, 1, 1)).era;
-  for (let year = SCAN_FROM; year <= 4000; year++)
-    for (let month = 1; month <= 12; month++) {
+  // Some ICU data has no era names, so an era also starts where the year
+  // stops counting the way it did, as it does going from 1 BC to AD 1.
+  let direction = 0;
+  for (let year = SCAN_FROM; year <= LAST_YEAR; year++)
+    for (let month = 1; month <= MONTHS_PER_YEAR; month++) {
+      if (month === 1 && year > SCAN_FROM) {
+        const newYear = civilDay(year, 1, 1, julianBefore);
+        const before = at(newYear - 1);
+        const after = at(newYear);
+        if (before.era === after.era) {
+          const step = after.year - before.year;
+          if (step === 0 || (direction !== 0 && step !== direction)) {
+            starts.push(newYear);
+            direction = 0;
+          } else direction = step;
+        } else direction = 0;
+      }
       const end = day(year, month + 1, 1) - 1;
       let low = day(year, month, 1);
       while (at(end).era !== previous) {
@@ -227,8 +365,8 @@ export function proleptic(calendar: CalendarId): Proleptic {
     const first = Number.isFinite(start) ? start : day(SCAN_FROM, 1, 1);
     const a = at(first);
     const other = at(end);
-    const ya = astronomicalYear(first);
-    const yb = astronomicalYear(end);
+    const ya = yearOf(first);
+    const yb = yearOf(end);
     const sign = yb === ya ? 1 : (other.year - a.year) / (yb - ya);
     if (sign !== 1 && sign !== -1)
       throw new Error(`${calendar}: odd years in ${a.era}`);
@@ -256,6 +394,7 @@ export function proleptic(calendar: CalendarId): Proleptic {
   const result: Proleptic = {
     kind: "proleptic",
     eraNames: names,
+    julianBefore,
     eras: segments.map(({ start, era, base, sign }) => ({
       start,
       era,
@@ -266,23 +405,24 @@ export function proleptic(calendar: CalendarId): Proleptic {
       const segment = segments.find((s) => s.era === era)!;
       return Number.isFinite(segment.start)
         ? segment.start
-        : day(SCAN_FROM, 6, 1);
+        : day(SCAN_FROM, ...MID_YEAR);
     }),
   };
 
   // The rules must hold well outside the range we looked at.
-  const checks = [day(-9000, 6, 1), day(-1, 1, 1), day(9999, 12, 31)];
-  for (let d = FIRST_DAY; d <= LAST_DAY; d += 997) checks.push(d);
+  const checks = [
+    day(CHECK_FROM_YEAR, ...MID_YEAR),
+    day(-1, 1, 1),
+    day(CHECK_TO_YEAR, MONTHS_PER_YEAR, 31),
+  ];
+  for (let d = FIRST_DAY; d <= LAST_DAY; d += CHECK_EVERY) checks.push(d);
   for (const start of starts) checks.push(start - 1, start);
   for (const d of checks) {
     const expected = at(d);
     const got = prolepticDate(result, d);
     const week = weekYear(calendar, d);
-    const midYear = day(astronomicalYear(d), 7, 1);
-    if (
-      week !== undefined &&
-      weekYear(calendar, midYear) !== astronomicalYear(d)
-    )
+    const midYear = civilDay(yearOf(d), ...MID_YEAR, julianBefore);
+    if (week !== undefined && weekYear(calendar, midYear) !== yearOf(d))
       throw new Error(
         `${calendar}: the extended year isn't the Gregorian year`,
       );
@@ -298,7 +438,8 @@ export function prolepticDate(calendar: Proleptic, epochDay: number) {
   const segment = calendar.eras.find((s) => s.start <= epochDay)!;
   return {
     era: segment.era,
-    year: segment.base + segment.sign * astronomicalYear(epochDay),
+    year:
+      segment.base + segment.sign * civil(epochDay, calendar.julianBefore)[0],
   };
 }
 
@@ -352,10 +493,11 @@ export function table(calendar: CalendarId): Table {
   while (start <= LAST_DAY + 1) {
     const f = at(start);
     months.push([start, f]);
-    // `start + 28` is either still in this month, or `x` days into the next.
-    let next = start + 28;
+    // The day before the shortest month ends is either still in this month,
+    // or `x` days into the next.
+    let next = start + SHORTEST_MONTH - 1;
     const x = at(next).day;
-    if (x !== 29) next -= x - 1;
+    if (x !== SHORTEST_MONTH) next -= x - 1;
     else {
       while (at(next).day !== 1) next++;
     }
@@ -422,10 +564,10 @@ export function table(calendar: CalendarId): Table {
         monthDays.push(
           year.start +
             year.months.slice(0, m).reduce((a, [, l]) => a + l, 0) +
-            4,
+            INTO_MONTH,
         );
       }
-      if (length === 30 && longMonth < 0)
+      if (length === LONGEST_LUNAR_MONTH && longMonth < 0)
         longMonth =
           year.start + year.months.slice(0, m).reduce((a, [, l]) => a + l, 0);
       return [monthNames.indexOf(name), length];
@@ -456,9 +598,10 @@ export function table(calendar: CalendarId): Table {
     if (!eraKeys.includes(eraKey)) {
       eraKeys.push(eraKey);
       eraNames.push(f.era);
-      eraDays.push(year.start + 4);
+      eraDays.push(year.start + INTO_MONTH);
     }
-    if (cycleDays[f.cycle] === undefined) cycleDays[f.cycle] = year.start + 4;
+    if (cycleDays[f.cycle] === undefined)
+      cycleDays[f.cycle] = year.start + INTO_MONTH;
     const era = eraKeys.indexOf(eraKey);
     const last = result.years.at(-1);
     const step = result.cyclic ? 1 : 0;
@@ -468,7 +611,7 @@ export function table(calendar: CalendarId): Table {
       f.year === last.year + last.yearStep * (i - last.from) &&
       f.extended === last.extended + (i - last.from) &&
       f.related === last.related + step * (i - last.from) &&
-      f.cycle === (last.cycle + step * (i - last.from)) % 60;
+      f.cycle === (last.cycle + step * (i - last.from)) % YEARS_IN_CYCLE;
     if (!fits) {
       const nextYear = years[i + 1]?.fields;
       const step =
@@ -501,7 +644,7 @@ export function table(calendar: CalendarId): Table {
 
   // Check every month we read, and a day in the middle of each, against ICU.
   for (const [first] of months) {
-    for (const d of [first, first + 14]) {
+    for (const d of [first, first + MID_MONTH]) {
       if (d < result.starts[0]! || d >= result.starts.at(-1)!) continue;
       const expected = at(d);
       const got = tableDate(result, d)!;
@@ -552,7 +695,7 @@ export function tableDate(calendar: Table, epochDay: number) {
     year: segment.year + segment.yearStep * n,
     extended: segment.extended + n,
     related: segment.related + step,
-    cycle: (segment.cycle + step) % 60,
+    cycle: (segment.cycle + step) % YEARS_IN_CYCLE,
     month,
     day: rest + 1,
   };
@@ -586,17 +729,16 @@ export function calendarDate(
   epochDay: number,
 ): CalendarDate | undefined {
   if (math.kind === "proleptic") {
-    const date = new Date(epochDay * DAY_MS);
-    const y = date.getUTCFullYear();
+    const [y, m, d] = civil(epochDay, math.julianBefore);
     return {
       ...prolepticDate(math, epochDay),
       extended: y,
       related: y,
       cycle: 0,
-      month: date.getUTCMonth(),
-      day: date.getUTCDate(),
-      yearStart: day(y, 1, 1),
-      nextYearStart: day(y + 1, 1, 1),
+      month: m - 1,
+      day: d,
+      yearStart: civilDay(y, 1, 1, math.julianBefore),
+      nextYearStart: civilDay(y + 1, 1, 1, math.julianBefore),
     };
   }
   const date = tableDate(math, epochDay);
@@ -621,12 +763,12 @@ export function weekBasedYear(
   const firstWeek = (yearStart: number, extended: number) => {
     const exception = exceptions.find(([year]) => year === extended);
     if (exception) return exception[1];
-    // 1970-01-01 was a Thursday, day 4.
-    const weekday = ((((yearStart + 3) % 7) + 7) % 7) + 1;
-    const weekStart = yearStart - ((weekday - firstDay + 7) % 7);
-    return 7 - (yearStart - weekStart) >= minimalDays
+    const weekStart =
+      yearStart -
+      ((isoWeekday(yearStart) - firstDay + DAYS_PER_WEEK) % DAYS_PER_WEEK);
+    return DAYS_PER_WEEK - (yearStart - weekStart) >= minimalDays
       ? weekStart
-      : weekStart + 7;
+      : weekStart + DAYS_PER_WEEK;
   };
   if (epochDay >= firstWeek(date.nextYearStart, date.extended + 1))
     return date.extended + 1;
@@ -649,15 +791,30 @@ export function checkEveryDay(calendar: CalendarId, math: Math_): number {
       got !== undefined &&
       math.eraNames[got.era] === expected.era &&
       got.year === expected.year &&
-      (math.kind === "proleptic" ||
-        (math.monthNames[got.month] === expected.month &&
+      (math.kind === "proleptic"
+        ? Number(expected.month.split(" ").at(-1)) === got.month + 1 &&
+          got.day === expected.day
+        : math.monthNames[got.month] === expected.month &&
           got.day === expected.day &&
           got.related === expected.related &&
-          got.cycle === expected.cycle));
+          got.cycle === expected.cycle);
     if (!ok)
       throw new Error(
         `${calendar}: day ${d} is wrong: expected ${JSON.stringify(expected)}, got ${JSON.stringify(got)}`,
       );
   }
   return to - from + 1;
+}
+
+// Weekdays numbered from Monday, as ICU's week data does. 1970-01-01 was a
+// Thursday.
+const THURSDAY_FROM_MONDAY = 4;
+
+// A day's weekday, from 1 for Monday to 7 for Sunday.
+export function isoWeekday(epochDay: number): number {
+  return (
+    ((((epochDay + THURSDAY_FROM_MONDAY - 1) % DAYS_PER_WEEK) + DAYS_PER_WEEK) %
+      DAYS_PER_WEEK) +
+    1
+  );
 }

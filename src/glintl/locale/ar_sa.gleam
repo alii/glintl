@@ -7,7 +7,7 @@ import glintl/internal/data.{type Calendars, type Data}
 
 /// Arabic (Saudi Arabia), `ar-SA`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ar-SA", glintl.IslamicUmmAlQura, data(), calendars)
+  glintl.new_locale("ar-SA", glintl.Gregorian, data(), calendars)
 }
 
 @external(erlang, "glintl_generated_ar_bh", "data")

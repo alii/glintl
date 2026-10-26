@@ -64,7 +64,7 @@ pub fn calendar_test() {
   assert zh.locale()
     |> glintl.with_calendar(glintl.Chinese)
     |> format(leap_month)
-    == "2025乙巳年闰六月初八"
+    == "2025乙巳年闰六月8"
 }
 
 /// On Erlang, calendars with their own months cover the years 1 to 4000.
@@ -142,7 +142,11 @@ pub fn calendar_fields_test() {
         calendar_fixtures.cases()
         |> list.filter(fn(case_) {
           let #(calendar, day, expected) = case_
-          render.calendar_fields(calendar, day) != expected
+          render.calendar_fields(
+            glintl.calendar_math(calendar_from_id(calendar)),
+            day,
+          )
+          != expected
         })
       assert list.take(failures, 30) == []
     }

@@ -10,10 +10,10 @@ pub fn locale() -> Locale {
   glintl.new_locale("mni-Mtei", glintl.Gregorian, data(), calendars)
 }
 
-@external(erlang, "glintl_generated_mni_mtei", "data")
-@external(javascript, "../internal/generated/javascript/mni_mtei.mjs", "data")
+@external(erlang, "glintl_generated_mni", "data")
+@external(javascript, "../internal/generated/javascript/mni.mjs", "data")
 fn data() -> Data
 
-@external(erlang, "glintl_generated_calendars_mni_mtei", "data")
-@external(javascript, "../internal/generated/javascript/mni_mtei.mjs", "calendars")
+@external(erlang, "glintl_generated_calendars_mni", "data")
+@external(javascript, "../internal/generated/javascript/mni.mjs", "calendars")
 fn calendars() -> Calendars

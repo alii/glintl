@@ -1,11 +1,30 @@
-//// Calendars with their own months, and ICU's week-based year. Kept apart
-//// from `render` so that only people using them load them.
+//// Calendars with their own months, ICU's week-based year, and the Julian
+//// calendar. Kept apart from `render` so that only people using them load
+//// them.
 
 import gleam/int
 import gleam/list
 import glintl/internal/data.{
   type HomogenousUnknownLengthTuple, type Local, type YearRule, Local, YearRule,
 }
+
+/// The Chinese and Dangi calendars name years in a cycle of this many.
+const years_in_cycle = 60
+
+pub const days_per_week = 7
+
+/// Weekdays here are numbered from Monday, as ICU's week data does, and
+/// 1970-01-01 was a Thursday.
+const thursday_from_monday = 4
+
+/// Days from 0000-03-01 to 1970-01-01. Hinnant's algorithms count from
+/// 1 March, so leap days fall at the end of their years.
+pub const days_from_march_of_year_zero = 719_468
+
+pub const days_per_400_years = 146_097
+
+/// The Julian day number of 1970-01-01.
+const julian_day_of_unix_epoch = 2_440_588
 
 pub fn table_local(
   cyclic cyclic: Bool,
@@ -21,27 +40,29 @@ pub fn table_local(
   offset_minutes offset_minutes: Int,
   unix_seconds unix_seconds: Int,
 ) -> Result(Local, Nil) {
-  let count = tuple_size(starts)
-  let first = element(1, starts)
-  let last = element(count, starts)
-  case epoch_day < first || epoch_day >= last {
-    True -> Error(Nil)
-    False -> {
+  // `starts` ends with the day after the last year.
+  let count = size(starts)
+  let first = nth(starts, 0)
+  let end = nth(starts, count - 1)
+  let last_year = count - 2
+  case epoch_day < first || epoch_day >= end, years {
+    True, _ | _, [] -> Error(Nil)
+    False, [newest, ..older] -> {
       // Guess the year from the average year length, then step to it.
-      let guess = { epoch_day - first } * { count - 1 } / { last - first }
-      let i = find_year(starts, int.clamp(guess, 0, count - 2), epoch_day)
-      let start = element(i + 1, starts)
-      let shape = element(element(i + 1, shapes) + 1, months)
+      let guess = { epoch_day - first } * { count - 1 } / { end - first }
+      let i = find_year(starts, int.clamp(guess, 0, last_year), epoch_day)
+      let start = nth(starts, i)
+      let shape = nth(months, nth(shapes, i))
       let #(month, day) = case day_zero {
         [] -> month_and_day(shape, epoch_day - start)
         _ ->
           case list.key_find(day_zero, epoch_day) {
-            Ok(month) -> #(month, -1)
+            Ok(month) -> #(month, 0)
             Error(Nil) -> month_and_day(shape, epoch_day - start)
           }
       }
       let YearRule(from:, era:, year:, year_step:, extended:, related:, cycle:) =
-        year_rule(years, i)
+        year_rule(newest, older, i)
       let n = i - from
       let step = case cyclic {
         True -> n
@@ -58,36 +79,22 @@ pub fn table_local(
         year: year + year_step * n,
         extended: extended + n,
         related: related + step,
-        cycle: { cycle + step } % 60,
+        cycle: { cycle + step } % years_in_cycle,
         month:,
-        day: day + 1,
+        day:,
         year_start: start,
-        next_year_start: element(i + 2, starts),
+        next_year_start: nth(starts, i + 1),
       ))
     }
   }
 }
 
-/// The rule for a table year. Rules are newest first, and the last starts at
-/// year 0.
-fn year_rule(years: List(YearRule), year: Int) -> YearRule {
-  case years {
-    [rule] -> rule
-    [rule, ..rest] ->
-      case rule.from <= year {
-        True -> rule
-        False -> year_rule(rest, year)
-      }
-    [] ->
-      YearRule(
-        from: 0,
-        era: 0,
-        year: 0,
-        year_step: 1,
-        extended: 0,
-        related: 0,
-        cycle: 0,
-      )
+/// The rule for a table year. Rules are newest first, and the oldest starts
+/// at the first year.
+fn year_rule(rule: YearRule, older: List(YearRule), year: Int) -> YearRule {
+  case older, rule.from <= year {
+    [], _ | _, True -> rule
+    [next, ..rest], False -> year_rule(next, rest, year)
   }
 }
 
@@ -96,19 +103,20 @@ fn find_year(
   i: Int,
   epoch_day: Int,
 ) -> Int {
-  case element(i + 1, starts) > epoch_day, element(i + 2, starts) <= epoch_day {
+  case nth(starts, i) > epoch_day, nth(starts, i + 1) <= epoch_day {
     True, _ -> find_year(starts, i - 1, epoch_day)
     _, True -> find_year(starts, i + 1, epoch_day)
     _, _ -> i
   }
 }
 
-fn month_and_day(shape: List(#(Int, Int)), rest: Int) -> #(Int, Int) {
+/// The month and day of the month, `days` days into a year.
+fn month_and_day(shape: List(#(Int, Int)), days: Int) -> #(Int, Int) {
   case shape {
-    [#(_, length), ..others] if rest >= length && others != [] ->
-      month_and_day(others, rest - length)
-    [#(month, _), ..] -> #(month, rest)
-    [] -> #(0, rest)
+    [#(_, length), ..others] if days >= length && others != [] ->
+      month_and_day(others, days - length)
+    [#(month, _), ..] -> #(month, days + 1)
+    [] -> #(0, days + 1)
   }
 }
 
@@ -120,24 +128,26 @@ pub fn week_year(
   minimal_days: Int,
   exceptions: List(#(Int, Int)),
 ) -> Int {
-  // Calendars with Gregorian months start their years on 1 January.
-  let #(year_start, next_year_start) = case m.next_year_start {
-    0 -> #(
+  // Calendars with Gregorian months leave their year bounds to here, as
+  // their years start on 1 January.
+  let #(year_start, next_year_start) = case
+    m.next_year_start == data.start_of_time
+  {
+    True -> #(
       days_from_civil(m.extended, 1, 1),
       days_from_civil(m.extended + 1, 1, 1),
     )
-    next -> #(m.year_start, next)
+    False -> #(m.year_start, m.next_year_start)
   }
   let first_week = fn(year_start, extended) {
     case list.key_find(exceptions, extended) {
       Ok(day) -> day
       Error(_) -> {
-        // 1970-01-01 was a Thursday, day 4.
-        let weekday = modulo(year_start + 3, 7) + 1
-        let week_start = year_start - modulo(weekday - first_day, 7)
-        case 7 - { year_start - week_start } >= minimal_days {
+        let week_start =
+          year_start - modulo(weekday(year_start) - first_day, days_per_week)
+        case days_per_week - { year_start - week_start } >= minimal_days {
           True -> week_start
-          False -> week_start + 7
+          False -> week_start + days_per_week
         }
       }
     }
@@ -152,8 +162,14 @@ pub fn week_year(
   }
 }
 
-/// A proleptic Gregorian date to days since 1970-01-01.
-/// From Howard Hinnant's `days_from_civil`.
+/// A day's weekday, from 1 for Monday to 7 for Sunday.
+fn weekday(epoch_day: Int) -> Int {
+  modulo(epoch_day + thursday_from_monday - 1, days_per_week) + 1
+}
+
+/// A proleptic Gregorian date to days since 1970-01-01. From Howard
+/// Hinnant's `days_from_civil`, whose other numbers are part of the published
+/// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
 fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
   let year = case month <= 2 {
     True -> year - 1
@@ -167,7 +183,46 @@ fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
   }
   let doy = { 153 * mp + 2 } / 5 + day - 1
   let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-  era * 146_097 + doe - 719_468
+  era * days_per_400_years + doe - days_from_march_of_year_zero
+}
+
+/// A Julian date, as #(astronomical year, month, day), for days since
+/// 1970-01-01. From Richards' algorithm in the Explanatory Supplement to the
+/// Astronomical Almanac, whose other numbers are part of the algorithm.
+pub fn julian_from_days(days: Int) -> #(Int, Int, Int) {
+  let c = days + julian_day_of_unix_epoch + 32_082
+  let d = floor_divide(4 * c + 3, 1461)
+  let e = c - floor_divide(1461 * d, 4)
+  let m = floor_divide(5 * e + 2, 153)
+  #(
+    d - 4800 + floor_divide(m, 10),
+    m + 3 - 12 * floor_divide(m, 10),
+    e - floor_divide(153 * m + 2, 5) + 1,
+  )
+}
+
+/// The inverse of `julian_from_days`, from the same algorithm.
+fn days_from_julian(year: Int, month: Int, day: Int) -> Int {
+  let a = floor_divide(14 - month, 12)
+  let y = year + 4800 - a
+  let m = month + 12 * a - 3
+  let julian_day =
+    day + floor_divide(153 * m + 2, 5) + 365 * y + floor_divide(y, 4) - 32_083
+  julian_day - julian_day_of_unix_epoch
+}
+
+/// The first day of a year and of the next, in a calendar that is Julian
+/// before `julian_before`.
+pub fn year_bounds(year: Int, julian_before: Int) -> #(Int, Int) {
+  #(new_year(year, julian_before), new_year(year + 1, julian_before))
+}
+
+fn new_year(year: Int, julian_before: Int) -> Int {
+  let julian = days_from_julian(year, 1, 1)
+  case julian < julian_before {
+    True -> julian
+    False -> days_from_civil(year, 1, 1)
+  }
 }
 
 fn modulo(n: Int, by: Int) -> Int {
@@ -181,12 +236,20 @@ fn floor_divide(n: Int, by: Int) -> Int {
   }
 }
 
+/// The item at `index`, counting from 0. Erlang tuples count from 1.
+fn nth(tuple: HomogenousUnknownLengthTuple(a), index: Int) -> a {
+  element(index + 1, tuple)
+}
+
 @external(erlang, "erlang", "element")
-fn element(_index: Int, _tuple: HomogenousUnknownLengthTuple(a)) -> a {
-  panic as "only used on Erlang"
+fn element(
+  index _index: Int,
+  tuple _tuple: HomogenousUnknownLengthTuple(a),
+) -> a {
+  panic as "element(index, tuple) can only be used on Erlang"
 }
 
 @external(erlang, "erlang", "tuple_size")
-fn tuple_size(_tuple: HomogenousUnknownLengthTuple(a)) -> Int {
-  panic as "only used on Erlang"
+fn size(tuple _tuple: HomogenousUnknownLengthTuple(a)) -> Int {
+  panic as "size(tuple) can only be used on Erlang"
 }

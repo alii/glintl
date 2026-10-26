@@ -10,10 +10,10 @@ pub fn locale() -> Locale {
   glintl.new_locale("ms-Arab", glintl.Gregorian, data(), calendars)
 }
 
-@external(erlang, "glintl_generated_ms_arab", "data")
-@external(javascript, "../internal/generated/javascript/ms_arab.mjs", "data")
+@external(erlang, "glintl_generated_ms", "data")
+@external(javascript, "../internal/generated/javascript/ms.mjs", "data")
 fn data() -> Data
 
-@external(erlang, "glintl_generated_calendars_ms_arab", "data")
-@external(javascript, "../internal/generated/javascript/ms_arab.mjs", "calendars")
+@external(erlang, "glintl_generated_calendars_ms", "data")
+@external(javascript, "../internal/generated/javascript/ms.mjs", "calendars")
 fn calendars() -> Calendars

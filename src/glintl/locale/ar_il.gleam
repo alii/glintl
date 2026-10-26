@@ -14,6 +14,6 @@ pub fn locale() -> Locale {
 @external(javascript, "../internal/generated/javascript/ar_il.mjs", "data")
 fn data() -> Data
 
-@external(erlang, "glintl_generated_calendars_ar_il", "data")
+@external(erlang, "glintl_generated_calendars_ar_bh", "data")
 @external(javascript, "../internal/generated/javascript/ar_il.mjs", "calendars")
 fn calendars() -> Calendars
