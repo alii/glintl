@@ -2,7 +2,7 @@
 
 Format dates and times in many languages, on Erlang and JavaScript.
 
-Glintl lazy-loads locales for performance. On Erlang it aims to have the same output as JavaScript's `Intl.DateTimeFormat`.
+On Erlang it aims to have the same output as JavaScript's `Intl.DateTimeFormat`.
 
 ```sh
 gleam add glintl gleam_time
@@ -66,9 +66,8 @@ It is recommended to reuse formatters for performance, because making one is exp
 On Erlang:
 
 - Formats come from ICU when glintl is built, not when your app runs.
-- Each locale is an Erlang module. It loads the first time you use it, and stays loaded.
-- The data is shared by every process. It is never copied or garbage collected.
-- Releases in "embedded mode" load every module at start-up instead.
+- Each locale exists in its own Erlang module. All data is generated to literals, which lets Erlang's compiler take advantage of the [Literal Pool](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool). The result is improve memory usage, because the data can be safely shared by every process, and it is rarely copied or garbage collected.
+- We're working on making the start-up cost smaller.
 
 On JavaScript:
 
