@@ -21,12 +21,11 @@
 import gleam/int
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
-import glintl/internal/data.{
-  type Data, Data, NoData, gregorian as gregorian_math,
-}
+import glintl/internal/data.{gregorian as gregorian_math}
 import glintl/internal/math
-import glintl/internal/render.{type Compiled}
+import glintl/internal/render
 
+@target(erlang)
 /// A language and region to format for, such as British English.
 ///
 /// Get one from a locale module, like `glintl/locale/en_gb`, or by tag from
@@ -35,20 +34,43 @@ pub opaque type Locale {
   Locale(
     tag: String,
     calendar: Calendar,
-    data: Data,
-    calendars: fn(Calendar) -> data.Formats,
+    data: LocaleData,
+    calendars: fn(Calendar) -> CalendarFormats,
   )
 }
 
+@target(javascript)
+/// On JavaScript, `Intl.DateTimeFormat` has the data.
+pub opaque type Locale {
+  Locale(tag: String, calendar: Calendar)
+}
+
+/// For the generated locale modules, so they only import this module.
+@internal
+pub type LocaleData =
+  data.Data
+
+@internal
+pub type CalendarFormats =
+  data.Formats
+
+@target(erlang)
 /// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(
   tag: String,
   calendar: Calendar,
-  data: Data,
-  calendars: fn(Calendar) -> data.Formats,
+  data: LocaleData,
+  calendars: fn(Calendar) -> CalendarFormats,
 ) -> Locale {
   Locale(tag:, calendar:, data:, calendars:)
+}
+
+@target(javascript)
+/// Make a locale. Used by the generated locale modules.
+@internal
+pub fn new_locale(tag: String, calendar: Calendar) -> Locale {
+  Locale(tag:, calendar:)
 }
 
 /// The BCP 47 tag of a locale, such as `"en-GB"`.
@@ -135,13 +157,23 @@ pub type Style {
   Short
 }
 
+@target(erlang)
 /// Formats moments in time for one locale and style.
 ///
 /// Make one and reuse it: making a formatter does the lookup work once, so
 /// formatting is cheap.
 pub opaque type Formatter {
-  Formatter(compiled: Compiled)
+  Formatter(compiled: render.Compiled)
 }
+
+@target(javascript)
+pub opaque type Formatter {
+  Formatter(compiled: IntlFormatter)
+}
+
+@target(javascript)
+/// An `Intl.DateTimeFormat` for each offset.
+type IntlFormatter
 
 /// Format only the date.
 pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
@@ -187,24 +219,49 @@ pub fn format(
   do_format(formatter.compiled, seconds, nanoseconds, offset_minutes)
 }
 
+@target(erlang)
 fn new(locale: Locale, shown: data.Shown) -> Formatter {
-  let Locale(tag:, calendar:, data:, calendars:) = locale
+  let Locale(calendar:, data:, calendars:, ..) = locale
+  let data.Data(digits:, gregorian:) = data
+  let gregorian =
+    render.compile(gregorian, digits, gregorian_math, shown, render.NoFallback)
+  Formatter(case other_calendar(calendar, calendars) {
+    Ok(formats) ->
+      render.compile(
+        formats,
+        digits,
+        calendar_math(calendar),
+        shown,
+        render.Fallback(gregorian),
+      )
+    Error(Nil) -> gregorian
+  })
+}
+
+@target(javascript)
+fn new(locale: Locale, shown: data.Shown) -> Formatter {
   let #(date_style, time_style) = case shown {
     data.DateOnly(date) -> #(intl_style(date), "")
     data.TimeOnly(time) -> #("", intl_style(time))
     data.DateAndTime(date:, time:) -> #(intl_style(date), intl_style(time))
   }
-  Formatter(compile(
-    tag,
-    data,
-    calendars,
-    calendar,
-    shown,
-    icu_calendar(calendar),
+  Formatter(intl_formatter(
+    locale.tag,
+    icu_calendar(locale.calendar),
     date_style,
     time_style,
   ))
 }
+
+@target(javascript)
+/// `""` means no style.
+@external(javascript, "./glintl_ffi.mjs", "formatter")
+fn intl_formatter(
+  tag: String,
+  calendar: String,
+  date_style: String,
+  time_style: String,
+) -> IntlFormatter
 
 fn internal_style(style: Style) -> data.Style {
   case style {
@@ -215,6 +272,7 @@ fn internal_style(style: Style) -> data.Style {
   }
 }
 
+@target(javascript)
 /// `dateStyle` and `timeStyle` for `Intl.DateTimeFormat`.
 fn intl_style(style: data.Style) -> String {
   case style {
@@ -225,6 +283,7 @@ fn intl_style(style: data.Style) -> String {
   }
 }
 
+@target(javascript)
 /// ICU's name for a calendar.
 fn icu_calendar(calendar: Calendar) -> String {
   case calendar {
@@ -247,49 +306,12 @@ fn icu_calendar(calendar: Calendar) -> String {
   }
 }
 
-/// On JavaScript only the strings are used, and `""` means no style.
-@external(javascript, "./glintl_ffi.mjs", "compile")
-fn compile(
-  _tag: String,
-  data: Data,
-  calendars: fn(Calendar) -> data.Formats,
-  calendar: Calendar,
-  shown: data.Shown,
-  _icu_calendar: String,
-  _date_style: String,
-  _time_style: String,
-) -> Compiled {
-  case data {
-    NoData -> panic as "Locales have data on Erlang"
-    Data(digits:, gregorian:) -> {
-      let gregorian =
-        render.compile(
-          gregorian,
-          digits,
-          gregorian_math,
-          shown,
-          render.NoFallback,
-        )
-      case other_calendar(calendar, calendars) {
-        Ok(formats) ->
-          render.compile(
-            formats,
-            digits,
-            calendar_math(calendar),
-            shown,
-            render.Fallback(gregorian),
-          )
-        Error(Nil) -> gregorian
-      }
-    }
-  }
-}
-
-/// A calendar's formats, unless it's Gregorian, which is always loaded.
+@target(erlang)
+/// A calendar's formats, unless it's Gregorian.
 fn other_calendar(
   calendar: Calendar,
-  calendars: fn(Calendar) -> data.Formats,
-) -> Result(data.Formats, Nil) {
+  calendars: fn(Calendar) -> CalendarFormats,
+) -> Result(CalendarFormats, Nil) {
   case calendar {
     Gregorian -> Error(Nil)
     _ -> Ok(calendars(calendar))
@@ -319,12 +341,21 @@ pub fn calendar_math(calendar: Calendar) -> data.Math {
   }
 }
 
-@external(javascript, "./glintl_ffi.mjs", "format")
+@target(erlang)
 fn do_format(
-  compiled: Compiled,
+  formatter: render.Compiled,
   seconds: Int,
   _nanoseconds: Int,
   offset_minutes: Int,
 ) -> String {
-  render.render(compiled, seconds, offset_minutes)
+  render.render(formatter, seconds, offset_minutes)
 }
+
+@target(javascript)
+@external(javascript, "./glintl_ffi.mjs", "format")
+fn do_format(
+  formatter: IntlFormatter,
+  seconds: Int,
+  nanoseconds: Int,
+  offset_minutes: Int,
+) -> String

@@ -1,11 +1,9 @@
 //// `codegen/generate.ts` writes these as Erlang terms, so keep the two in
 //// sync.
 
-/// A locale's Gregorian formats. `NoData` on JavaScript, where
-/// `Intl.DateTimeFormat` is used.
+/// A locale's Gregorian formats.
 pub type Data {
   Data(digits: Digits, gregorian: Formats)
-  NoData
 }
 
 pub type Digits {

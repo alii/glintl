@@ -1,13 +1,4 @@
-export function compile(
-  tag,
-  _data,
-  _calendars,
-  _calendar,
-  _shown,
-  calendar,
-  dateStyle,
-  timeStyle,
-) {
+export function formatter(tag, calendar, dateStyle, timeStyle) {
   const options = { calendar };
   if (dateStyle !== "") {
     options.dateStyle = dateStyle;

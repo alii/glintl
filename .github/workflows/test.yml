@@ -36,7 +36,9 @@ jobs:
       - name: Check the Gleam code
         run: |
           gleam format --check src test dev
-          gleam check
+          gleam build --target erlang --warnings-as-errors
+          gleam build --target javascript --warnings-as-errors
+          bun codegen/targets.ts
 
       - name: Test on Erlang
         run: gleam test --target erlang
