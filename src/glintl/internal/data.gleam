@@ -173,8 +173,7 @@ const anno_domini = 0
 const before_christ = 1
 
 /// The Gregorian calendar's maths. AD years are astronomical years, and BC
-/// years count back from 1 BC, which is astronomical year 0. Written here
-/// rather than generated, so Gregorian formatters load nothing extra.
+/// years count back from 1 BC, which is astronomical year 0.
 /// `codegen/generate.ts` checks it against ICU.
 pub const gregorian =
   Proleptic(

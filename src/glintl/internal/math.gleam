@@ -1,6 +1,5 @@
-//// How each calendar but Gregorian maps days to its own dates. Each is its
-//// own generated Erlang module, so only the ones in use are loaded.
-//// Gregorian is `data.gregorian`.
+//// How each calendar but Gregorian maps days to its own dates. Gregorian is
+//// `data.gregorian`.
 
 import glintl/internal/data.{type Math, NoMath}
 

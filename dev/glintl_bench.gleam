@@ -29,9 +29,7 @@ const bytes_per_kilobyte = 1024
 const decimal_places = 3
 
 pub fn main() -> Nil {
-  let code = code_bytes()
   let #(first, first_time) = measure(fn() { format_dates(1) })
-  let loaded = code_bytes() - code
   let #(again, again_time) = measure(fn() { format_dates(1) })
   let #(make, _) =
     measure(fn() {
@@ -66,7 +64,6 @@ pub fn main() -> Nil {
     ))
     <> " µs",
   )
-  io.println("code loaded: " <> kb(loaded))
 }
 
 fn formatter() -> glintl.Formatter {
@@ -105,7 +102,3 @@ fn kb(bytes: Int) -> String {
 @external(erlang, "glintl_bench_ffi", "measure")
 @external(javascript, "./glintl_bench_ffi.mjs", "measure")
 fn measure(f: fn() -> Nil) -> #(Int, Int)
-
-@external(erlang, "glintl_bench_ffi", "code_bytes")
-@external(javascript, "./glintl_bench_ffi.mjs", "code_bytes")
-fn code_bytes() -> Int

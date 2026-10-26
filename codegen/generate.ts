@@ -143,8 +143,7 @@ if (mathExits.some((code) => code !== 0)) {
   throw new Error("A calendar failed");
 }
 
-// Gregorian's maths is written by hand in `data.gleam`, so Gregorian
-// formatters load nothing extra. It must still match ICU.
+// Gregorian's maths is written by hand in `data.gleam`, so check it.
 const gregorianMath = mathFor("gregory");
 
 const gregorian = JSON.stringify(

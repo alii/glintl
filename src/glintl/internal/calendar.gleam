@@ -1,6 +1,5 @@
 //// Calendars with their own months, ICU's week-based year, and the Julian
-//// calendar. Kept apart from `render` so that only people using them load
-//// them.
+//// calendar.
 
 import gleam/int
 import gleam/list

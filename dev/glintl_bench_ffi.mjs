@@ -5,7 +5,3 @@ export function measure(f) {
   f();
   return [0, Math.round((performance.now() - start) * 1000)];
 }
-
-export function code_bytes() {
-  return 0;
-}

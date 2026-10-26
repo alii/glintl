@@ -56,8 +56,6 @@ It is recommended to reuse formatters for performance, because making one is exp
   locales.from_tag("xx") // -> Error(Nil)
   ```
 
-Note that importing `glintl/locales` will load every locale's data, which can be wasteful if you do not need all the locales in your application. Always prefer importing specific locales if you can.
-
 ## Calendars
 
 - Each locale uses its own calendar by default. Thai uses Buddhist.
