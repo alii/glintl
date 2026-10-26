@@ -8,29 +8,6 @@ pub type Data {
   NoData
 }
 
-/// A locale's formats for every other calendar. Kept apart from `Data` so
-/// they are only loaded when used.
-pub type Calendars {
-  Calendars(
-    iso8601: Formats,
-    buddhist: Formats,
-    japanese: Formats,
-    republic_of_china: Formats,
-    persian: Formats,
-    indian: Formats,
-    hebrew: Formats,
-    chinese: Formats,
-    dangi: Formats,
-    coptic: Formats,
-    ethiopic: Formats,
-    ethiopic_amete_alem: Formats,
-    islamic_civil: Formats,
-    islamic_tabular: Formats,
-    islamic_umm_al_qura: Formats,
-  )
-  NoCalendars
-}
-
 pub type Digits {
   /// `0` to `9`.
   Ascii

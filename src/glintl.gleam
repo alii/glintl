@@ -22,8 +22,7 @@ import gleam/int
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
 import glintl/internal/data.{
-  type Calendars, type Data, Calendars, Data, NoCalendars, NoData,
-  gregorian as gregorian_math,
+  type Data, Data, NoData, gregorian as gregorian_math,
 }
 import glintl/internal/math
 import glintl/internal/render.{type Compiled}
@@ -37,7 +36,7 @@ pub opaque type Locale {
     tag: String,
     calendar: Calendar,
     data: Data,
-    calendars: fn() -> Calendars,
+    calendars: fn(Calendar) -> data.Formats,
   )
 }
 
@@ -47,7 +46,7 @@ pub fn new_locale(
   tag: String,
   calendar: Calendar,
   data: Data,
-  calendars: fn() -> Calendars,
+  calendars: fn(Calendar) -> data.Formats,
 ) -> Locale {
   Locale(tag:, calendar:, data:, calendars:)
 }
@@ -206,7 +205,7 @@ fn internal_style(style: Style) -> data.Style {
 fn compile(
   _tag: String,
   data: Data,
-  calendars: fn() -> Calendars,
+  calendars: fn(Calendar) -> data.Formats,
   calendar: Calendar,
   shown: data.Shown,
 ) -> Compiled {
@@ -240,49 +239,11 @@ fn compile(
 /// A calendar's formats, unless it's Gregorian, which is always loaded.
 fn other_calendar(
   calendar: Calendar,
-  calendars: fn() -> Calendars,
+  calendars: fn(Calendar) -> data.Formats,
 ) -> Result(data.Formats, Nil) {
   case calendar {
     Gregorian -> Error(Nil)
-    _ ->
-      case calendars() {
-        NoCalendars -> Error(Nil)
-        Calendars(
-          iso8601:,
-          buddhist:,
-          japanese:,
-          republic_of_china:,
-          persian:,
-          indian:,
-          hebrew:,
-          chinese:,
-          dangi:,
-          coptic:,
-          ethiopic:,
-          ethiopic_amete_alem:,
-          islamic_civil:,
-          islamic_tabular:,
-          islamic_umm_al_qura:,
-        ) ->
-          case calendar {
-            Gregorian -> Error(Nil)
-            Iso8601 -> Ok(iso8601)
-            Buddhist -> Ok(buddhist)
-            Japanese -> Ok(japanese)
-            RepublicOfChina -> Ok(republic_of_china)
-            Persian -> Ok(persian)
-            Indian -> Ok(indian)
-            Hebrew -> Ok(hebrew)
-            Chinese -> Ok(chinese)
-            Dangi -> Ok(dangi)
-            Coptic -> Ok(coptic)
-            Ethiopic -> Ok(ethiopic)
-            EthiopicAmeteAlem -> Ok(ethiopic_amete_alem)
-            IslamicCivil -> Ok(islamic_civil)
-            IslamicTabular -> Ok(islamic_tabular)
-            IslamicUmmAlQura -> Ok(islamic_umm_al_qura)
-          }
-      }
+    _ -> Ok(calendars(calendar))
   }
 }
 
