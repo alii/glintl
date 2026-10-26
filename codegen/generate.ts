@@ -211,32 +211,28 @@ const header = (what: string) =>
 type Shared = { name: string; tags: string[] };
 
 const bases = new Map<string, Shared>();
-const calendarSets = new Map<string, Shared>();
+const calendarSets = new Map<string, Shared & { calendars: erlang.Term[] }>();
 const modules = new Map<string, { base: string; calendars: string }>();
 
 LOCALES.forEach(([name, tag]) => {
   const data = byTag.get(tag)!;
-  const base = erlang.writer();
 
-  const baseBody = base.body(
-    `{data, ${base.digits(data.digits)}, ${base.formats(data.formats[0]!)}}`,
-  );
+  const baseBody = erlang.body(erlang.data(data.digits, data.formats[0]!));
 
-  const others = erlang.writer();
-
-  const othersBody = others.body(
-    // A record with a field for each calendar but Gregorian, in order.
-    `{calendars,\n    ${data.formats
-      .slice(1)
-      .map((f) => others.formats(f))
-      .join(",\n    ")}}`,
-  );
+  const calendars = data.formats.slice(1).map(erlang.formats);
+  const key = calendars.map(erlang.text).join("\n");
 
   const baseShared = bases.get(baseBody) ?? { name, tags: [] };
   bases.set(baseBody, baseShared);
   baseShared.tags.push(tag);
-  const calendarsShared = calendarSets.get(othersBody) ?? { name, tags: [] };
-  calendarSets.set(othersBody, calendarsShared);
+
+  const calendarsShared = calendarSets.get(key) ?? {
+    name,
+    tags: [],
+    calendars,
+  };
+
+  calendarSets.set(key, calendarsShared);
   calendarsShared.tags.push(tag);
   modules.set(tag, { base: baseShared.name, calendars: calendarsShared.name });
 });
@@ -248,24 +244,76 @@ await Promise.all(
       erlang.module(
         `glintl_generated_${name}`,
         header(`Locales: ${tags.join(", ")}`),
-        [["data", body]],
+        ["data/0"],
+        [[`data() ->\n${body}`]],
       ),
     ),
     write(`${JAVASCRIPT}/${name}.mjs`, jsModule(tags)),
   ]),
 );
 
+// Pieces are shared within a language, so a locale never loads another's.
+const languageOf = (name: string) => name.split("_")[0]!;
+
+const languages = Map.groupBy([...calendarSets.values()], ({ name }) =>
+  languageOf(name),
+);
+
+const calendarsModule = (name: string) => `glintl_generated_calendars_${name}`;
+
 await Promise.all(
-  [...calendarSets].map(([body, { name, tags }]) =>
-    write(
-      `${ERLANG}/glintl_generated_calendars_${name}.erl`,
-      erlang.module(
-        `glintl_generated_calendars_${name}`,
-        header(`Every calendar but Gregorian. Locales: ${tags.join(", ")}`),
-        [["data", body]],
-      ),
-    ),
-  ),
+  [...languages].flatMap(([language, sets]) => {
+    const alone = sets.length === 1;
+
+    const piecesModule = alone
+      ? calendarsModule(sets[0]!.name)
+      : `glintl_generated_pieces_${language}`;
+
+    const all = sets.flatMap(({ calendars }) => calendars);
+    const pieces = erlang.pieces(piecesModule, all);
+    const clauses = erlang.pieceClauses(all, pieces);
+    const hasPieces = clauses.length > 0;
+
+    const calendarsModules = sets.map(({ name, tags, calendars }) => {
+      const module = calendarsModule(name);
+
+      const calendar = calendars.map(
+        (c, i) => `calendar(${i + 1}) ->\n    ${erlang.using(c, pieces)}`,
+      );
+
+      const data = `data() ->\n    {calendars, ${calendars.map((_, i) => `${module}:calendar(${i + 1})`).join(", ")}}`;
+      const ownPieces = alone && hasPieces;
+
+      return write(
+        `${ERLANG}/${module}.erl`,
+        erlang.module(
+          module,
+          header(`Every calendar but Gregorian. Locales: ${tags.join(", ")}`),
+          ["data/0", "calendar/1", ...(ownPieces ? ["piece/1"] : [])],
+          [[data], calendar, ...(ownPieces ? [clauses] : [])],
+        ),
+      );
+    });
+
+    const piecesModules =
+      alone || !hasPieces
+        ? []
+        : [
+            write(
+              `${ERLANG}/${piecesModule}.erl`,
+              erlang.module(
+                piecesModule,
+                header(
+                  `Data shared by the calendars modules of ${sets.map(({ name }) => name).join(", ")}.`,
+                ),
+                ["piece/1"],
+                [clauses],
+              ),
+            ),
+          ];
+
+    return [...calendarsModules, ...piecesModules];
+  }),
 );
 
 await Promise.all(
@@ -277,7 +325,8 @@ await Promise.all(
       erlang.module(
         name,
         header(`How the ${id} calendar maps days to dates.`),
-        [["math", erlang.math(mathFor(id))]],
+        ["math/0"],
+        [[`math() ->\n${erlang.math(mathFor(id))}`]],
       ),
     );
   }),
