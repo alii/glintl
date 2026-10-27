@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Mundang, `mua`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mua", glintl.Gregorian, 222)
+  glintl.new_locale("mua", glintl.Gregorian, 226)
 }

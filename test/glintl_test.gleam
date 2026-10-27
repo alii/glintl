@@ -2,6 +2,7 @@ import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
+import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import gleeunit
@@ -9,6 +10,7 @@ import glintl
 import glintl/calendar_fixtures
 import glintl/fixtures
 import glintl/internal/render
+import glintl/locale/en
 import glintl/locale/en_gb
 import glintl/locale/ja
 import glintl/locale/th
@@ -41,6 +43,64 @@ pub fn from_tag_test() {
   assert locales.from_tag("fr-CA-x-mine") |> result_tag == Ok("fr-CA")
   assert locales.from_tag("as") |> result_tag == Ok("as")
   assert locales.from_tag("xx") == Error(Nil)
+}
+
+pub fn accept_language_test() {
+  let tag = fn(result) { result |> result_tag }
+  assert locales.from_accept_language("fr-CH, fr;q=0.9, en;q=0.8") |> tag
+    == Ok("fr-CH")
+  assert locales.from_accept_language("en;q=0.5, ja") |> tag == Ok("ja")
+  assert locales.from_accept_language("xx, en-XX;q=0.1") |> tag == Ok("en")
+  assert locales.from_accept_language("zh-TW") |> tag == Ok("zh-Hant")
+  assert locales.from_accept_language("ja;q=0, *") == Error(Nil)
+  assert locales.from_accept_language("") == Error(Nil)
+
+  let supported = [en_gb.locale(), ja.locale(), zh.locale()]
+  assert locales.negotiate("fr, en-AU;q=0.9", among: supported) |> tag
+    == Ok("en-GB")
+  assert locales.negotiate("ja-JP, en", among: supported) |> tag == Ok("ja")
+  assert locales.negotiate("zh-TW", among: supported) |> tag == Ok("zh")
+  assert locales.negotiate("de, fr", among: supported) == Error(Nil)
+  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  assert locales.negotiate("en-GB", among: [hebrew]) == Ok(hebrew)
+}
+
+pub fn hour_cycle_test() {
+  let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-26T22:40:00Z")
+  let time = fn(locale) {
+    glintl.time_formatter(locale, style: glintl.Short)
+    |> glintl.format(moment, offset: glintl.utc)
+  }
+  assert glintl.locale_hour_cycle(en_gb.locale()) == glintl.H23
+  assert glintl.locale_hour_cycle(en.locale()) == glintl.H12
+  assert en.locale() |> glintl.with_hour_cycle(glintl.H23) |> time == "22:40"
+  assert en_gb.locale() |> glintl.with_hour_cycle(glintl.H12) |> time
+    == "10:40 pm"
+  assert ja.locale() |> glintl.with_hour_cycle(glintl.H12) |> time == "午後10:40"
+  assert en_gb.locale()
+    |> glintl.with_hour_cycle(glintl.H11)
+    |> glintl.locale_hour_cycle
+    == glintl.H11
+  // Japanese writes the date differently next to a 12 hour time.
+  assert ja.locale()
+    |> glintl.with_hour_cycle(glintl.H12)
+    |> glintl.date_time_formatter(date: glintl.Long, time: glintl.Short)
+    |> glintl.format(moment, offset: glintl.utc)
+    == "2026/10/26 午後10:40"
+}
+
+pub fn format_date_test() {
+  let birthday = calendar.Date(2026, calendar.October, 26)
+  assert glintl.date_formatter(en_gb.locale(), style: glintl.Long)
+    |> glintl.format_date(birthday)
+    == "26 October 2026"
+  assert glintl.date_time_formatter(
+      en_gb.locale(),
+      date: glintl.Short,
+      time: glintl.Short,
+    )
+    |> glintl.format_date_time(birthday, calendar.TimeOfDay(9, 5, 0, 0))
+    == "26/10/2026, 09:05"
 }
 
 /// Offsets are under 24 hours either way, like JavaScript's `Intl` allows.

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Northern Sami, `se`.
 pub fn locale() -> Locale {
-  glintl.new_locale("se", glintl.Gregorian, 272)
+  glintl.new_locale("se", glintl.Gregorian, 277)
 }

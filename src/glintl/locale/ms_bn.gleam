@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Malay (Brunei), `ms-BN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ms-BN", glintl.Gregorian, 219)
+  glintl.new_locale("ms-BN", glintl.Gregorian, 223)
 }

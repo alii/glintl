@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Sardinian, `sc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sc", glintl.Gregorian, 268)
+  glintl.new_locale("sc", glintl.Gregorian, 273)
 }

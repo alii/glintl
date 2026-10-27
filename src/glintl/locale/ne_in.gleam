@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Nepali (India), `ne-IN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ne-IN", glintl.Gregorian, 230)
+  glintl.new_locale("ne-IN", glintl.Gregorian, 234)
 }

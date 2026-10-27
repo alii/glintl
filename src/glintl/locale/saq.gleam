@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Samburu, `saq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("saq", glintl.Gregorian, 265)
+  glintl.new_locale("saq", glintl.Gregorian, 270)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Xhosa, `xh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xh", glintl.Gregorian, 339)
+  glintl.new_locale("xh", glintl.Gregorian, 344)
 }

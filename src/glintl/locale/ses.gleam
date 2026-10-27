@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Koyraboro Senni, `ses`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ses", glintl.Gregorian, 275)
+  glintl.new_locale("ses", glintl.Gregorian, 280)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Luxembourgish, `lb`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lb", glintl.Gregorian, 191)
+  glintl.new_locale("lb", glintl.Gregorian, 195)
 }

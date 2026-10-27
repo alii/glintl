@@ -24,6 +24,7 @@ import {
   SCAN_FROM,
   day,
 } from "./calendars.ts";
+import { HOUR_CYCLES } from "./patterns.ts";
 import { LOCALES } from "./locales.ts";
 import { random } from "./random.ts";
 import {
@@ -153,11 +154,15 @@ function group(): Case[] {
 
   const offset = pick(OFFSETS);
 
+  // Empty for the locale's own.
+  const hourCycle = next() < 0.5 ? "" : pick(HOUR_CYCLES);
+
   const formatter = new Intl.DateTimeFormat(tag, {
     calendar: resolved,
     dateStyle: STYLES[date],
     timeStyle: STYLES[time],
     timeZone: offsetString(offset),
+    hourCycle: hourCycle === "" ? undefined : hourCycle,
   });
 
   return gather(GROUP, (): Case[] => {
@@ -182,7 +187,9 @@ function group(): Case[] {
 
     return [
       {
-        line: [tag, calendar, date, time, seconds, offset].join("\t"),
+        line: [tag, calendar, date, time, hourCycle, seconds, offset].join(
+          "\t",
+        ),
         expected: formatter.format(seconds * MS_PER_SECOND),
       },
     ];

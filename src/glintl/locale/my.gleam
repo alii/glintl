@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Burmese, `my`.
 pub fn locale() -> Locale {
-  glintl.new_locale("my", glintl.Gregorian, 223)
+  glintl.new_locale("my", glintl.Gregorian, 227)
 }

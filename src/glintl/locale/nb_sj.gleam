@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Norwegian Bokmål (Svalbard & Jan Mayen), `nb-SJ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nb-SJ", glintl.Gregorian, 226)
+  glintl.new_locale("nb-SJ", glintl.Gregorian, 230)
 }

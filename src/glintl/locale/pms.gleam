@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Piedmontese, `pms`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pms", glintl.Gregorian, 248)
+  glintl.new_locale("pms", glintl.Gregorian, 253)
 }

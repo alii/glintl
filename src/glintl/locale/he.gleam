@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Hebrew, `he`.
 pub fn locale() -> Locale {
-  glintl.new_locale("he", glintl.Gregorian, 139)
+  glintl.new_locale("he", glintl.Gregorian, 143)
 }

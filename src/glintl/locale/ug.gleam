@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Uyghur, `ug`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ug", glintl.Gregorian, 325)
+  glintl.new_locale("ug", glintl.Gregorian, 330)
 }

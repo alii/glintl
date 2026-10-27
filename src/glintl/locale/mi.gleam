@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Māori, `mi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mi", glintl.Gregorian, 212)
+  glintl.new_locale("mi", glintl.Gregorian, 216)
 }

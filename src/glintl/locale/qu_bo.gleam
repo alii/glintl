@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Quechua (Bolivia), `qu-BO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("qu-BO", glintl.Gregorian, 255)
+  glintl.new_locale("qu-BO", glintl.Gregorian, 260)
 }

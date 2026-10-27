@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Scottish Gaelic, `gd`.
 pub fn locale() -> Locale {
-  glintl.new_locale("gd", glintl.Gregorian, 130)
+  glintl.new_locale("gd", glintl.Gregorian, 134)
 }

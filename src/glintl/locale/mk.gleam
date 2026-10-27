@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Macedonian, `mk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mk", glintl.Gregorian, 213)
+  glintl.new_locale("mk", glintl.Gregorian, 217)
 }

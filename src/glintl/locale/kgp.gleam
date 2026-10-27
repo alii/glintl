@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kaingang, `kgp`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kgp", glintl.Gregorian, 164)
+  glintl.new_locale("kgp", glintl.Gregorian, 168)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Cantonese (Traditional, Macao SAR China), `yue-Hant-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yue-Hant-MO", glintl.Gregorian, 348)
+  glintl.new_locale("yue-Hant-MO", glintl.Gregorian, 353)
 }

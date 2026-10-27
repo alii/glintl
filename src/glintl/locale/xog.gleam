@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Soga, `xog`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xog", glintl.Gregorian, 341)
+  glintl.new_locale("xog", glintl.Gregorian, 346)
 }

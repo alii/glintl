@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Northern Luri (Iraq), `lrc-IQ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lrc-IQ", glintl.Gregorian, 199)
+  glintl.new_locale("lrc-IQ", glintl.Gregorian, 203)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Nigerian Pidgin, `pcm`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pcm", glintl.Gregorian, 246)
+  glintl.new_locale("pcm", glintl.Gregorian, 251)
 }

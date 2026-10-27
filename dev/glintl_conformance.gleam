@@ -1,8 +1,9 @@
 //// Formats cases read from standard input, for `codegen/conformance.ts` to
 //// compare with `Intl.DateTimeFormat`. Each line is a locale tag, an ICU
 //// calendar name (empty for the locale's own), a date style and a time style
-//// (0 for none, then 1 to 4 for full to short), Unix seconds and an offset in
-//// minutes, separated by tabs. Only for Erlang: on JavaScript glintl is
+//// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
+//// the locale's own), Unix seconds and an offset in minutes, separated by
+//// tabs. Only for Erlang: on JavaScript glintl is
 //// `Intl`.
 
 import gleam/dict.{type Dict}
@@ -22,13 +23,14 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
   case read_line() {
     Error(Nil) -> Nil
     Ok(line) -> {
-      let assert [tag, calendar, date, time, seconds, offset] =
+      let assert [tag, calendar, date, time, hour_cycle, seconds, offset] =
         string.split(line, "\t")
-      let key = string.join([tag, calendar, date, time], "\t")
+      let key = string.join([tag, calendar, date, time, hour_cycle], "\t")
       let #(formatter, formatters) = case dict.get(formatters, key) {
         Ok(formatter) -> #(formatter, formatters)
         Error(Nil) -> {
-          let formatter = new(tag, calendar, number(date), number(time))
+          let formatter =
+            new(tag, calendar, hour_cycle, number(date), number(time))
           #(formatter, dict.insert(formatters, key, formatter))
         }
       }
@@ -45,11 +47,25 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
   }
 }
 
-fn new(tag: String, calendar: String, date: Int, time: Int) -> Formatter {
+fn new(
+  tag: String,
+  calendar: String,
+  hour_cycle: String,
+  date: Int,
+  time: Int,
+) -> Formatter {
   let assert Ok(locale) = locales.from_tag(tag)
   let locale = case calendar {
     "" -> locale
     id -> glintl.with_calendar(locale, calendar_from_id(id))
+  }
+  let locale = case hour_cycle {
+    "" -> locale
+    "h11" -> glintl.with_hour_cycle(locale, glintl.H11)
+    "h12" -> glintl.with_hour_cycle(locale, glintl.H12)
+    "h23" -> glintl.with_hour_cycle(locale, glintl.H23)
+    "h24" -> glintl.with_hour_cycle(locale, glintl.H24)
+    _ -> panic as { "unknown hour cycle: " <> hour_cycle }
   }
   case date, time {
     0, time -> glintl.time_formatter(locale, style: style(time))

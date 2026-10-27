@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Congo Swahili, `sw-CD`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sw-CD", glintl.Gregorian, 303)
+  glintl.new_locale("sw-CD", glintl.Gregorian, 308)
 }

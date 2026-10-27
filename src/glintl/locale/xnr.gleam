@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kangri, `xnr`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xnr", glintl.Gregorian, 340)
+  glintl.new_locale("xnr", glintl.Gregorian, 345)
 }

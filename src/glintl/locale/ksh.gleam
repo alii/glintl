@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Colognian, `ksh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksh", glintl.Gregorian, 182)
+  glintl.new_locale("ksh", glintl.Gregorian, 186)
 }

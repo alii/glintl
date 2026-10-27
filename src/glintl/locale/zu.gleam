@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Zulu, `zu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zu", glintl.Gregorian, 361)
+  glintl.new_locale("zu", glintl.Gregorian, 366)
 }

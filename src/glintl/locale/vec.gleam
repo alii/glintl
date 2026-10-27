@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Venetian, `vec`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vec", glintl.Gregorian, 334)
+  glintl.new_locale("vec", glintl.Gregorian, 339)
 }

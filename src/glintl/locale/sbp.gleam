@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Sangu, `sbp`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sbp", glintl.Gregorian, 267)
+  glintl.new_locale("sbp", glintl.Gregorian, 272)
 }

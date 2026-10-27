@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Dutch (Caribbean Netherlands), `nl-BQ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nl-BQ", glintl.Gregorian, 231)
+  glintl.new_locale("nl-BQ", glintl.Gregorian, 235)
 }

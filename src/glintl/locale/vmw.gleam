@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Makhuwa, `vmw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vmw", glintl.Gregorian, 336)
+  glintl.new_locale("vmw", glintl.Gregorian, 341)
 }

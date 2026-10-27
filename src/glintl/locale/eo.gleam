@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Esperanto, `eo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("eo", glintl.Gregorian, 91)
+  glintl.new_locale("eo", glintl.Gregorian, 92)
 }

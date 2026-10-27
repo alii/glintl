@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Swiss German (Liechtenstein), `gsw-LI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("gsw-LI", glintl.Gregorian, 132)
+  glintl.new_locale("gsw-LI", glintl.Gregorian, 136)
 }

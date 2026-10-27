@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kannada, `kn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kn", glintl.Gregorian, 173)
+  glintl.new_locale("kn", glintl.Gregorian, 177)
 }

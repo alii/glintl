@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Syriac, `syr`.
 pub fn locale() -> Locale {
-  glintl.new_locale("syr", glintl.Gregorian, 305)
+  glintl.new_locale("syr", glintl.Gregorian, 310)
 }

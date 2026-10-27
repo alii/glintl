@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Russian (Belarus), `ru-BY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ru-BY", glintl.Gregorian, 261)
+  glintl.new_locale("ru-BY", glintl.Gregorian, 266)
 }

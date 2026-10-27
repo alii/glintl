@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Ganda, `lg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lg", glintl.Gregorian, 192)
+  glintl.new_locale("lg", glintl.Gregorian, 196)
 }

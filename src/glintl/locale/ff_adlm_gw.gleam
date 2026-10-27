@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Fulah (Adlam, Guinea-Bissau), `ff-Adlm-GW`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Adlm-GW", glintl.Gregorian, 114)
+  glintl.new_locale("ff-Adlm-GW", glintl.Gregorian, 117)
 }

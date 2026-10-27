@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Korean (China), `ko-CN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ko-CN", glintl.Gregorian, 175)
+  glintl.new_locale("ko-CN", glintl.Gregorian, 179)
 }

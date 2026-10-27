@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Cornish, `kw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kw", glintl.Gregorian, 184)
+  glintl.new_locale("kw", glintl.Gregorian, 188)
 }

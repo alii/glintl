@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Ewondo, `ewo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ewo", glintl.Gregorian, 110)
+  glintl.new_locale("ewo", glintl.Gregorian, 113)
 }

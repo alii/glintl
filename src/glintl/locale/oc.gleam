@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Occitan, `oc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("oc", glintl.Gregorian, 239)
+  glintl.new_locale("oc", glintl.Gregorian, 244)
 }

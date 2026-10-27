@@ -1,4 +1,4 @@
-export function formatter(tag, calendar, dateStyle, timeStyle) {
+export function formatter(tag, calendar, dateStyle, timeStyle, hourCycle) {
   const options = { calendar };
   if (dateStyle !== "") {
     options.dateStyle = dateStyle;
@@ -6,7 +6,18 @@ export function formatter(tag, calendar, dateStyle, timeStyle) {
   if (timeStyle !== "") {
     options.timeStyle = timeStyle;
   }
+  if (hourCycle !== "") {
+    options.hourCycle = hourCycle;
+  }
   return { tag, options, byOffset: new Map() };
+}
+
+// The locale's own hour cycle, which Intl only gives when showing a time.
+export function hourCycle(tag, calendar) {
+  return new Intl.DateTimeFormat(tag, {
+    calendar,
+    timeStyle: "short",
+  }).resolvedOptions().hourCycle;
 }
 
 const MILLISECONDS_PER_SECOND = 1000;

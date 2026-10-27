@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Nama, `naq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("naq", glintl.Gregorian, 225)
+  glintl.new_locale("naq", glintl.Gregorian, 229)
 }

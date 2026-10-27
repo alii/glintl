@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Nheengatu (Colombia), `yrl-CO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yrl-CO", glintl.Gregorian, 347)
+  glintl.new_locale("yrl-CO", glintl.Gregorian, 352)
 }

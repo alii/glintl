@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Tuvinian, `tyv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tyv", glintl.Gregorian, 323)
+  glintl.new_locale("tyv", glintl.Gregorian, 328)
 }

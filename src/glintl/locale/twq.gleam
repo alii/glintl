@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Tasawaq, `twq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("twq", glintl.Gregorian, 322)
+  glintl.new_locale("twq", glintl.Gregorian, 327)
 }

@@ -3,9 +3,11 @@
 //
 // - tokens: each distinct token, as a term of `Token`.
 // - patterns: a `Pattern`, whose tokens are 16-bit token numbers.
-// - formats: 16-bit pattern numbers for each style, then eras.
+// - formats: 16-bit pattern numbers for each style, dates with times if they
+//   aren't glued, then eras.
 // - digits: a tuple of ten digits, for locales without ASCII digits.
-// - locales: a digits number (0 for ASCII), then formats for each calendar.
+// - locales: a digits number (0 for ASCII), the default hour cycle, then for
+//   each calendar its formats, then its formats in each hour cycle.
 
 import { CALENDARS } from "./calendars.ts";
 import { bytes, string } from "./erlang.ts";
@@ -13,6 +15,8 @@ import {
   type EraFormats,
   type Formats,
   type GluePiece,
+  HOUR_CYCLES,
+  type HourCycle,
   STYLES,
   type Token,
 } from "./patterns.ts";
@@ -20,6 +24,11 @@ import {
 const STYLE_COUNT = STYLES.length;
 
 const ASCII_DIGITS = "0123456789";
+
+// How an era joins its dates to times, in the order of `render.gleam`.
+const ERA_JOINED = 0;
+const ERA_COMBINED = 1;
+const ERA_GLUES = 2;
 
 const BYTE = 0xff;
 const BITS_PER_BYTE = 8;
@@ -140,26 +149,38 @@ export function packer() {
 
   const gluePattern = (pieces: GluePiece[]) =>
     pattern(
-      pieces.map((p) =>
-        p.t === "text"
-          ? `{literal,${string(p.value)}}`
-          : p.t === "date"
-            ? "glue_date"
-            : "glue_time",
-      ),
+      pieces.map((p) => {
+        switch (p.t) {
+          case "text":
+            return `{literal,${string(p.value)}}`;
+          case "token":
+            return token(p.token);
+          case "date":
+            return "glue_date";
+          case "time":
+            return "glue_time";
+        }
+      }),
       false,
       false,
     );
 
+  // An era's dates, then how it joins them to times.
   const era = (e: EraFormats): number[] => [
     ...u8(e.era),
     ...e.dates.flatMap(tokensPattern),
-    ...(e.combined ? [...u8(1), ...e.combined.flatMap(tokensPattern)] : u8(0)),
+    ...(e.combined
+      ? [...u8(ERA_COMBINED), ...e.combined.flatMap(tokensPattern)]
+      : e.glues
+        ? [...u8(ERA_GLUES), ...e.glues.flatMap(gluePattern)]
+        : u8(ERA_JOINED)),
   ];
 
   function packFormats(f: Formats): number {
     if (
       [f.dates, f.times, f.glues].some((s) => s.length !== STYLE_COUNT) ||
+      (f.combined !== undefined &&
+        f.combined.length !== STYLE_COUNT * STYLE_COUNT) ||
       f.eras.some(
         (e) =>
           e.dates.length !== STYLE_COUNT ||
@@ -175,6 +196,9 @@ export function packer() {
         ...f.dates.flatMap(tokensPattern),
         ...f.times.flatMap(tokensPattern),
         ...f.glues.flatMap(gluePattern),
+        ...(f.combined
+          ? [...u8(1), ...f.combined.flatMap(tokensPattern)]
+          : u8(0)),
         ...u8(f.eras.length),
         ...f.eras.flatMap(era),
       ]),
@@ -182,9 +206,16 @@ export function packer() {
   }
 
   // A locale's number in the locales table.
-  function locale(localDigits: string[], all: Formats[]): number {
-    if (all.length !== CALENDARS.length) {
-      throw new Error("A calendar is missing");
+  function locale(
+    localDigits: string[],
+    hourCycle: HourCycle,
+    all: Formats[][],
+  ): number {
+    if (
+      all.length !== CALENDARS.length ||
+      all.some((f) => f.length !== HOUR_CYCLES.length + 1)
+    ) {
+      throw new Error("A calendar or hour cycle is missing");
     }
 
     const digitsNumber =
@@ -193,7 +224,11 @@ export function packer() {
         : digits.add(tuple(localDigits.map(string)));
 
     return locales.add(
-      bytes([...u16(digitsNumber), ...all.flatMap((f) => u16(packFormats(f)))]),
+      bytes([
+        ...u16(digitsNumber),
+        ...u16(HOUR_CYCLES.indexOf(hourCycle)),
+        ...all.flat().flatMap((f) => u16(packFormats(f))),
+      ]),
     );
   }
 

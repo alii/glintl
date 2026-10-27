@@ -23,13 +23,18 @@ export type Moment = {
 };
 
 export function join(date: Token[], glue: GluePiece[], time: Token[]): Token[] {
-  return glue.flatMap((piece): Token[] =>
-    piece.t === "text"
-      ? [{ t: "literal", value: piece.value }]
-      : piece.t === "date"
-        ? date
-        : time,
-  );
+  return glue.flatMap((piece): Token[] => {
+    switch (piece.t) {
+      case "text":
+        return [{ t: "literal", value: piece.value }];
+      case "token":
+        return [piece.token];
+      case "date":
+        return date;
+      case "time":
+        return time;
+    }
+  });
 }
 
 const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Ossetic, `os`.
 pub fn locale() -> Locale {
-  glintl.new_locale("os", glintl.Gregorian, 243)
+  glintl.new_locale("os", glintl.Gregorian, 248)
 }

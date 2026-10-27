@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Makonde, `kde`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kde", glintl.Gregorian, 162)
+  glintl.new_locale("kde", glintl.Gregorian, 166)
 }

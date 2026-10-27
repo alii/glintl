@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Masai, `mas`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mas", glintl.Gregorian, 206)
+  glintl.new_locale("mas", glintl.Gregorian, 210)
 }

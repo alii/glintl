@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Tamil, `ta`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ta", glintl.Gregorian, 307)
+  glintl.new_locale("ta", glintl.Gregorian, 312)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Oromo (Kenya), `om-KE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("om-KE", glintl.Gregorian, 241)
+  glintl.new_locale("om-KE", glintl.Gregorian, 246)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Konkani (Latin), `kok-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kok-Latn", glintl.Gregorian, 177)
+  glintl.new_locale("kok-Latn", glintl.Gregorian, 181)
 }

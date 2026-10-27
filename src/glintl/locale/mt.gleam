@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Maltese, `mt`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mt", glintl.Gregorian, 221)
+  glintl.new_locale("mt", glintl.Gregorian, 225)
 }

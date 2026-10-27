@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Serbian (Latin, Montenegro), `sr-Latn-ME`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sr-Latn-ME", glintl.Gregorian, 295)
+  glintl.new_locale("sr-Latn-ME", glintl.Gregorian, 300)
 }

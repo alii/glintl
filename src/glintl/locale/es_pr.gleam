@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Spanish (Puerto Rico), `es-PR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-PR", glintl.Gregorian, 102)
+  glintl.new_locale("es-PR", glintl.Gregorian, 105)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kuvi (Telugu), `kxv-Telu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kxv-Telu", glintl.Gregorian, 188)
+  glintl.new_locale("kxv-Telu", glintl.Gregorian, 192)
 }

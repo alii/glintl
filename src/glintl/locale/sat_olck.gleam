@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Santali (Ol Chiki), `sat-Olck`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat-Olck", glintl.Gregorian, 266)
+  glintl.new_locale("sat-Olck", glintl.Gregorian, 271)
 }

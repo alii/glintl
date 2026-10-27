@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kabyle, `kab`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kab", glintl.Gregorian, 160)
+  glintl.new_locale("kab", glintl.Gregorian, 164)
 }

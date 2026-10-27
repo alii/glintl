@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kikuyu, `ki`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ki", glintl.Gregorian, 166)
+  glintl.new_locale("ki", glintl.Gregorian, 170)
 }

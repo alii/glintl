@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Mongolian (Mongolian), `mn-Mong`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mn-Mong", glintl.Gregorian, 215)
+  glintl.new_locale("mn-Mong", glintl.Gregorian, 219)
 }

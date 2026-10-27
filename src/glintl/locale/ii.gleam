@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Sichuan Yi, `ii`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ii", glintl.Gregorian, 151)
+  glintl.new_locale("ii", glintl.Gregorian, 155)
 }

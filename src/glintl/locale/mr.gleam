@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Marathi, `mr`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mr", glintl.Gregorian, 217)
+  glintl.new_locale("mr", glintl.Gregorian, 221)
 }

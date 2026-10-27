@@ -20,6 +20,8 @@
 //// targets and between JavaScript runtimes.
 
 import gleam/int
+import gleam/option.{type Option, None, Some}
+import gleam/time/calendar
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
 import glintl/internal/data.{gregorian as gregorian_math}
@@ -35,6 +37,8 @@ pub opaque type Locale {
   Locale(
     tag: String,
     calendar: Calendar,
+    /// `None` for the locale's own hour cycle.
+    hour_cycle: Option(HourCycle),
     /// The locale's number in glintl's packed data.
     data: Int,
   )
@@ -43,21 +47,21 @@ pub opaque type Locale {
 @target(javascript)
 /// On JavaScript, `Intl.DateTimeFormat` has the data.
 pub opaque type Locale {
-  Locale(tag: String, calendar: Calendar)
+  Locale(tag: String, calendar: Calendar, hour_cycle: Option(HourCycle))
 }
 
 @target(erlang)
 /// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, data: Int) -> Locale {
-  Locale(tag:, calendar:, data:)
+  Locale(tag:, calendar:, hour_cycle: None, data:)
 }
 
 @target(javascript)
 /// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, _data: Int) -> Locale {
-  Locale(tag:, calendar:)
+  Locale(tag:, calendar:, hour_cycle: None)
 }
 
 /// The BCP 47 tag of a locale, such as `"en-GB"`.
@@ -124,6 +128,93 @@ pub fn locale_calendar(locale: Locale) -> Calendar {
 /// ```
 pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
   Locale(..locale, calendar:)
+}
+
+/// Which hours a clock shows, the same as the `hourCycle` option of
+/// JavaScript's `Intl.DateTimeFormat`. In British English, at a quarter past
+/// midnight and a quarter to midnight:
+///
+/// | Hour cycle | Hours    | Times              |
+/// | ---------- | -------- | ------------------ |
+/// | `H11`      | 0 to 11  | 0:15 am, 11:45 pm  |
+/// | `H12`      | 1 to 12  | 12:15 am, 11:45 pm |
+/// | `H23`      | 0 to 23  | 00:15, 23:45       |
+/// | `H24`      | 1 to 24  | 24:15, 23:45       |
+///
+/// Locales show the 12 hour ones with their own words for morning and
+/// evening, which can move or change the rest of the time.
+pub type HourCycle {
+  H11
+  H12
+  H23
+  H24
+}
+
+/// Show hours in another hour cycle, like 24 hour time in American English.
+///
+/// ```gleam
+/// en.locale()
+/// |> glintl.with_hour_cycle(glintl.H23)
+/// |> glintl.time_formatter(style: glintl.Short)
+/// |> glintl.format(timestamp.system_time(), offset: glintl.utc)
+/// // -> "22:40"
+/// ```
+pub fn with_hour_cycle(locale: Locale, hour_cycle: HourCycle) -> Locale {
+  Locale(..locale, hour_cycle: Some(hour_cycle))
+}
+
+/// The hour cycle a locale shows: one set with `with_hour_cycle`, or the
+/// locale's own.
+pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
+  case locale.hour_cycle {
+    Some(hour_cycle) -> hour_cycle
+    None -> default_hour_cycle(locale)
+  }
+}
+
+@target(erlang)
+/// In the order of `HOUR_CYCLES` in `codegen/patterns.ts`.
+const hour_cycles = [H11, H12, H23, H24]
+
+@target(erlang)
+fn default_hour_cycle(locale: Locale) -> HourCycle {
+  at(hour_cycles, render.default_hour_cycle(locale.data), H23)
+}
+
+@target(erlang)
+fn at(items: List(a), index: Int, otherwise: a) -> a {
+  case items, index {
+    [item, ..], 0 -> item
+    [_, ..rest], _ -> at(rest, index - 1, otherwise)
+    [], _ -> otherwise
+  }
+}
+
+@target(javascript)
+fn default_hour_cycle(locale: Locale) -> HourCycle {
+  case intl_hour_cycle(locale.tag, icu_calendar(locale.calendar)) {
+    "h11" -> H11
+    "h12" -> H12
+    "h24" -> H24
+    _ -> H23
+  }
+}
+
+@target(javascript)
+@external(javascript, "./glintl_ffi.mjs", "hourCycle")
+fn intl_hour_cycle(tag: String, calendar: String) -> String
+
+@target(javascript)
+/// The `hourCycle` option of `Intl.DateTimeFormat`, or `""` for the
+/// locale's own.
+fn intl_hour_cycle_option(hour_cycle: Option(HourCycle)) -> String {
+  case hour_cycle {
+    None -> ""
+    Some(H11) -> "h11"
+    Some(H12) -> "h12"
+    Some(H23) -> "h23"
+    Some(H24) -> "h24"
+  }
 }
 
 /// How much detail to show, from most to least.
@@ -255,15 +346,44 @@ pub fn format(
   do_format(formatter.compiled, seconds, nanoseconds, offset.minutes)
 }
 
+/// Format a date, like a birthday, that isn't tied to a time zone. If the
+/// formatter shows a time, it shows midnight.
+///
+/// ```gleam
+/// glintl.date_formatter(en_gb.locale(), style: glintl.Long)
+/// |> glintl.format_date(calendar.Date(2026, calendar.October, 26))
+/// // -> "26 October 2026"
+/// ```
+pub fn format_date(formatter: Formatter, date: calendar.Date) -> String {
+  format_date_time(formatter, date, calendar.TimeOfDay(0, 0, 0, 0))
+}
+
+/// Format a date and a time of day that aren't tied to a time zone. If the
+/// formatter shows a time zone, it shows UTC.
+pub fn format_date_time(
+  formatter: Formatter,
+  date: calendar.Date,
+  time: calendar.TimeOfDay,
+) -> String {
+  timestamp.from_calendar(date:, time:, offset: calendar.utc_offset)
+  |> format(formatter, _, offset: utc)
+}
+
 @target(erlang)
 fn new(locale: Locale, shown: data.Shown) -> Formatter {
-  let Locale(calendar:, data:, ..) = locale
+  let Locale(calendar:, data:, hour_cycle:, ..) = locale
+  // 0 for the locale's own hour cycle, then 1 more than its position.
+  let cycle = case hour_cycle {
+    None -> 0
+    Some(hour_cycle) -> position(hour_cycles, hour_cycle, 1)
+  }
   Formatter(case calendar {
-    Gregorian -> render.compile(data, shown)
+    Gregorian -> render.compile(data, cycle, shown)
     _ ->
       render.compile_other(
         data,
         position(calendar_order, calendar, 0),
+        cycle,
         fn() { calendar_math(calendar) },
         shown,
       )
@@ -293,10 +413,10 @@ const calendar_order = [
 ]
 
 @target(erlang)
-fn position(calendars: List(Calendar), calendar: Calendar, index: Int) -> Int {
-  case calendars {
-    [first, ..] if first == calendar -> index
-    [_, ..rest] -> position(rest, calendar, index + 1)
+fn position(items: List(a), item: a, index: Int) -> Int {
+  case items {
+    [first, ..] if first == item -> index
+    [_, ..rest] -> position(rest, item, index + 1)
     [] -> index
   }
 }
@@ -313,6 +433,7 @@ fn new(locale: Locale, shown: data.Shown) -> Formatter {
     icu_calendar(locale.calendar),
     date_style,
     time_style,
+    intl_hour_cycle_option(locale.hour_cycle),
   ))
 }
 
@@ -324,6 +445,7 @@ fn intl_formatter(
   calendar: String,
   date_style: String,
   time_style: String,
+  hour_cycle: String,
 ) -> IntlFormatter
 
 fn internal_style(style: Style) -> data.Style {

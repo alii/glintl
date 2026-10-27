@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Ngiemboon, `nnh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nnh", glintl.Gregorian, 235)
+  glintl.new_locale("nnh", glintl.Gregorian, 239)
 }

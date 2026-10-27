@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Khmer, `km`.
 pub fn locale() -> Locale {
-  glintl.new_locale("km", glintl.Gregorian, 172)
+  glintl.new_locale("km", glintl.Gregorian, 176)
 }

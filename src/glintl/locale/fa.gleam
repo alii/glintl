@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Persian, `fa`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fa", glintl.Persian, 111)
+  glintl.new_locale("fa", glintl.Persian, 114)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kurdish (Latin), `ku-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ku-Latn", glintl.Gregorian, 183)
+  glintl.new_locale("ku-Latn", glintl.Gregorian, 187)
 }

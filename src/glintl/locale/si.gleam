@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Sinhala, `si`.
 pub fn locale() -> Locale {
-  glintl.new_locale("si", glintl.Gregorian, 280)
+  glintl.new_locale("si", glintl.Gregorian, 285)
 }

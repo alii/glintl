@@ -76,8 +76,14 @@ export type Token =
     };
 
 // How a date and a time are joined, like "{date} at {time}".
+// How a date and a time are joined, like "{date} at {time}". A glue can hold
+// a date's tokens itself, where ICU writes the date differently next to a
+// time.
 export type GluePiece =
-  { t: "text"; value: string } | { t: "date" } | { t: "time" };
+  | { t: "text"; value: string }
+  | { t: "date" }
+  | { t: "time" }
+  | { t: "token"; token: Token };
 
 export const STYLES = ["full", "long", "medium", "short"] as const;
 
@@ -155,14 +161,32 @@ export function localDigits(tag: string): string[] {
   return Array.from({ length: ONE_DIGIT_BELOW }, (_, i) => nf.format(i));
 }
 
+export function defaultHourCycle(tag: string): HourCycle {
+  const cycle = new Intl.DateTimeFormat(tag, {
+    timeStyle: "short",
+  }).resolvedOptions().hourCycle;
+
+  if (cycle === undefined) {
+    throw new Error(`${tag}: no hour cycle`);
+  }
+
+  return cycle;
+}
+
 export function defaultCalendar(tag: string): string {
   return new Intl.DateTimeFormat(tag).resolvedOptions().calendar;
 }
+
+// Intl's hour cycles, in the order of `HourCycle` in `glintl.gleam`.
+export const HOUR_CYCLES = ["h11", "h12", "h23", "h24"] as const;
+
+export type HourCycle = (typeof HOUR_CYCLES)[number];
 
 type Options = {
   dateStyle?: Style;
   timeStyle?: Style;
   timeZone?: string;
+  hourCycle?: HourCycle;
 };
 
 function formatter(tag: string, calendar: CalendarId, options: Options) {
@@ -684,11 +708,12 @@ export function glue(
   tag: string,
   calendar: CalendarId,
   dateStyle: Style,
+  hourCycle?: HourCycle,
 ): GluePiece[] {
-  const name = `${tag} ${calendar} ${dateStyle}`;
+  const name = `${tag} ${calendar} ${dateStyle} ${hourCycle ?? ""}`;
 
   const format = (options: Options) =>
-    formatter(tag, calendar, options).format(PROBE);
+    formatter(tag, calendar, { ...options, hourCycle }).format(PROBE);
 
   const date = format({ dateStyle });
 
@@ -809,8 +834,9 @@ function nearest(days: number[], target: number): number {
 export type EraFormats = {
   era: number;
   dates: Token[][];
-  // Dates with times, by date style then time style, for eras where ICU
-  // doesn't just join the date and time.
+  // For eras where ICU doesn't just join the date and time: glues holding
+  // the era's dates, or else dates with times, by date style then time style.
+  glues?: GluePiece[][];
   combined?: Token[][];
 };
 
@@ -818,6 +844,9 @@ export type Formats = {
   dates: Token[][];
   times: Token[][];
   glues: GluePiece[][];
+  // Dates with times, by date style then time style, when ICU doesn't just
+  // join them with the glue.
+  combined?: Token[][];
   eras: EraFormats[];
 };
 
@@ -845,6 +874,9 @@ const CHECK_OFFSETS = [707, -210, 60];
 
 // An offset to check dates with times, +5:30.
 const DATE_AND_TIME_OFFSET = 330;
+
+// Numbers below this have one digit.
+const ONE_DIGIT = 10;
 
 // A year to check times before 1970 in, as ICU only names the zero offset
 // from 1970.
@@ -969,26 +1001,117 @@ function icu(
   }).format(m.unixSeconds * MS_PER_SECOND);
 }
 
+// With `hourCycle`, the formats for that hour cycle: `base`'s dates, with
+// times, glues and dates with times worked out for it.
 export function formats(
   tag: string,
   calendar: CalendarId,
   math: Math_,
   digits: string[],
+  hourCycle?: HourCycle,
+  base?: Formats,
 ): Formats {
+  const cycle = hourCycle === undefined ? {} : { hourCycle };
+
+  // ICU can write a date differently next to a time in another hour cycle,
+  // so there may be no glue; then dates and times are written together.
+  const glueFor = (dateStyle: Style) => {
+    try {
+      return glue(tag, calendar, dateStyle, hourCycle);
+    } catch (error) {
+      if (base === undefined) {
+        throw error;
+      }
+
+      return undefined;
+    }
+  };
+
+  const glues = STYLES.map(glueFor);
+
   const result: Formats = {
-    dates: STYLES.map((dateStyle) =>
-      derive(tag, calendar, math, { dateStyle }, digits),
-    ),
+    dates:
+      base?.dates ??
+      STYLES.map((dateStyle) =>
+        derive(tag, calendar, math, { dateStyle }, digits),
+      ),
     times: STYLES.map((timeStyle) =>
-      derive(tag, calendar, math, { timeStyle }, digits),
+      derive(tag, calendar, math, { timeStyle, ...cycle }, digits),
     ),
-    glues: STYLES.map((dateStyle) => glue(tag, calendar, dateStyle)),
-    eras: [],
+    glues: glues.map((g, s) => g ?? base!.glues[s]!),
+    eras: base?.eras.map(({ era, dates }) => ({ era, dates })) ?? [],
   };
 
   const days = checkDays(math);
 
-  const main: EraFormats = { era: -1, dates: result.dates };
+  const combinedOn = (d: number) =>
+    STYLES.flatMap((dateStyle) =>
+      STYLES.map((timeStyle) =>
+        derive(
+          tag,
+          calendar,
+          math,
+          { dateStyle, timeStyle, ...cycle },
+          digits,
+          d,
+        ),
+      ),
+    );
+
+  // A glue for each date style holding the date itself, found in a date with
+  // a short time, or undefined if the time isn't there.
+  const shortTime = STYLES.indexOf("short");
+
+  const tokenPiece = (token: Token): GluePiece => ({ t: "token", token });
+  const timePiece: GluePiece = { t: "time" };
+
+  const gluesWithDates = (d: number) => {
+    const found = STYLES.map((dateStyle): GluePiece[] | undefined => {
+      const tokens = derive(
+        tag,
+        calendar,
+        math,
+        { dateStyle, timeStyle: "short", ...cycle },
+        digits,
+        d,
+      );
+
+      const time = JSON.stringify(result.times[shortTime]);
+      const length = result.times[shortTime]!.length;
+
+      const at = tokens.findIndex(
+        (_, i) => JSON.stringify(tokens.slice(i, i + length)) === time,
+      );
+
+      return at < 0
+        ? undefined
+        : [
+            ...tokens.slice(0, at).map(tokenPiece),
+            timePiece,
+            ...tokens.slice(at + length).map(tokenPiece),
+          ];
+    });
+
+    const kept = found.filter((g): g is GluePiece[] => g !== undefined);
+
+    return kept.length === found.length ? kept : undefined;
+  };
+
+  if (glues.includes(undefined)) {
+    const withDates = gluesWithDates(PROBE_DAY);
+
+    if (withDates) {
+      result.glues = withDates;
+    } else {
+      result.combined = combinedOn(PROBE_DAY);
+    }
+  }
+
+  const main: EraFormats = {
+    era: -1,
+    dates: result.dates,
+    combined: result.combined,
+  };
 
   const formatsFor = (era: number) =>
     result.eras.find((e) => e.era === era) ?? main;
@@ -1017,7 +1140,7 @@ export function formats(
   };
 
   // Eras that ICU formats differently get their own date patterns.
-  days.forEach((d) => {
+  (base === undefined ? days : []).forEach((d) => {
     const era = calendarDate(math, d)!.era;
 
     if (!failing(formatsFor(era), d)) {
@@ -1062,7 +1185,7 @@ export function formats(
   });
 
   // Recheck every day, now that all the eras are known.
-  days.forEach((d) => {
+  (base === undefined ? days : []).forEach((d) => {
     const f = formatsFor(calendarDate(math, d)!.era);
     STYLES.forEach((dateStyle, s) => {
       const m = moment(math, d, 0);
@@ -1102,7 +1225,7 @@ export function formats(
     timeMoments.forEach((m) => {
       if (
         render(result.times[s]!, digits, m) !==
-        icu(tag, calendar, { timeStyle }, m)
+        icu(tag, calendar, { timeStyle, ...cycle }, m)
       ) {
         throw new Error(`${tag} ${calendar} ${timeStyle}: time doesn't match`);
       }
@@ -1112,7 +1235,7 @@ export function formats(
   // Dates and times together, on a day in each era.
   const combinedFor = (f: EraFormats, ds: number, ts: number) =>
     f.combined?.[ds * STYLES.length + ts] ??
-    join(f.dates[ds]!, result.glues[ds]!, result.times[ts]!);
+    join(f.dates[ds]!, (f.glues ?? result.glues)[ds]!, result.times[ts]!);
 
   const combinedMismatch = (f: EraFormats, d: number) => {
     const m = moment(math, d, DATE_AND_TIME_OFFSET);
@@ -1123,7 +1246,7 @@ export function formats(
         dateStyle,
         timeStyle,
         ours: render(combinedFor(f, ds, ts), digits, m),
-        theirs: icu(tag, calendar, { dateStyle, timeStyle }, m),
+        theirs: icu(tag, calendar, { dateStyle, timeStyle, ...cycle }, m),
       }))
       .find(({ ours, theirs }) => ours !== theirs);
 
@@ -1134,7 +1257,10 @@ export function formats(
 
   const eraDays = new Map<number, number>();
 
-  [PROBE_DAY, ...days].forEach((d) => {
+  // A day in each era, avoiding first years, which some eras name, like 元.
+  const ordinary = (d: number) => calendarDate(math, d)!.year !== 1;
+
+  [PROBE_DAY, ...days.filter(ordinary), ...days].forEach((d) => {
     const era = calendarDate(math, d)!.era;
 
     if (!eraDays.has(era)) {
@@ -1156,9 +1282,23 @@ export function formats(
       result.eras.push(eraFormats);
     }
 
+    eraFormats.glues = gluesWithDates(d);
+
+    if (eraFormats.glues && !combinedMismatch(eraFormats, d)) {
+      return;
+    }
+
+    eraFormats.glues = undefined;
     eraFormats.combined = STYLES.flatMap((dateStyle) =>
       STYLES.map((timeStyle) =>
-        derive(tag, calendar, math, { dateStyle, timeStyle }, digits, d),
+        derive(
+          tag,
+          calendar,
+          math,
+          { dateStyle, timeStyle, ...cycle },
+          digits,
+          d,
+        ),
       ),
     );
     const mismatch = combinedMismatch(eraFormats, d);
@@ -1170,7 +1310,42 @@ export function formats(
     }
   });
 
-  [PROBE_DAY, days[1]!].forEach((d) => {
+  // Days with one digit months and days too, as ICU can pad them next to a
+  // time in another hour cycle but not on their own.
+  const small = days.filter((d) => {
+    const date = calendarDate(math, d)!;
+
+    return date.month + 1 < ONE_DIGIT && date.day < ONE_DIGIT;
+  });
+
+  const finalDays = [
+    PROBE_DAY,
+    days[1]!,
+    ...[0, small.length >> 1, small.length - 1].flatMap((i) =>
+      small[i] === undefined ? [] : [small[i]],
+    ),
+  ];
+
+  finalDays.forEach((d) => {
+    const f = formatsFor(calendarDate(math, d)!.era);
+
+    if (f === main && main.combined === undefined && combinedMismatch(f, d)) {
+      const withDates = gluesWithDates(d);
+      const glued = result.glues;
+
+      if (withDates) {
+        result.glues = withDates;
+      }
+
+      if (!withDates || combinedMismatch(f, d)) {
+        result.glues = glued;
+        result.combined = combinedOn(d);
+        main.combined = result.combined;
+      }
+    }
+  });
+
+  finalDays.forEach((d) => {
     const mismatch = combinedMismatch(
       formatsFor(calendarDate(math, d)!.era),
       d,

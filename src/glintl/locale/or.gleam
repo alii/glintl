@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Odia, `or`.
 pub fn locale() -> Locale {
-  glintl.new_locale("or", glintl.Gregorian, 242)
+  glintl.new_locale("or", glintl.Gregorian, 247)
 }

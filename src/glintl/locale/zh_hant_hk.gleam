@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Chinese (Traditional, Hong Kong SAR China), `zh-Hant-HK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zh-Hant-HK", glintl.Gregorian, 359)
+  glintl.new_locale("zh-Hant-HK", glintl.Gregorian, 364)
 }

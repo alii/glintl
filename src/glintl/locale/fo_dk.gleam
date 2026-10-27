@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Faroese (Denmark), `fo-DK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fo-DK", glintl.Gregorian, 119)
+  glintl.new_locale("fo-DK", glintl.Gregorian, 122)
 }

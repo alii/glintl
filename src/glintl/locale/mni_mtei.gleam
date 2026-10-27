@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Manipuri (Meitei Mayek), `mni-Mtei`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mni-Mtei", glintl.Gregorian, 216)
+  glintl.new_locale("mni-Mtei", glintl.Gregorian, 220)
 }

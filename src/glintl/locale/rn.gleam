@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Rundi, `rn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("rn", glintl.Gregorian, 258)
+  glintl.new_locale("rn", glintl.Gregorian, 263)
 }

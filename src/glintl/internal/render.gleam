@@ -193,10 +193,26 @@ fn number_at(bits: BitArray, index: Int) -> Int {
 // --- Compiling ---------------------------------------------------------------
 
 @target(erlang)
-/// A formatter for a locale's Gregorian formats.
-pub fn compile(locale: Int, shown: data.Shown) -> Compiled {
+/// Each calendar has its formats, then its formats in each hour cycle.
+const formats_per_calendar = 5
+
+@target(erlang)
+/// A locale entry's digits number, then its default hour cycle.
+const entry_header = 2
+
+@target(erlang)
+/// The default hour cycle of a locale, as a position in `HOUR_CYCLES` in
+/// `codegen/patterns.ts`.
+pub fn default_hour_cycle(locale: Int) -> Int {
+  number_at(element(locale, locales()), 1)
+}
+
+@target(erlang)
+/// A formatter for a locale's Gregorian formats. `cycle` is 0 for the
+/// locale's own hour cycle, or 1 more than a position in `HOUR_CYCLES`.
+pub fn compile(locale: Int, cycle: Int, shown: data.Shown) -> Compiled {
   let entry = element(locale, locales())
-  compile_formats(entry, 0, shown, GregorianDays)
+  compile_formats(entry, 0, cycle, shown, GregorianDays)
 }
 
 @target(erlang)
@@ -205,28 +221,41 @@ pub fn compile(locale: Int, shown: data.Shown) -> Compiled {
 pub fn compile_other(
   locale: Int,
   position: Int,
+  cycle: Int,
   math: fn() -> Math,
   shown: data.Shown,
 ) -> Compiled {
   let entry = element(locale, locales())
-  let gregorian = fn() { compile_formats(entry, 0, shown, GregorianDays) }
-  compile_formats(entry, position, shown, OtherDays(math:, gregorian:))
+  let gregorian = fn() {
+    compile_formats(entry, 0, cycle, shown, GregorianDays)
+  }
+  compile_formats(entry, position, cycle, shown, OtherDays(math:, gregorian:))
 }
 
 @target(erlang)
-/// A locale entry is its digits number, then formats for each calendar.
 fn compile_formats(
   entry: BitArray,
   position: Int,
+  cycle: Int,
   shown: data.Shown,
   days: Days,
 ) -> Compiled {
   let digits = number_at(entry, 0)
-  let formats = element(number_at(entry, position + 1), formats())
+  let index = entry_header + position * formats_per_calendar + cycle
+  let formats = element(number_at(entry, index), formats())
   let #(dates, formats) = split(formats)
   let #(times, formats) = split(formats)
   let #(glues, formats) = split(formats)
-  let main = prepare(dates, times, glues, <<>>, shown)
+  let each = style_count * number_bytes
+  let #(combined, formats) = case formats {
+    <<1, combined:bytes-size(each * style_count), rest:bits>> -> #(
+      combined,
+      rest,
+    )
+    <<_, rest:bits>> -> #(<<>>, rest)
+    _ -> #(<<>>, <<>>)
+  }
+  let main = prepare(dates, times, glues, combined, shown)
   let eras = case shown, formats {
     data.TimeOnly(_), _ -> []
     _, <<count, eras:bits>> -> eras_of(eras, count, times, glues, shown)
@@ -245,8 +274,9 @@ fn split(bits: BitArray) -> #(BitArray, BitArray) {
 }
 
 @target(erlang)
-/// Each era is its number, its dates, then a flag and, if set, a pattern for
-/// each date style and time style.
+/// Each era is its number, its dates, then how it joins them to times: 0 with
+/// the usual glues, 1 and a pattern for each date style and time style, or 2
+/// and its own glues, as `codegen/pack.ts` writes them.
 fn eras_of(
   bits: BitArray,
   count: Int,
@@ -267,6 +297,10 @@ fn eras_of(
       >>
     -> [
       #(era, prepare(dates, times, glues, both, shown)),
+      ..eras_of(rest, count - 1, times, glues, shown)
+    ]
+    _, <<era, dates:bytes-size(each), 2, own:bytes-size(each), rest:bits>> -> [
+      #(era, prepare(dates, times, own, <<>>, shown)),
       ..eras_of(rest, count - 1, times, glues, shown)
     ]
     _, <<era, dates:bytes-size(each), _, rest:bits>> -> [

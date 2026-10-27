@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Estonian, `et`.
 pub fn locale() -> Locale {
-  glintl.new_locale("et", glintl.Gregorian, 108)
+  glintl.new_locale("et", glintl.Gregorian, 111)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Thai, `th`.
 pub fn locale() -> Locale {
-  glintl.new_locale("th", glintl.Buddhist, 312)
+  glintl.new_locale("th", glintl.Buddhist, 317)
 }

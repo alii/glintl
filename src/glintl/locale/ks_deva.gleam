@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Kashmiri (Devanagari), `ks-Deva`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ks-Deva", glintl.Gregorian, 179)
+  glintl.new_locale("ks-Deva", glintl.Gregorian, 183)
 }

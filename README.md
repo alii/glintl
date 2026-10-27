@@ -55,18 +55,30 @@ It is recommended to reuse formatters for performance, because making one is exp
   locales.from_tag("xx") // -> Error(Nil)
   ```
 
+- Pick one from an `Accept-Language` header with `locales.from_accept_language(header)`, or from your own list with `locales.negotiate(header, among: supported)`.
+
 ## Calendars
 
 - Each locale uses its own calendar by default.
 - Use other calendars with `glintl.with_calendar(locale, glintl.Hebrew)`.
 - All of ICU's calendars: Gregorian, ISO 8601, Buddhist, Japanese, Republic of China, Persian, Indian, Hebrew, Chinese, Dangi, Coptic, Ethiopic (2 eras), and 3 Islamic calendars.
 
+## Hour cycles
+
+- Each locale uses its own hour cycle by default. American English uses 12 hours, British English 24.
+- Use another with `glintl.with_hour_cycle(locale, glintl.H23)`, like the `hourCycle` option of `Intl.DateTimeFormat`.
+
+## Offsets and dates
+
+- Make an offset with `glintl.offset(hours: 5, minutes: 30)`, or from a `gleam_time` duration with `glintl.duration_to_offset`. `glintl.utc` is no offset.
+- Format a date with no time zone, like a birthday, with `glintl.format_date(formatter, date)`.
+
 ## How it works
 
 On Erlang:
 
 - Formats come from ICU when glintl is built, not when your app runs.
-- Each locale data is defined as a [literal](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool) in its own module. The result is improved memory usage, because the data can be safely shared by every process and it is rarely copied or garbage collected.
+- All locale data is defined as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), with repeated parts stored once. The result is improved memory usage, because the data can be safely shared by every process and it is rarely copied or garbage collected.
 - We're working on making the start-up cost smaller.
 
 On JavaScript:
