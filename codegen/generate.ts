@@ -252,15 +252,29 @@ const DATA_TABLES = [
   "locales",
 ] as const;
 
+// Gleam's `Calendar` and `HourCycle` values, in the order the packed data
+// numbers them, so `glintl.gleam` doesn't keep its own copy.
+const ORDERS = [
+  ["calendars", CALENDARS.map(({ gleam }) => erlang.atom(gleam))],
+  ["hour_cycles", HOUR_CYCLES.map((cycle) => erlang.atom(cycle))],
+] as const;
+
 await write(
   `${ERLANG}/glintl_generated_data.erl`,
   erlang.module(
     "glintl_generated_data",
     header("Every locale's data, packed by codegen/pack.ts."),
-    DATA_TABLES.map((name) => `${name}/0`),
-    DATA_TABLES.map((name) => [
-      `${name}() ->\n    ${erlang.tuple(tables[name])}`,
-    ]),
+    [...DATA_TABLES, ...ORDERS.map(([name]) => name)].map(
+      (name) => `${name}/0`,
+    ),
+    [
+      ...DATA_TABLES.map((name) => [
+        `${name}() ->\n    ${erlang.tuple(tables[name])}`,
+      ]),
+      ...ORDERS.map(([name, atoms]) => [
+        `${name}() ->\n    [${atoms.join(", ")}]`,
+      ]),
+    ],
   ),
 );
 

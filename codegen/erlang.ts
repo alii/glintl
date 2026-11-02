@@ -34,6 +34,10 @@ export function escape(s: string, hex: (code: string) => string): string {
 export const string = (s: string) =>
   `<<"${escape(s, (h) => `\\x{${h}}`)}"/utf8>>`;
 
+// The atom Gleam compiles a constructor to, like `republic_of_china`.
+export const atom = (constructor: string) =>
+  constructor.replaceAll(/(?<=.)(?=[A-Z])/g, "_").toLowerCase();
+
 export const bytes = (b: number[]) => `<<${b.join(",")}>>`;
 
 export const tuple = (items: string[]) => `{\n    ${items.join(",\n    ")}\n}`;

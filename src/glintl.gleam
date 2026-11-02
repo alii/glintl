@@ -173,12 +173,13 @@ pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
 }
 
 @target(erlang)
-/// In the order of `HOUR_CYCLES` in `codegen/patterns.ts`.
-const hour_cycles = [H11, H12, H23, H24]
+/// Hour cycles in the order the packed data numbers them.
+@external(erlang, "glintl_generated_data", "hour_cycles")
+fn hour_cycles() -> List(HourCycle)
 
 @target(erlang)
 fn default_hour_cycle(locale: Locale) -> HourCycle {
-  at(hour_cycles, render.default_hour_cycle(locale.data), H23)
+  at(hour_cycles(), render.default_hour_cycle(locale.data), H23)
 }
 
 @target(erlang)
@@ -375,14 +376,14 @@ fn new(locale: Locale, shown: data.Shown) -> Formatter {
   // 0 for the locale's own hour cycle, then 1 more than its position.
   let cycle = case hour_cycle {
     None -> 0
-    Some(hour_cycle) -> position(hour_cycles, hour_cycle, 1)
+    Some(hour_cycle) -> position(hour_cycles(), hour_cycle, 1)
   }
   Formatter(case calendar {
     Gregorian -> render.compile(data, cycle, shown)
     _ ->
       render.compile_other(
         data,
-        position(calendar_order, calendar, 0),
+        position(calendar_order(), calendar, 0),
         cycle,
         fn() { calendar_math(calendar) },
         shown,
@@ -391,26 +392,9 @@ fn new(locale: Locale, shown: data.Shown) -> Formatter {
 }
 
 @target(erlang)
-/// The order of each locale's formats in the packed data, the same as
-/// `CALENDARS` in `codegen/calendars.ts`.
-const calendar_order = [
-  Gregorian,
-  Iso8601,
-  Buddhist,
-  Japanese,
-  RepublicOfChina,
-  Persian,
-  Indian,
-  Hebrew,
-  Chinese,
-  Dangi,
-  Coptic,
-  Ethiopic,
-  EthiopicAmeteAlem,
-  IslamicCivil,
-  IslamicTabular,
-  IslamicUmmAlQura,
-]
+/// Calendars in the order of each locale's formats in the packed data.
+@external(erlang, "glintl_generated_data", "calendars")
+fn calendar_order() -> List(Calendar)
 
 @target(erlang)
 fn position(items: List(a), item: a, index: Int) -> Int {
