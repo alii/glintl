@@ -89,6 +89,13 @@ On JavaScript:
 - glintl calls `Intl.DateTimeFormat`.
 - A locale is just its tag, so your bundle has no locale data.
 
+## Compared to Localize
+
+[Localize](https://github.com/elixir-localize/localize) combines the Elixir `ex_cldr` set of libraries into one package. Today, it covers far more than glintl, like numbers, units and messages. The big difference is where the locale data comes from.
+
+- **Localize** keeps locale data in files you download, when you build or, if you turn it on, from its server while your app runs. It reads a locale's file from disk the first time you use that locale. If the file is missing, it falls back to a parent locale or English without telling you.
+- **glintl** compiles every locale into its own module. You don't download anything, and glintl never fetches or reads data files while your app runs, so a missing file or a server outage can't change your output. A mistyped locale module won't compile, and `glintl/locales` returns an `Error` for a tag it doesn't know.
+
 ## Limits
 
 - Time zones are passed as offsets, so you get `GMT+1` rather than `British Summer Time`.
