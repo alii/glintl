@@ -24,7 +24,8 @@ import {
   offsetString,
 } from "./time.ts";
 
-// Date style and time style, each 0 for none or 1 to 4 for full to short.
+// A date style and a time style. Each is 0 for none, or 1 to 4 for full to
+// short.
 type Pair = [number, number];
 
 // The numbers from `from` up to but not including `to`.
@@ -40,46 +41,47 @@ const PAIRS: Pair[] = STYLE_OR_NONE.flatMap((d) =>
 // Locales with something odd in at least one calendar.
 const EDGE_LOCALES = ["en-GB", "ja", "zh", "ko", "ar-SA", "fa", "gl", "ak"];
 
-// Offsets in minutes, including half and quarter hours, and both ends of the
+// These offsets in minutes cover half and quarter hours and both ends of the
 // world: +1, -8, +5:30, +5:45, -3:30, +14, -10 and +8:45.
 const OFFSETS = [0, 60, -480, 330, 345, -210, 840, -600, 525];
 
 const MOMENT_SEED = 42;
 const FIELDS_SEED = 7;
 
-// How many random moments to add to the fixed ones, and the years they come
-// from.
+// Add this many random moments to the fixed ones, drawn from this many
+// years.
 const RANDOM_MOMENTS = 8;
 const RANDOM_MOMENT_YEARS = 2400;
 const DAYS_IN_LONGEST_YEAR = 366;
 
-// Months to sample in each table calendar are the ones this many years
-// either side of the probe day.
+// Sample every month in table calendars within this many years of the probe
+// day.
 const SAMPLE_MONTHS_WITHIN_YEARS = 40;
 const DAYS_IN_YEAR = 365;
 
-// A few days into each month, to land in even the shortest.
+// Check this many days into each month, which even the shortest month has.
 const INTO_MONTH = 3;
 
-// At most this many edge days per calendar, and era starts per calendar
-// with Gregorian months.
+// Check at most this many edge days per calendar, and at most this many era
+// starts in calendars with Gregorian months.
 const MOST_EDGE_DAYS = 60;
 const MOST_ERA_STARTS = 4;
 
-// How many random days to check calendar fields on, and every how many
-// table years to check the first and last day of.
+// Check calendar fields on this many random days. In table calendars, also
+// check the first and last day of one year in this many.
 const RANDOM_FIELD_DAYS = 300;
 const EVERY_NTH_YEAR = 40;
 
-// Intl formatters are slow to make, so some are kept, but not too many.
+// Intl formatters are slow to make, so we keep up to this many.
 const MOST_FORMATTERS = 5000;
 
 const PROBE_DAY = day(2026, 3, 5);
 
-// The time of day edge days are checked at: every number is different.
+// Check edge days at this time of day, whose hour, minute and second all
+// differ.
 const EDGE_TIME: [number, number, number] = [9, 7, 4];
 
-// [Unix seconds, offset in minutes]
+// A moment is its Unix seconds and its offset in minutes.
 type Moment = [number, number];
 
 function at(
@@ -98,9 +100,9 @@ function at(
   ];
 }
 
-// Moments every locale is checked on: midnight, noon, half past noon, the
-// last second of a year, a year with one digit, a year BC, and the turn of
-// a millennium, then some at random.
+// Check every locale on midnight, noon, half past noon, the last second of a
+// year, a year with one digit, a year BC and the turn of a millennium, then
+// on some random moments.
 function moments(): Moment[] {
   const next = random(MOMENT_SEED);
 
@@ -128,11 +130,12 @@ function moments(): Moment[] {
   ];
 }
 
-// The day ICU's calendars switch from Julian dates, and the day before.
+// ICU's calendars switch from Julian dates on this day, so check it and the
+// day before.
 const GREGORIAN_REFORM = day(1582, 10, 15);
 
-// Days worth checking in a calendar: era changes, leap months, the edges of
-// its table, and odd years.
+// Picks the days worth checking in a calendar: era changes, leap months, the
+// edges of its table and odd years.
 function edgeDays(math: Math_): number[] {
   const days = new Set<number>([PROBE_DAY]);
 
@@ -148,8 +151,7 @@ function edgeDays(math: Math_): number[] {
       .add(day(1, 1, 1))
       .add(GREGORIAN_REFORM)
       .add(GREGORIAN_REFORM - 1);
-    // Years -1, 0 and 1 of the oldest era, which some locales write in odd
-    // ways.
+    // Some locales write years -1, 0 and 1 of the oldest era in odd ways.
     const oldest = math.eras.at(-1)!.era;
 
     range(SCAN_FROM, LAST_YEAR + 1).forEach((year) => {
@@ -167,7 +169,7 @@ function edgeDays(math: Math_): number[] {
 
     math.eraDays.forEach((d) => days.add(d));
 
-    // Every month name, in the years around the probe day.
+    // Check every month name in the years around the probe day.
     math.layouts.forEach((layout, i) => {
       if (
         Math.abs(math.starts[i]! - PROBE_DAY) >
@@ -238,7 +240,7 @@ export function fixtures(
       Math.floor((seconds + offset * SECONDS_PER_MINUTE) / SECONDS_PER_DAY),
     ) !== undefined;
 
-  // The case's line, or none when its calendar doesn't cover the moment.
+  // Writes the case's line, or nothing if its calendar doesn't cover the moment.
   const line = (
     tag: string,
     calendar: string,
@@ -254,7 +256,7 @@ export function fixtures(
         ]
       : [];
 
-  // Every locale and style pair in the locale's own calendar.
+  // Check every locale with every style pair in its own calendar.
   const own = locales.flatMap(([tag, calendar]) =>
     PAIRS.map((pair): [string, string, Pair] => [tag, calendar, pair]),
   );
@@ -263,7 +265,8 @@ export function fixtures(
     line(tag, calendar, true, pair, all[turn % all.length]!),
   );
 
-  // Every locale in every other calendar, with styles and moments taking turns.
+  // Check every locale in every other calendar, taking turns through the styles
+  // and moments.
   const others = locales.flatMap(([tag, calendar]) =>
     CALENDARS.flatMap(({ id }): [string, string][] =>
       id === calendar ? [] : [[tag, id]],
@@ -282,8 +285,8 @@ export function fixtures(
     );
   });
 
-  // The odd days of each calendar, in locales with odd formats.
-  // Each date style alone, and the fullest and shortest dates with times.
+  // Check each calendar's odd days in the locales with odd formats. Use each
+  // date style alone, then the fullest and shortest dates with times.
   const [full, short] = [1, STYLES.length];
 
   const pairs: Pair[] = [
@@ -313,9 +316,9 @@ export function fixtures(
   return `//// Expected output, made with \`Intl.DateTimeFormat\` in ${runtime}.
 //// Generated by \`codegen/generate.ts\`. Do not edit.
 
-/// Locale tag, calendar (empty for the locale's own), date style, time style,
-/// Unix seconds, offset minutes, output. Styles are 0 for none, then full,
-/// long, medium, short.
+/// Each case is a locale tag, a calendar (empty for the locale's own), a date
+/// style, a time style, Unix seconds, an offset in minutes and the output.
+/// Styles are 0 for none, then 1 to 4 for full, long, medium and short.
 pub fn cases() -> List(#(String, String, Int, Int, Int, Int, String)) {
   [
 ${lines.join("\n")}
@@ -324,8 +327,8 @@ ${lines.join("\n")}
 `;
 }
 
-// Raw calendar fields for days in every calendar, to check the Erlang
-// calendar maths directly rather than through formatted text.
+// Writes raw calendar fields for days in every calendar. They test the Erlang
+// calendar maths directly, without going through formatted text.
 export function calendarFixtures(
   mathFor: (id: CalendarId) => Math_,
   runtime: string,
@@ -344,7 +347,7 @@ export function calendarFixtures(
         .add(last)
         .add(last - 1);
 
-      // The first day of a year, and the last, for some of the years.
+      // Check the first and last day of some of the years.
       range(0, math.starts.length - 1)
         .filter((i) => i % EVERY_NTH_YEAR === 0)
         .forEach((i) => {
@@ -390,13 +393,13 @@ export function calendarFixtures(
       });
   });
 
-  return `//// Calendar fields, from glintl's calendar maths after checking it against
-//// \`Intl.DateTimeFormat\` on every day, in ${runtime}.
+  return `//// Calendar fields from glintl's calendar maths, which was checked against
+//// \`Intl.DateTimeFormat\` on every day in ${runtime}.
 //// Generated by \`codegen/generate.ts\`. Do not edit.
 
-/// ICU's name for the calendar, days since 1970-01-01, and the era,
-/// year, extended year, related year, cycle year, month and day. Empty when
-/// the calendar's table doesn't cover the day.
+/// Each case is ICU's name for the calendar, the days since 1970-01-01, then
+/// the era, year, extended year, related year, cycle year, month and day. The
+/// list is empty when the calendar's table doesn't cover the day.
 pub fn cases() -> List(#(String, Int, List(Int))) {
   [
 ${lines.join("\n")}

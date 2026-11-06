@@ -76,7 +76,7 @@ const bool = (b: boolean) => (b ? "true" : "false");
 
 const tuple = (items: string[]) => `{${items.join(",")}}`;
 
-// A token as a term of `Token` in `render.gleam`.
+// Writes a token as a term of `Token` in `render.gleam`.
 function token(t: Token): string {
   switch (t.t) {
     case "literal":
@@ -132,7 +132,7 @@ export function packer() {
   const digits = table();
   const locales = table();
 
-  // A `Pattern` term's number, as two bytes.
+  // Adds a `Pattern` term and returns its number as two bytes.
   const pattern = (
     terms: string[],
     hasMinute: boolean,
@@ -165,7 +165,7 @@ export function packer() {
       false,
     );
 
-  // An era's dates, then how it joins them to times.
+  // Packs an era's dates, then how it joins them to times.
   const era = (e: EraFormats): number[] => [
     ...u8(e.era),
     ...e.dates.flatMap(tokensPattern),
@@ -205,7 +205,7 @@ export function packer() {
     );
   }
 
-  // A locale's number in the locales table.
+  // Adds a locale and returns its number in the locales table.
   function locale(
     localDigits: string[],
     hourCycle: HourCycle,
@@ -234,7 +234,7 @@ export function packer() {
 
   return {
     locale,
-    // Each table as Erlang terms, once every locale is added.
+    // Gives each table as Erlang terms. Call it after adding every locale.
     tables: () => ({
       tokens: tokens.items,
       patterns: patterns.items,

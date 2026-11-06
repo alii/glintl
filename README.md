@@ -12,25 +12,29 @@ gleam add glintl gleam_time
 
 ```gleam
 import gleam/time/timestamp
-import glintl
+import glintl/date_time
 import glintl/locale/en_gb
 import glintl/locale/fr
 
 pub fn main() {
   let now = timestamp.system_time()
-  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
+  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
 
-  glintl.date_time_formatter(en_gb.locale(), date: glintl.Long, time: glintl.Short)
-  |> glintl.format(now, offset:)
+  date_time.date_time_formatter(
+    en_gb.locale(),
+    date: date_time.Long,
+    time: date_time.Short,
+  )
+  |> date_time.format(now, offset:)
   // -> "25 October 2026 at 23:40"
 
-  glintl.date_formatter(fr.locale(), style: glintl.Full)
-  |> glintl.format(now, offset:)
+  date_time.date_formatter(fr.locale(), style: date_time.Full)
+  |> date_time.format(now, offset:)
   // -> "dimanche 25 octobre 2026"
 }
 ```
 
-It is recommended to reuse formatters for performance, because making one is expensive and does lookup work.
+Making a formatter does lookup work and is expensive, so reuse formatters where you can.
 
 ## Styles
 
@@ -43,9 +47,8 @@ It is recommended to reuse formatters for performance, because making one is exp
 
 ## Locales
 
-- Prefer importing specific locales if you can: `glintl/locale/en_gb`.
-- You can build a subset of desired locales by importing many.
-- Otherwise use `glintl/locales` and `locales.from_tag("en-GB")` if you need them all, or only know at runtime.
+- Import the locales you need, like `glintl/locale/en_gb`, if you can. To support several, import each one.
+- If you need them all, or only know the locale at runtime, use `locales.from_tag("en-GB")` from `glintl/locales`.
 
   ```gleam
   import glintl/locales
@@ -61,24 +64,24 @@ It is recommended to reuse formatters for performance, because making one is exp
 
 - Each locale uses its own calendar by default.
 - Use other calendars with `glintl.with_calendar(locale, glintl.Hebrew)`.
-- All of ICU's calendars: Gregorian, ISO 8601, Buddhist, Japanese, Republic of China, Persian, Indian, Hebrew, Chinese, Dangi, Coptic, Ethiopic (2 eras), and 3 Islamic calendars.
+- glintl supports all of ICU's calendars: Gregorian, ISO 8601, Buddhist, Japanese, Republic of China, Persian, Indian, Hebrew, Chinese, Dangi, Coptic, Ethiopic (2 eras), and 3 Islamic calendars.
 
 ## Hour cycles
 
-- Each locale uses its own hour cycle by default. American English uses 12 hours, British English 24.
+- Each locale uses its own hour cycle by default. American English uses the 12 hour clock and British English uses the 24 hour clock.
 - Use another with `glintl.with_hour_cycle(locale, glintl.H23)`, like the `hourCycle` option of `Intl.DateTimeFormat`.
 
 ## Offsets and dates
 
-- Make an offset with `glintl.offset(hours: 5, minutes: 30)`, or from a `gleam_time` duration with `glintl.duration_to_offset`. `glintl.utc` is no offset.
-- Format a date with no time zone, like a birthday, with `glintl.format_date(formatter, date)`.
+- Make an offset with `date_time.offset(hours: 5, minutes: 30)`, or from a `gleam_time` duration with `date_time.duration_to_offset`. `date_time.utc` is an offset of zero.
+- Format a date with no time zone, like a birthday, with `date_time.format_date(formatter, date)`.
 
 ## How it works
 
 On Erlang:
 
 - Formats come from ICU when glintl is built, not when your app runs.
-- All locale data is defined as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), with repeated parts stored once. The result is improved memory usage, because the data can be safely shared by every process and it is rarely copied or garbage collected.
+- All locale data is defined as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), with repeated parts stored once. This saves memory, because every process can safely share the data and it's rarely copied or garbage collected.
 - We're working on making the start-up cost smaller.
 
 On JavaScript:
@@ -88,13 +91,13 @@ On JavaScript:
 
 ## Limits
 
-- Today, time zones in Glintl are passed as offsets. You get `GMT+1`, not `British Summer Time`.
-- Today, Glintl does not allow you to pick single fields like month and year only.
+- Time zones are passed as offsets, so you get `GMT+1` rather than `British Summer Time`.
+- You can't yet pick single fields, like only the month and year.
 - On Erlang, calendars with their own months cover the years 1 to 4000. Other dates fall back to Gregorian.
 
 ## Known differences
 
-- **Erlang vs JavaScript:** Because the ICU data bundled in Glintl (for Erlang), and the ICU in your JavaScript runtime may differ, output can change between platforms. This usually manifests in small details like spaces and commas.
+- **Erlang vs JavaScript:** the ICU data glintl bundles for Erlang can differ from the ICU in your JavaScript runtime, so output can differ between targets. It's usually small details like spaces and commas.
 - **ICU bugs glintl copies:** ICU 78.3 puts Chinese New Year 2027 and 2030 a day off. JavaScript does the same.
 - **ICU bug glintl doesn't copy yet:** near AD 284 and AD 622, the Coptic and Islamic calendars can show the wrong year around midnight.
 
@@ -109,8 +112,8 @@ gleam run -m glintl_bench
 bun codegen/conformance.ts 1000000
 ```
 
-- The generator, JavaScript tests and conformance run need the Bun in `.bun-version`, on Linux. CI does this.
-- On a Mac, run the generator in Docker. It takes about 10 minutes:
+- The generator, the JavaScript tests and the conformance run need the Bun version in `.bun-version`, on Linux. CI runs them that way.
+- On a Mac, run the generator in Docker:
 
 ```sh
 docker run --rm -v "$PWD":/repo -w /repo oven/bun:$(cat .bun-version) bun codegen/generate.ts

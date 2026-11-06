@@ -1,4 +1,4 @@
-// Units of time, and offsets as Intl writes them.
+// Units of time, and how Intl writes offsets.
 
 export const MS_PER_SECOND = 1000;
 export const SECONDS_PER_MINUTE = 60;
@@ -17,7 +17,7 @@ export const TWO_DIGIT_YEARS = 100;
 // Offsets write their hours and minutes with this many digits.
 const OFFSET_DIGITS = 2;
 
-// An offset in minutes as a time zone Intl accepts, like "+05:30".
+// Writes an offset in minutes as a time zone Intl accepts, like "+05:30".
 export function offsetString(minutes: number): string {
   const sign = minutes < 0 ? "-" : "+";
   const abs = Math.abs(minutes);

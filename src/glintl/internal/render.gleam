@@ -1,21 +1,31 @@
-//// Formats moments with the tables `codegen/pack.ts` writes to
-//// `glintl_generated_data`. Only used on Erlang.
+//// Formats timestamps on Erlang with the tables that `codegen/pack.ts` writes
+//// to `glintl_generated_data`. JavaScript only uses `Shown`.
 ////
-//// Each distinct token is stored once, and a pattern is its tokens' numbers.
+//// Each distinct token is stored once, and a pattern is a list of its tokens'
+//// numbers.
 //// A formatter only points at these literals, so nothing is copied.
 
+@target(erlang)
 import gleam/int
-import glintl/internal/calendar
-import glintl/internal/data.{
-  type EraRule, type Local, type Math, EraRule, Local, NoMath, Proleptic, Table,
+import glintl/internal/data
+
+/// What a formatter shows.
+pub type Shown {
+  DateOnly(data.Style)
+  TimeOnly(data.Style)
+  DateAndTime(date: data.Style, time: data.Style)
 }
 
+@target(erlang)
 pub const seconds_per_minute = 60
 
+@target(erlang)
 const seconds_per_hour = 3600
 
+@target(erlang)
 pub const seconds_per_day = 86_400
 
+@target(erlang)
 /// The longest a year can be in a calendar with Gregorian months.
 const days_in_longest_year = 366
 
@@ -132,11 +142,11 @@ pub opaque type Compiled {
 @target(erlang)
 /// How a formatter turns a day into a date.
 type Days {
-  /// Gregorian covers every day.
+  /// The Gregorian calendar, which covers every day.
   GregorianDays
-  /// Another calendar, and Gregorian for days outside its years. Both are
-  /// built when needed, so a copied formatter stays small.
-  OtherDays(math: fn() -> Math, gregorian: fn() -> Compiled)
+  /// Another calendar, which falls back to Gregorian for days outside its
+  /// years. Both are built when needed, so a copied formatter stays small.
+  OtherDays(math: fn() -> data.Math, gregorian: fn() -> Compiled)
 }
 
 @target(erlang)
@@ -197,7 +207,7 @@ fn number_at(bits: BitArray, index: Int) -> Int {
 const formats_per_calendar = 5
 
 @target(erlang)
-/// A locale entry's digits number, then its default hour cycle.
+/// A locale entry starts with its digits number and its default hour cycle.
 const entry_header = 2
 
 @target(erlang)
@@ -210,20 +220,20 @@ pub fn default_hour_cycle(locale: Int) -> Int {
 @target(erlang)
 /// A formatter for a locale's Gregorian formats. `cycle` is 0 for the
 /// locale's own hour cycle, or 1 more than a position in `HOUR_CYCLES`.
-pub fn compile(locale: Int, cycle: Int, shown: data.Shown) -> Compiled {
+pub fn compile(locale: Int, cycle: Int, shown: Shown) -> Compiled {
   let entry = element(locale, locales())
   compile_formats(entry, 0, cycle, shown, GregorianDays)
 }
 
 @target(erlang)
-/// A formatter for another calendar, the `position`th in the locale's
-/// formats, which falls back to Gregorian outside the calendar's years.
+/// A formatter for the calendar at `position` in the locale's formats. It
+/// falls back to Gregorian outside the calendar's years.
 pub fn compile_other(
   locale: Int,
   position: Int,
   cycle: Int,
-  math: fn() -> Math,
-  shown: data.Shown,
+  math: fn() -> data.Math,
+  shown: Shown,
 ) -> Compiled {
   let entry = element(locale, locales())
   let gregorian = fn() {
@@ -237,7 +247,7 @@ fn compile_formats(
   entry: BitArray,
   position: Int,
   cycle: Int,
-  shown: data.Shown,
+  shown: Shown,
   days: Days,
 ) -> Compiled {
   let digits = number_at(entry, 0)
@@ -257,7 +267,7 @@ fn compile_formats(
   }
   let main = prepare(dates, times, glues, combined, shown)
   let eras = case shown, formats {
-    data.TimeOnly(_), _ -> []
+    TimeOnly(_), _ -> []
     _, <<count, eras:bits>> -> eras_of(eras, count, times, glues, shown)
     _, _ -> []
   }
@@ -274,15 +284,15 @@ fn split(bits: BitArray) -> #(BitArray, BitArray) {
 }
 
 @target(erlang)
-/// Each era is its number, its dates, then how it joins them to times: 0 with
-/// the usual glues, 1 and a pattern for each date style and time style, or 2
-/// and its own glues, as `codegen/pack.ts` writes them.
+/// `codegen/pack.ts` writes each era as its number, its date patterns, then a
+/// byte for how it joins dates to times. 0 uses the usual glues, 1 is followed
+/// by a pattern for each date and time style, and 2 by the era's own glues.
 fn eras_of(
   bits: BitArray,
   count: Int,
   times: BitArray,
   glues: BitArray,
-  shown: data.Shown,
+  shown: Shown,
 ) -> List(#(Int, Prepared)) {
   let each = style_count * number_bytes
   case count, bits {
@@ -312,22 +322,22 @@ fn eras_of(
 }
 
 @target(erlang)
-/// `combined` holds a pattern for each date and time style, when ICU doesn't
-/// just glue them together.
+/// `combined` has a pattern for each pair of date and time styles. It's empty
+/// when ICU just glues the date and time together.
 fn prepare(
   dates: BitArray,
   times: BitArray,
   glues: BitArray,
   combined: BitArray,
-  shown: data.Shown,
+  shown: Shown,
 ) -> Prepared {
   let pick = fn(bits, style) {
     element(number_at(bits, position(style)), patterns())
   }
   case shown, combined {
-    data.TimeOnly(time), _ -> single(pick(times, time))
-    data.DateOnly(date), _ -> single(pick(dates, date))
-    data.DateAndTime(date:, time:), <<>> -> {
+    TimeOnly(time), _ -> single(pick(times, time))
+    DateOnly(date), _ -> single(pick(dates, date))
+    DateAndTime(date:, time:), <<>> -> {
       let Pattern(tokens: glue, ..) = pick(glues, date)
       let Pattern(tokens: date_tokens, has_minute:, has_second:) =
         pick(dates, date)
@@ -340,7 +350,7 @@ fn prepare(
         has_second: has_second || time_pattern.has_second,
       )
     }
-    data.DateAndTime(date:, time:), _ -> {
+    DateAndTime(date:, time:), _ -> {
       let index = position(date) * style_count + position(time)
       single(element(number_at(combined, index), patterns()))
     }
@@ -392,7 +402,7 @@ pub fn render(
 }
 
 @target(erlang)
-fn write(compiled: Compiled, local: Local) -> String {
+fn write(compiled: Compiled, local: data.Local) -> String {
   let prepared = case compiled.eras {
     [] -> compiled.main
     eras ->
@@ -417,7 +427,7 @@ fn key_find(pairs: List(#(Int, a)), key: Int) -> Result(a, Nil) {
 fn walk(
   bits: BitArray,
   prepared: Prepared,
-  m: Local,
+  m: data.Local,
   digits: Int,
   acc: String,
 ) -> String {
@@ -454,7 +464,12 @@ fn walk(
 }
 
 @target(erlang)
-fn text(token: Token, prepared: Prepared, m: Local, digits: Int) -> String {
+fn text(
+  token: Token,
+  prepared: Prepared,
+  m: data.Local,
+  digits: Int,
+) -> String {
   case token {
     Literal(text) -> text
     AsciiDigits(inner) -> text(inner, prepared, m, 0)
@@ -479,7 +494,7 @@ fn text(token: Token, prepared: Prepared, m: Local, digits: Int) -> String {
     }
     WeekYear(minus:, first_day:, minimal_days:, exceptions:) ->
       signed(
-        calendar.week_year(m, first_day, minimal_days, exceptions),
+        data.week_year(m, first_day, minimal_days, exceptions),
         minus,
         digits,
       )
@@ -489,7 +504,7 @@ fn text(token: Token, prepared: Prepared, m: Local, digits: Int) -> String {
     MonthName(names) -> pick(names, m.month, m.month + 1, digits)
     DayName(names) -> pick(names, m.day, m.day, digits)
     Weekday(names) -> {
-      let weekday = modulo(m.epoch_day + thursday, calendar.days_per_week)
+      let weekday = modulo(m.epoch_day + thursday, data.days_per_week)
       pick(names, weekday, weekday, digits)
     }
     Era(names) -> pick(names, m.era, m.era, digits)
@@ -547,7 +562,7 @@ fn text(token: Token, prepared: Prepared, m: Local, digits: Int) -> String {
 }
 
 @target(erlang)
-/// A name from a token, or `otherwise` as a number if there are too few.
+/// The name at `index`, or `otherwise` as a number if there are too few names.
 fn pick(names: Names, index: Int, otherwise: Int, digits: Int) -> String {
   case index >= 0 && index < tuple_size(names) {
     True -> element(index + 1, names)
@@ -622,10 +637,11 @@ fn modulo(n: Int, by: Int) -> Int {
 
 // --- Calendars --------------------------------------------------------------
 
+@target(erlang)
 /// A day's era, year, extended year, related year, cycle year, month and day
-/// in a calendar, or `[]` if the calendar doesn't cover it. For tests.
+/// in a calendar, or `[]` if the calendar doesn't cover it. Used by the tests.
 @internal
-pub fn calendar_fields(math: Math, epoch_day: Int) -> List(Int) {
+pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
   case local(math, epoch_day * seconds_per_day, 0) {
     Ok(m) -> [m.era, m.year, m.extended, m.related, m.cycle, m.month, m.day]
     Error(Nil) -> []
@@ -633,8 +649,8 @@ pub fn calendar_fields(math: Math, epoch_day: Int) -> List(Int) {
 }
 
 @target(erlang)
-/// A moment in a Gregorian calendar, which covers every day.
-fn gregorian_local(unix_seconds: Int, offset_minutes: Int) -> Local {
+/// The local date and time in the Gregorian calendar, which covers every day.
+fn gregorian_local(unix_seconds: Int, offset_minutes: Int) -> data.Local {
   proleptic_local(
     data.gregorian_newest_era,
     data.gregorian_older_eras,
@@ -644,14 +660,16 @@ fn gregorian_local(unix_seconds: Int, offset_minutes: Int) -> Local {
   )
 }
 
-/// A moment in a calendar, or `Error(Nil)` if the calendar doesn't cover it.
+@target(erlang)
+/// The local date and time in a calendar, or `Error(Nil)` if the calendar
+/// doesn't cover that day.
 fn local(
-  math: Math,
+  math: data.Math,
   unix_seconds: Int,
   offset_minutes: Int,
-) -> Result(Local, Nil) {
+) -> Result(data.Local, Nil) {
   case math {
-    Proleptic(eras: [newest, ..older], julian_before:) ->
+    data.Proleptic(eras: [newest, ..older], julian_before:) ->
       Ok(proleptic_local(
         newest,
         older,
@@ -659,7 +677,7 @@ fn local(
         unix_seconds,
         offset_minutes,
       ))
-    Table(
+    data.Table(
       cyclic:,
       first_day:,
       end_day:,
@@ -672,7 +690,7 @@ fn local(
     ) -> {
       let #(epoch_day, hour, minute, second) =
         day_and_time(unix_seconds, offset_minutes)
-      calendar.table_local(
+      data.table_local(
         cyclic:,
         first_day:,
         end_day:,
@@ -690,10 +708,11 @@ fn local(
         unix_seconds:,
       )
     }
-    Proleptic(eras: [], ..) | NoMath -> Error(Nil)
+    data.Proleptic(eras: [], ..) -> Error(Nil)
   }
 }
 
+@target(erlang)
 /// The local day since 1970-01-01, and the hour, minute and second.
 fn day_and_time(
   unix_seconds: Int,
@@ -710,18 +729,19 @@ fn day_and_time(
   )
 }
 
-/// A moment in a calendar with Gregorian or Julian months.
+@target(erlang)
+/// The local date and time in a calendar with Gregorian or Julian months.
 fn proleptic_local(
-  newest: EraRule,
-  older: List(EraRule),
+  newest: data.EraRule,
+  older: List(data.EraRule),
   julian_before: Int,
   unix_seconds: Int,
   offset_minutes: Int,
-) -> Local {
+) -> data.Local {
   let #(epoch_day, hour, minute, second) =
     day_and_time(unix_seconds, offset_minutes)
   let #(y, m, d) = case epoch_day < julian_before {
-    True -> calendar.julian_from_days(epoch_day)
+    True -> data.julian_from_days(epoch_day)
     False -> civil_from_days(epoch_day)
   }
   // Near the Julian switch a year can start in one calendar and end in
@@ -730,11 +750,11 @@ fn proleptic_local(
   let #(year_start, next_year_start) = case
     epoch_day < julian_before + days_in_longest_year
   {
-    True -> calendar.year_bounds(y, julian_before)
+    True -> data.year_bounds(y, julian_before)
     False -> #(data.start_of_time, data.start_of_time)
   }
-  let EraRule(era:, base:, sign:, ..) = era_rule(newest, older, epoch_day)
-  Local(
+  let data.EraRule(era:, base:, sign:, ..) = era_rule(newest, older, epoch_day)
+  data.Local(
     epoch_day:,
     hour:,
     minute:,
@@ -753,22 +773,28 @@ fn proleptic_local(
   )
 }
 
+@target(erlang)
 /// The era a day is in. Eras are newest first, and the oldest starts at the
 /// start of time.
-fn era_rule(rule: EraRule, older: List(EraRule), epoch_day: Int) -> EraRule {
+fn era_rule(
+  rule: data.EraRule,
+  older: List(data.EraRule),
+  epoch_day: Int,
+) -> data.EraRule {
   case older, rule.start <= epoch_day {
     [], _ | _, True -> rule
     [next, ..rest], False -> era_rule(next, rest, epoch_day)
   }
 }
 
+@target(erlang)
 /// Days since 1970-01-01 to a proleptic Gregorian date. From Howard Hinnant's
 /// `civil_from_days`, whose other numbers are part of the published
 /// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
 fn civil_from_days(days: Int) -> #(Int, Int, Int) {
-  let z = days + calendar.days_from_march_of_year_zero
-  let era = floor_divide(z, calendar.days_per_400_years)
-  let doe = z - era * calendar.days_per_400_years
+  let z = days + data.days_from_march_of_year_zero
+  let era = floor_divide(z, data.days_per_400_years)
+  let doe = z - era * data.days_per_400_years
   let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
   let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
   let mp = { 5 * doy + 2 } / 153
@@ -785,6 +811,7 @@ fn civil_from_days(days: Int) -> #(Int, Int, Int) {
   #(year, month, day)
 }
 
+@target(erlang)
 fn floor_divide(n: Int, by: Int) -> Int {
   case int.floor_divide(n, by) {
     Ok(result) -> result

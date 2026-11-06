@@ -1,16 +1,16 @@
-// Checks glintl on Erlang against Intl.DateTimeFormat on lots of random
-// cases: locale, calendar, styles, moment and offset.
+// Checks glintl on Erlang against Intl.DateTimeFormat on random cases, each
+// with its own locale, calendar, styles, moment and offset.
 //
 //   bun codegen/conformance.ts [cases] [seed]
 //
-// Intl's answers depend on the Bun that runs this. To use one Bun for Intl
-// and Erlang from elsewhere, as when the pinned Bun is only in Docker, save
-// the cases with one and check them with the other:
+// Intl's answers depend on the Bun that runs this. If the pinned Bun is only
+// in Docker and Erlang is elsewhere, save the cases with one and check them
+// with the other:
 //
 //   bun codegen/conformance.ts --save cases.tsv [cases] [seed]
 //   bun codegen/conformance.ts --check cases.tsv
 //
-// Cases come in groups that share a formatter, as making an
+// Cases come in groups that share a formatter, because making an
 // Intl.DateTimeFormat is slow. Moments lean towards midnight, noon and
 // whole hours, where day periods change.
 
@@ -50,26 +50,27 @@ const counts =
 const CASES = Number(counts[0] ?? 1_000_000);
 const SEED = Number(counts[1] ?? 1);
 
-// Cases per formatter, and cases sent to Erlang at a time.
+// How many cases share a formatter, and how many go to Erlang at once.
 const GROUP = 100;
 const BATCH = 20_000;
 
-// Styles, after "none".
+// Style names by number, where 0 means none.
 const STYLES = [undefined, "full", "long", "medium", "short"] as const;
 
-// How often moments are exactly midnight, exactly noon, or on the hour,
-// where day periods change. The rest are at random.
+// How often a moment falls exactly on midnight, noon or the hour, where day
+// periods change. The rest are random.
 const MIDNIGHT_SHARE = 0.1;
 const NOON_SHARE = 0.1;
 const WHOLE_HOUR_SHARE = 0.1;
 
-// How many failures, and failing locales, to show.
+// Show at most this many failures, and this many failing locale and calendar
+// pairs.
 const MOST_SHOWN = 20;
 const OFFSETS = [0, 60, -480, 330, 345, -210, 840, -600, 525, -720, 765];
 
-// Calendars with their own months cover these days on Erlang: a year in
-// from each end, as a table's first and last years may not quite reach
-// 1 January. Others have no limit, so they also get days far in the past.
+// Table calendars cover these days on Erlang. We stay a year in from each end
+// because a table's first and last years may not reach 1 January. Other
+// calendars have no limit, so they also get days far in the past.
 const TABLE_DAYS: [number, number] = [
   day(FIRST_YEAR + 1, 1, 1),
   day(LAST_YEAR - 1, 1, 1),
@@ -88,14 +89,14 @@ const between = ([from, to]: [number, number]) =>
 type Case = { line: string; expected: string };
 
 // ICU mixes up the era and year in table calendars when the local and UTC
-// dates are in different eras, as glintl's README explains, so those
-// moments are left out.
+// dates fall in different eras, so we leave those moments out. glintl's
+// README explains this.
 const eraFormatters = new Map<string, Intl.DateTimeFormat>();
 
 function eraFormatter(calendar: string): Intl.DateTimeFormat {
   const f = new Intl.DateTimeFormat("en", {
     calendar,
-    // Short names, as the Coptic eras share a long one in English.
+    // Use short names because both Coptic eras have the same long name in English.
     era: "short",
     timeZone: "UTC",
   });
@@ -142,7 +143,7 @@ function group(): Case[] {
     calendar || new Intl.DateTimeFormat(tag).resolvedOptions().calendar;
 
   const kind = CALENDARS.find((c) => c.id === resolved)!.kind;
-  // 0 for none, or a style. Something must be shown.
+  // 0 means no date style. A case without a date must have a time.
   const drawn = Math.floor(next() * STYLES.length);
 
   const time =
@@ -154,7 +155,7 @@ function group(): Case[] {
 
   const offset = pick(OFFSETS);
 
-  // Empty for the locale's own.
+  // Empty means the locale's own hour cycle.
   const hourCycle = next() < 0.5 ? "" : pick(HOUR_CYCLES);
 
   const formatter = new Intl.DateTimeFormat(tag, {
@@ -196,8 +197,8 @@ function group(): Case[] {
   });
 }
 
-// Batches of cases: made here, or read from a saved file with the Intl it
-// was made with.
+// Cases are made here, or read from a saved file whose first line names the
+// Intl that made them.
 const [header, ...saved] =
   mode === "--check" ? readFileSync(file, "utf8").trimEnd().split("\n") : [];
 
@@ -291,7 +292,7 @@ const started = performance.now();
 const failures: string[] = [];
 const failingCalendars = new Map<string, number>();
 
-// One batch at a time, each answer read in order.
+// Send one batch at a time and read its answers in order.
 const sizes = await Array.fromAsync(batches(), async (batch) => {
   erlang.stdin.write(batch.map((c) => c.line).join("\n") + "\n");
   erlang.stdin.flush();

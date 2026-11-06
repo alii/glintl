@@ -1356,9 +1356,9 @@ pub fn from_tag(tag: String) -> Result(Locale, Nil) {
   tag |> string.lowercase |> string.replace("_", "-") |> find
 }
 
-/// The best locale for an `Accept-Language` header, like
-/// `"fr-CH, fr;q=0.9, en;q=0.8"`, from every locale glintl has. Each tag is
-/// tried in order of preference, as `from_tag` would.
+/// Finds the best locale glintl has for an `Accept-Language` header, like
+/// `"fr-CH, fr;q=0.9, en;q=0.8"`. It tries each tag in order of preference,
+/// the way `from_tag` does.
 ///
 /// ```gleam
 /// from_accept_language("fr-CH, fr;q=0.9, en;q=0.8") // -> Ok(fr_ch.locale())
@@ -1368,9 +1368,10 @@ pub fn from_accept_language(header: String) -> Result(Locale, Nil) {
   accept_language.tags(header) |> list.find_map(from_tag)
 }
 
-/// The best of your supported locales for an `Accept-Language` header.
-/// Each tag is tried in order of preference: first as it is, then with parts
-/// dropped from the end, then as any supported locale in the same language.
+/// Picks the best of your supported locales for an `Accept-Language`
+/// header. It tries each tag in order of preference: first as it is, then
+/// with parts dropped from the end, then any supported locale in the same
+/// language.
 ///
 /// ```gleam
 /// let supported = [en_gb.locale(), fr.locale()]
@@ -1391,7 +1392,8 @@ pub fn negotiate(
   })
 }
 
-/// One of `supported` for `tag`, or for `tag` with parts dropped from the end.
+/// Finds `tag` or its alias in `supported`, dropping parts from the end
+/// of `tag` until one matches.
 fn supported_match(
   tag: String,
   supported: List(Locale),

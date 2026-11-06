@@ -8,17 +8,17 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/time/timestamp.{type Timestamp}
-import glintl
+import glintl/date_time
 import glintl/locale/en_gb
 
-/// Dates are a week apart, from 14 November 2023.
+/// The first date is 14 November 2023, and the rest follow a week apart.
 const first_date = 1_700_000_000
 
 const seconds_per_week = 604_800
 
 const dates_per_run = 90
 
-/// Runs to time, as one run of 90 is too quick to time well.
+/// How many runs to time, because one run is too quick to time well.
 const timed_runs = 100
 
 const microseconds_per_millisecond = 1000.0
@@ -65,11 +65,11 @@ pub fn main() -> Nil {
   )
 }
 
-fn formatter() -> glintl.Formatter {
-  glintl.date_time_formatter(
+fn formatter() -> date_time.Formatter {
+  date_time.date_time_formatter(
     en_gb.locale(),
-    date: glintl.Long,
-    time: glintl.Short,
+    date: date_time.Long,
+    time: date_time.Short,
   )
 }
 
@@ -77,9 +77,9 @@ fn formatter() -> glintl.Formatter {
 fn format_dates(times: Int) -> Nil {
   let formatter = formatter()
   let dates = dates()
-  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
+  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
   int.range(from: 0, to: times, with: Nil, run: fn(_, _) {
-    list.each(dates, fn(date) { glintl.format(formatter, date, offset:) })
+    list.each(dates, fn(date) { date_time.format(formatter, date, offset:) })
   })
 }
 

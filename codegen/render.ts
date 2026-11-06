@@ -52,7 +52,7 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
 
   const hasMinute = tokens.some((t) => t.t === "minute");
   const hasSecond = tokens.some((t) => t.t === "second");
-  // From 0 for Sunday, as weekday names are.
+  // Weekday names are numbered from 0 for Sunday, so this is too.
   const weekday = isoWeekday(m.epochDay) % DAYS_PER_WEEK;
 
   return tokens

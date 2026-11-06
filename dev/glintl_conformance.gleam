@@ -3,8 +3,9 @@
 //// calendar name (empty for the locale's own), a date style and a time style
 //// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
 //// the locale's own), Unix seconds and an offset in minutes, separated by
-//// tabs. Only for Erlang: on JavaScript glintl is
-//// `Intl`.
+//// tabs.
+////
+//// It only runs on Erlang, because on JavaScript glintl just calls `Intl`.
 
 import gleam/dict.{type Dict}
 import gleam/int
@@ -12,7 +13,8 @@ import gleam/io
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
-import glintl.{type Formatter}
+import glintl
+import glintl/date_time.{type Formatter}
 import glintl/locales
 
 pub fn main() -> Nil {
@@ -35,8 +37,8 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
         }
       }
       let assert Ok(offset) =
-        glintl.duration_to_offset(duration.minutes(number(offset)))
-      glintl.format(
+        date_time.duration_to_offset(duration.minutes(number(offset)))
+      date_time.format(
         formatter,
         timestamp.from_unix_seconds(number(seconds)),
         offset:,
@@ -68,10 +70,14 @@ fn new(
     _ -> panic as { "unknown hour cycle: " <> hour_cycle }
   }
   case date, time {
-    0, time -> glintl.time_formatter(locale, style: style(time))
-    date, 0 -> glintl.date_formatter(locale, style: style(date))
+    0, time -> date_time.time_formatter(locale, style: style(time))
+    date, 0 -> date_time.date_formatter(locale, style: style(date))
     date, time ->
-      glintl.date_time_formatter(locale, date: style(date), time: style(time))
+      date_time.date_time_formatter(
+        locale,
+        date: style(date),
+        time: style(time),
+      )
   }
 }
 
@@ -102,12 +108,12 @@ fn calendar_from_id(id: String) -> glintl.Calendar {
   }
 }
 
-fn style(index: Int) -> glintl.Style {
+fn style(index: Int) -> date_time.Style {
   case index {
-    1 -> glintl.Full
-    2 -> glintl.Long
-    3 -> glintl.Medium
-    4 -> glintl.Short
+    1 -> date_time.Full
+    2 -> date_time.Long
+    3 -> date_time.Medium
+    4 -> date_time.Short
     _ -> panic as { "unknown style: " <> int.to_string(index) }
   }
 }

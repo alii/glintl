@@ -5,7 +5,7 @@ import { DAYS_PER_WEEK, MS_PER_SECOND, SECONDS_PER_DAY } from "./time.ts";
 
 export const DAY_MS = SECONDS_PER_DAY * MS_PER_SECOND;
 
-// Noon, to read a day without being near either end of it.
+// Read days at noon so we're never near either end of one.
 export const NOON_MS = DAY_MS / 2;
 
 export const MONTHS_PER_YEAR = 12;
@@ -13,12 +13,11 @@ export const MONTHS_PER_YEAR = 12;
 // The Chinese and Dangi calendars name years in a cycle of this many.
 export const YEARS_IN_CYCLE = 60;
 
-// The longest month in the lunar calendars, so day names cover days 1 to
-// this.
+// Lunar months are at most this long, so day names cover days 1 to this.
 export const LONGEST_LUNAR_MONTH = 30;
 
-// Table calendars cover whole years between these, and eras are looked for
-// from `SCAN_FROM`, assumed not to change before it.
+// Table calendars cover whole years between these. We look for eras from
+// `SCAN_FROM` and assume they don't change before it.
 export const FIRST_YEAR = 1;
 export const LAST_YEAR = 4000;
 export const SCAN_FROM = -5000;
@@ -27,25 +26,25 @@ export const SCAN_FROM = -5000;
 const CHECK_FROM_YEAR = -9000;
 const CHECK_TO_YEAR = 9999;
 
-// The era rules are checked on every this many days: a prime, so the days
-// drift through months and weekdays.
+// Check the era rules every this many days. It's prime so the days drift
+// through months and weekdays.
 const CHECK_EVERY = 997;
 
-// 1 July, far from both ends of a year.
+// Sample years on 1 July so we're far from both ends.
 export const MID_YEAR: [number, number] = [7, 1];
 
 // Every month is at least this long, apart from the five or six extra days
 // at the end of the Coptic and Ethiopic years.
 const SHORTEST_MONTH = 29;
 
-// A few days into a month, to sample its name, still inside the shortest
-// months.
+// Sample a month's name this many days in, so we stay inside even the
+// shortest months.
 export const INTO_MONTH = 4;
 
-// Around the middle of a month, to check a second day in each.
+// Check a second day around the middle of each month.
 const MID_MONTH = 14;
 
-// `longMonth` for a table with no 30 day months.
+// `longMonth` when a table has no 30 day months.
 const NO_LONG_MONTH = -1;
 
 // ICU switches from the Julian calendar somewhere between these dates.
@@ -54,9 +53,8 @@ const JULIAN_SEARCH: [[number, number, number], [number, number, number]] = [
   [1800, 1, 1],
 ];
 
-// The Julian day number of 1970-01-01, and Richards' algorithm's offset
-// from it, in the Explanatory Supplement to the Astronomical Almanac. The
-// algorithm's other numbers are part of it as published.
+// The Julian day number of 1970-01-01. Richards' algorithm's other numbers
+// are as published in the Explanatory Supplement to the Astronomical Almanac.
 const JULIAN_DAY_OF_UNIX_EPOCH = 2_440_588;
 
 export type CalendarId =
@@ -77,9 +75,9 @@ export type CalendarId =
   | "islamic-tbla"
   | "islamic-umalqura";
 
-// In the order of the Gleam `Calendar` type. Calendars with Gregorian months
-// only differ in their eras and years, so they are worked out with a few
-// rules and have no date limits. The rest use a table of years.
+// This is the order of the Gleam `Calendar` type. Calendars with Gregorian
+// months only differ in eras and years, so a few rules cover them with no
+// date limits. The rest use a table of years.
 export const CALENDARS: {
   id: CalendarId;
   gleam: string;
@@ -114,8 +112,8 @@ export function astronomicalYear(epochDay: number): number {
   return new Date(epochDay * DAY_MS).getUTCFullYear();
 }
 
-// A Julian date, as [astronomical year, month, day], for days since
-// 1970-01-01. From Richards' algorithm, with floor division throughout.
+// Turns days since 1970-01-01 into a Julian [astronomical year, month, day]
+// with Richards' algorithm, using floor division throughout.
 export function julianFromDays(epochDay: number): [number, number, number] {
   const c = epochDay + JULIAN_DAY_OF_UNIX_EPOCH + 32082;
   const d = Math.floor((4 * c + 3) / 1461);
@@ -148,8 +146,8 @@ export function daysFromJulian(
   );
 }
 
-// A day's [year, month, day] in a calendar with Gregorian months, which is
-// Julian before `julianBefore` in some of them, like ICU's default.
+// A day's [year, month, day] in a calendar with Gregorian months. Days before
+// `julianBefore` are Julian, which is what ICU does by default.
 export function civil(
   epochDay: number,
   julianBefore: number,
@@ -163,7 +161,7 @@ export function civil(
   return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()];
 }
 
-// The day a civil date falls on, the inverse of `civil`.
+// The inverse of `civil`.
 export function civilDay(
   year: number,
   month: number,
@@ -175,7 +173,8 @@ export function civilDay(
   return julian < julianBefore ? julian : day(year, month, dayOfMonth);
 }
 
-// Where ICU switches from the Julian calendar, or -Infinity if it doesn't.
+// Finds where ICU switches from the Julian calendar, or -Infinity if it never
+// does.
 function julianSwitch(calendar: CalendarId): number {
   const matches = (d: number) =>
     fields(calendar, d).day === new Date(d * DAY_MS).getUTCDate();
@@ -189,8 +188,8 @@ function julianSwitch(calendar: CalendarId): number {
   return search(low, day(...JULIAN_SEARCH[1]), matches);
 }
 
-// The first number from `low` to `high` where `found` holds, given that once
-// it holds it keeps holding. `high` if it holds nowhere before.
+// Finds the first number from `low` to `high` where `found` holds, or `high`
+// if none does. Once `found` holds, it must keep holding.
 function search(
   low: number,
   high: number,
@@ -217,7 +216,8 @@ function advance(
   return keep(from) ? advance(from + by, by, keep) : from;
 }
 
-// `first`, then each value `next` gives, until it gives undefined.
+// Lists `first` and each value `next` gives after it, until it gives
+// undefined.
 function unfold<T>(
   first: T,
   next: (value: T) => T | undefined,
@@ -241,7 +241,6 @@ function each(from: number, to: number, visit: (n: number) => void): void {
   return each(from + 1, to, visit);
 }
 
-// The numbers from `from` to `to`, every `by`.
 function range(from: number, to: number, by = 1): number[] {
   return Array.from(
     { length: Math.max(0, Math.floor((to - from) / by) + 1) },
@@ -249,7 +248,6 @@ function range(from: number, to: number, by = 1): number[] {
   );
 }
 
-// The value cached under `key`, made by `make` the first time.
 function cached<K, V>(cache: Map<K, V>, key: K, make: (key: K) => V): V {
   const found = cache.get(key);
 
@@ -266,8 +264,8 @@ function cached<K, V>(cache: Map<K, V>, key: K, make: (key: K) => V): V {
 export const FIRST_DAY = day(FIRST_YEAR, 1, 1);
 export const LAST_DAY = day(LAST_YEAR, MONTHS_PER_YEAR, 31);
 
-// One day in a calendar, as ICU sees it. Names are English, and only used
-// to tell values apart.
+// One day in a calendar as ICU sees it. Names are in English and only tell
+// values apart.
 export type Fields = {
   era: string;
   year: number;
@@ -291,14 +289,14 @@ export function fields(calendar: CalendarId, epochDay: number): Fields {
 function reader(calendar: CalendarId): (epochDay: number) => Fields {
   const options = { calendar, timeZone: "UTC" } as const;
 
-  // Months are told apart by name and number, as a Hebrew month's number
+  // Tell months apart by name and number, because a Hebrew month's number
   // depends on whether the year is a leap year.
   const numericMonth = new Intl.DateTimeFormat("en", {
     ...options,
     month: "numeric",
   });
 
-  // Eras are told apart by all their names, as some share a long name.
+  // Tell eras apart by all their names, because some share a long name.
   const eraNames = (["short", "narrow"] as const).map(
     (era) =>
       new Intl.DateTimeFormat("en", { ...options, era, year: "numeric" }),
@@ -324,7 +322,7 @@ function reader(calendar: CalendarId): (epochDay: number) => Fields {
   return (epochDay) => {
     const date = new Date(epochDay * DAY_MS + NOON_MS);
 
-    // Typed as strings, as TypeScript doesn't know "relatedYear" yet.
+    // TypeScript doesn't know "relatedYear" yet, so use plain strings.
     const parts = new Map<string, string>(
       english.formatToParts(date).map((p) => [p.type, p.value]),
     );
@@ -348,7 +346,7 @@ function reader(calendar: CalendarId): (epochDay: number) => Fields {
         ),
       ].join(" / "),
       year,
-      // Filled in per year by `table`, as it can't be read for one day.
+      // `table` fills this in per year, because it can't be read for one day.
       extended: 0,
       related,
       cycle: cyclic ? year - 1 : 0,
@@ -400,12 +398,12 @@ export type Proleptic = {
   kind: "proleptic";
   // Newest first. The oldest starts at `-Infinity`.
   eras: EraSegment[];
-  // A day in each era, by era number, to sample names in each locale.
+  // Days to sample each era's names on in each locale, by era number.
   eraDays: number[];
-  // English era names, by era number, to check against ICU.
+  // English era names by era number, which we check against ICU.
   eraNames: string[];
-  // Days before this are in the Julian calendar, as ICU does by default for
-  // calendars other than Gregorian. -Infinity if never.
+  // Days before this are Julian, which ICU does by default for calendars
+  // other than Gregorian. It's -Infinity if they never are.
   julianBefore: number;
 };
 
@@ -418,7 +416,7 @@ export function proleptic(calendar: CalendarId): Proleptic {
   const starts: number[] = [];
 
   // Some ICU data has no era names, so an era also starts where the year
-  // stops counting the way it did, as it does going from 1 BC to AD 1.
+  // stops counting the way it did, like going from 1 BC to AD 1.
   // Returns the direction the year counts in from `year`.
   const newYear = (year: number, direction: number): number => {
     const first = civilDay(year, 1, 1, julianBefore);
@@ -455,7 +453,7 @@ export function proleptic(calendar: CalendarId): Proleptic {
   range(SCAN_FROM, LAST_YEAR).reduce(
     (scan, year) =>
       range(1, MONTHS_PER_YEAR).reduce(({ previous, direction }, month) => {
-        // Before the month's own era starts, to keep `starts` in order.
+        // Check the new year before the month's eras so `starts` stays in order.
         const counting =
           month === 1 && year > SCAN_FROM
             ? newYear(year, direction)
@@ -591,7 +589,7 @@ export type YearSegment = {
 
 export type Table = {
   kind: "table";
-  // Chinese and Dangi, which have related years and a 60 year cycle.
+  // True for Chinese and Dangi, which have related years and a 60 year cycle.
   cyclic: boolean;
   // The first day of each year, then the day after the last year.
   starts: number[];
@@ -600,18 +598,18 @@ export type Table = {
   // Each layout is a list of [month number, length in days].
   months: [number, number][][];
   years: YearSegment[];
-  // English names, by number, and a day in each, to sample names in each
-  // locale.
+  // Days to sample each month, era and cycle name on in each locale, by
+  // number.
   monthDays: number[];
   eraDays: number[];
   cycleDays: number[];
-  // A month with 30 days, to sample day names.
+  // Day names are sampled from the 30 day month that starts here.
   longMonth: number;
-  // English names, by number, to check against ICU.
+  // English names by number, which we check against ICU.
   monthNames: string[];
   eraNames: string[];
   // Days that ICU calls day 0 of a month, as [day, month number]. ICU's
-  // Chinese calendar makes a few of these, where its astronomy goes wrong.
+  // Chinese calendar has a few where its astronomy goes wrong.
   dayZero: [number, number][];
 };
 
@@ -629,7 +627,7 @@ export function table(calendar: CalendarId): Table {
       : next - (x - 1);
   };
 
-  // Months, as [first day, fields].
+  // Each month we read, as its first day and fields.
   const months = unfold(
     advance(FIRST_DAY, 1, (d) => at(d).day !== 1),
     (start) => {
@@ -659,8 +657,8 @@ export function table(calendar: CalendarId): Table {
     return found;
   }, []);
 
-  // Only whole years: the first may have started before FIRST_DAY, and the
-  // last may run past the months we read.
+  // Keep only whole years. The first may have started before FIRST_DAY, and
+  // the last may run past the months we read.
   const after = read.slice(1);
   const end = after.at(-1)!;
 
@@ -680,7 +678,7 @@ export function table(calendar: CalendarId): Table {
     year.fields.extended = weekYear(calendar, middle) ?? year.fields.related;
   });
 
-  // Days into a year that its month `m` starts.
+  // How many days into a year its month `m` starts.
   const monthStart = (year: Year, m: number) =>
     year.months.slice(0, m).reduce((a, [, l]) => a + l, 0);
 
@@ -883,11 +881,11 @@ export function tableDate(calendar: Table, epochDay: number) {
   };
 }
 
-// A month number, and how many days into that month.
+// `rest` is how many days into `month` a day is.
 type MonthDay = { month: number; rest: number };
 
-// The month `rest` days into a year with this layout falls in, from month
-// `m`. Month 0 if the year is shorter.
+// Finds the month that a day `rest` days into a year falls in, starting from
+// month `m`. Returns month 0 if the year is shorter.
 function monthAt(layout: [number, number][], rest: number, m = 0): MonthDay {
   const entry = layout[m];
 
@@ -910,15 +908,15 @@ export function calendarMath(calendar: CalendarId): Math_ {
   return kind === "proleptic" ? proleptic(calendar) : table(calendar);
 }
 
-// Everything about a day that a pattern can show, with month and era as
-// numbers. Undefined outside a table's years.
+// Everything a pattern can show about a day, with month and era as numbers.
+// `calendarDate` returns undefined outside a table's years.
 export type CalendarDate = {
   era: number;
   year: number;
   extended: number;
   related: number;
   cycle: number;
-  // Index into the calendar's month names. For Gregorian months, 0 to 11.
+  // An index into the calendar's month names, or 0 to 11 for Gregorian months.
   month: number;
   day: number;
   // The first day of this year and of the next, for week-based years.
@@ -1029,7 +1027,7 @@ export function checkEveryDay(calendar: CalendarId, math: Math_): number {
   return to - from + 1;
 }
 
-// Weekdays numbered from Monday, as ICU's week data does. 1970-01-01 was a
+// ICU's week data numbers weekdays from Monday, and 1970-01-01 was a
 // Thursday.
 const THURSDAY_FROM_MONDAY = 4;
 

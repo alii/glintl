@@ -75,7 +75,6 @@ export type Token =
       optionalMinutes: boolean;
     };
 
-// How a date and a time are joined, like "{date} at {time}".
 // How a date and a time are joined, like "{date} at {time}". A glue can hold
 // a date's tokens itself, where ICU writes the date differently next to a
 // time.
@@ -91,8 +90,8 @@ export type Style = (typeof STYLES)[number];
 
 type Local = (n: number, pad: boolean) => string;
 
-// 2026-03-05, a Thursday, at 09:07:04: every number is different, and the
-// hour, minute and second are under ten, to show their padding.
+// Probe on Thursday 2026-03-05 at 09:07:04. Every number is different, and
+// the hour, minute and second are under ten to show their padding.
 const PROBE_DAY = day(2026, 3, 5);
 const PROBE_TIME: [number, number, number] = [9, 7, 4];
 
@@ -108,20 +107,19 @@ const at = (
         MS_PER_SECOND,
   );
 
-// A day of the month under ten, to see whether days are padded.
+// A day of the month under ten shows whether days are padded.
 const PADDED_DAY = 5;
 
-// A day this far into each year, to sample it.
+// Sample each year this many days in.
 const INTO_YEAR = 10;
 
-// The middle of a month, to sample its name.
+// Sample month names in the middle of the month.
 const MID_MONTH_DAY = 15;
 
 // Week-based years are checked around the start of each year from here.
 const WEEK_YEARS_FROM = -100;
 
-// Days from the start of a year to look for its week-based year on: a week
-// either side.
+// Look for a year's week-based year up to a week either side of its start.
 const WEEK_YEAR_SEARCH = Array.from(
   { length: 2 * DAYS_PER_WEEK + 1 },
   (_, n) => n - DAYS_PER_WEEK,
@@ -136,11 +134,11 @@ const MINIMAL_DAYS = Array.from({ length: DAYS_PER_WEEK }, (_, n) => n + 1);
 const EXCEPTIONS_AT_MOST_ONE_IN = 10;
 
 // Years 2 to 9 show whether a year is padded to two digits. Year 1 is left
-// out, as some patterns write it as a word.
+// out because some patterns write it as a word.
 const SMALLEST_PADDED_YEAR = 2;
 
-// Time zones to probe with. 11:47 has distinct digits and minutes, to find
-// both in the text, and 1:47 shows whether hours are padded.
+// Probe with zones at +11:47 and +1:47. The hours and minutes of 11:47
+// differ so both can be found in the text, and 1:47 shows hour padding.
 const ZONE_HOURS = 11;
 const ZONE_MINUTES = 47;
 const ZONE_SHORT_HOURS = 1;
@@ -197,8 +195,8 @@ function formatter(tag: string, calendar: CalendarId, options: Options) {
   });
 }
 
-// Every day that a calendar's maths covers, to look for years with odd
-// numbers: negative ones, or the first year of an era.
+// Samples a day in every year that a calendar's maths covers, to find years
+// with odd numbers like negative years or the first year of an era.
 function sampleDays(math: Math_): number[] {
   if (math.kind === "table") {
     return math.starts.slice(0, -1).map((start) => start + INTO_YEAR);
@@ -226,8 +224,8 @@ export function derive(
   const f = formatter(tag, calendar, options);
   const probe = f.formatToParts(at(probeDay));
 
-  // A part is found by its position, or if the date has other parts, as
-  // the same occurrence of the same type.
+  // Find a part by its position. If the date has other parts, find the same
+  // occurrence of the same type instead.
   const valueAt = (date: Date, i: number) => {
     const parts = f.formatToParts(date);
     const type = probe[i]!.type;
@@ -250,8 +248,8 @@ export function derive(
   const near = (days: number[]) => nearest(days, probeDay);
   const days = () => sampleDays(math);
 
-  // Reads a part with the digits it's written in: the locale's, or ASCII for
-  // parts that ICU writes in ASCII anyway.
+  // Reads a part written in `active` digits. These are the locale's, or ASCII
+  // for parts that ICU writes in ASCII anyway.
   const reader = (active: string[]) => {
     const toAscii = (s: string) =>
       [...s]
@@ -277,7 +275,7 @@ export function derive(
       throw new Error(`${name}: can't read number ${value}`);
     };
 
-    // How a negative year is written: the text before its digits.
+    // Finds the text written before a negative year's digits.
     const minus = (
       i: number,
       year: (d: number) => number | undefined,
@@ -406,7 +404,7 @@ export function derive(
         }
 
         case "unknown": {
-          // ICU's week-based year, which only Galician's patterns use.
+          // This is ICU's week-based year, which only Galician's patterns use.
           const firstDay = new Intl.Locale(tag).getWeekInfo().firstDay;
 
           const yearStarts =
@@ -416,8 +414,8 @@ export function derive(
                   civilDay(WEEK_YEARS_FROM + n, 1, 1, math.julianBefore),
                 );
 
-          // Where ICU starts each week-based year: the first day near the start
-          // of the year that shows it.
+          // ICU starts each week-based year on the first day near the year's
+          // start that shows it.
           const observed = yearStarts.flatMap(
             (start): [number, number, number][] => {
               const extended = calendarDate(math, start)!.extended;
@@ -489,7 +487,7 @@ export function derive(
           };
         case "month":
           if (math.kind === "proleptic") {
-            // The probe's own year, which can be Julian.
+            // Use the probe's own year, which can be Julian.
             const year = civil(probeDay, math.julianBefore)[0];
 
             const names = Array.from({ length: MONTHS_PER_YEAR }, (_, m) =>
@@ -547,7 +545,7 @@ export function derive(
         }
 
         case "weekday": {
-          // The Sunday before the probe, as weekday names start on Sunday.
+          // Weekday names start on Sunday, so start from the Sunday before the probe.
           const sunday = probeDay - (isoWeekday(probeDay) % DAYS_PER_WEEK);
 
           return {
@@ -760,7 +758,7 @@ export function glue(
 }
 
 // Where each month, cycle year and 30 day month falls in a table calendar,
-// to sample names near a given day.
+// so we can sample names near a given day.
 const occurrenceCache = new WeakMap<
   Table,
   ReturnType<typeof findOccurrences>
@@ -834,8 +832,8 @@ function nearest(days: number[], target: number): number {
 export type EraFormats = {
   era: number;
   dates: Token[][];
-  // For eras where ICU doesn't just join the date and time: glues holding
-  // the era's dates, or else dates with times, by date style then time style.
+  // Set where ICU doesn't just join the era's date and time. `glues` hold its
+  // dates, or else `combined` has dates with times by date then time style.
   glues?: GluePiece[][];
   combined?: Token[][];
 };
@@ -852,8 +850,8 @@ export type Formats = {
 
 const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-// How many days to check a calendar's patterns on, besides the odd ones:
-// some at random, the first years of a few eras, and a few negative years.
+// Besides the odd days, check a calendar's patterns on this many random
+// days, first years of eras and negative years.
 const RANDOM_CHECK_DAYS = 40;
 const FIRST_YEAR_CHECK_DAYS = 12;
 const NEGATIVE_YEAR_CHECK_DAYS = 3;
@@ -869,21 +867,21 @@ const STYLE_PAIRS = STYLES.flatMap((dateStyle, ds) =>
   STYLES.map((timeStyle, ts) => ({ ds, dateStyle, ts, timeStyle })),
 );
 
-// Time zone offsets, in minutes, to check times with: +11:47, -3:30 and +1.
+// Check times at offsets of +11:47, -3:30 and +1, in minutes.
 const CHECK_OFFSETS = [707, -210, 60];
 
-// An offset to check dates with times, +5:30.
+// Check dates with times at +5:30.
 const DATE_AND_TIME_OFFSET = 330;
 
 // Numbers below this have one digit.
 const ONE_DIGIT = 10;
 
-// A year to check times before 1970 in, as ICU only names the zero offset
+// Check times in a year before 1970, because ICU only names the zero offset
 // from 1970.
 const BEFORE_1970 = 1960;
 
-// Days to check a calendar's patterns on: each era, each month near today,
-// odd years, the edges of the table, and some at random.
+// Check a calendar's patterns on each era, each month near today, odd years,
+// the edges of the table and some random days.
 const checkDayCache = new WeakMap<Math_, number[]>();
 
 function checkDays(math: Math_): number[] {
@@ -938,7 +936,7 @@ function checkDays(math: Math_): number[] {
     });
   }
 
-  // A few first years of eras, and negative years.
+  // Add a few first years of eras and negative years.
   const sampled = sampleDays(math).map((d) => ({
     d,
     year: calendarDate(math, d)?.year,
@@ -1001,8 +999,8 @@ function icu(
   }).format(m.unixSeconds * MS_PER_SECOND);
 }
 
-// With `hourCycle`, the formats for that hour cycle: `base`'s dates, with
-// times, glues and dates with times worked out for it.
+// With `hourCycle`, this keeps `base`'s dates and works out times, glues and
+// dates with times for that hour cycle.
 export function formats(
   tag: string,
   calendar: CalendarId,
@@ -1014,7 +1012,7 @@ export function formats(
   const cycle = hourCycle === undefined ? {} : { hourCycle };
 
   // ICU can write a date differently next to a time in another hour cycle,
-  // so there may be no glue; then dates and times are written together.
+  // so there may be no glue. Then we write dates and times together.
   const glueFor = (dateStyle: Style) => {
     try {
       return glue(tag, calendar, dateStyle, hourCycle);
@@ -1058,8 +1056,8 @@ export function formats(
       ),
     );
 
-  // A glue for each date style holding the date itself, found in a date with
-  // a short time, or undefined if the time isn't there.
+  // Builds a glue for each date style that holds the date itself, from a date
+  // with a short time. Returns undefined if the time isn't there.
   const shortTime = STYLES.indexOf("short");
 
   const tokenPiece = (token: Token): GluePiece => ({ t: "token", token });
@@ -1200,7 +1198,7 @@ export function formats(
     });
   });
 
-  // Times, with offsets, at midnight and noon, and before 1970.
+  // Check times with offsets, at midnight and noon, and before 1970.
   const [lastHour, lastMinute, lastSecond] = [
     HOURS_PER_DAY - 1,
     MINUTES_PER_HOUR - 1,
@@ -1232,7 +1230,7 @@ export function formats(
     });
   });
 
-  // Dates and times together, on a day in each era.
+  // Check dates and times together on a day in each era.
   const combinedFor = (f: EraFormats, ds: number, ts: number) =>
     f.combined?.[ds * STYLES.length + ts] ??
     join(f.dates[ds]!, (f.glues ?? result.glues)[ds]!, result.times[ts]!);
@@ -1240,7 +1238,7 @@ export function formats(
   const combinedMismatch = (f: EraFormats, d: number) => {
     const m = moment(math, d, DATE_AND_TIME_OFFSET);
 
-    // Lazily, to stop at the first mismatch.
+    // Iterate lazily so we stop at the first mismatch.
     const mismatch = STYLE_PAIRS.values()
       .map(({ ds, dateStyle, ts, timeStyle }) => ({
         dateStyle,
@@ -1257,7 +1255,8 @@ export function formats(
 
   const eraDays = new Map<number, number>();
 
-  // A day in each era, avoiding first years, which some eras name, like 元.
+  // Pick a day in each era, avoiding first years because some eras name them,
+  // like 元.
   const ordinary = (d: number) => calendarDate(math, d)!.year !== 1;
 
   [PROBE_DAY, ...days.filter(ordinary), ...days].forEach((d) => {
@@ -1310,8 +1309,8 @@ export function formats(
     }
   });
 
-  // Days with one digit months and days too, as ICU can pad them next to a
-  // time in another hour cycle but not on their own.
+  // Also check days with one digit months and days, because ICU can pad them
+  // next to a time in another hour cycle but not on their own.
   const small = days.filter((d) => {
     const date = calendarDate(math, d)!;
 

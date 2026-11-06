@@ -34,7 +34,7 @@ export function escape(s: string, hex: (code: string) => string): string {
 export const string = (s: string) =>
   `<<"${escape(s, (h) => `\\x{${h}}`)}"/utf8>>`;
 
-// The atom Gleam compiles a constructor to, like `republic_of_china`.
+// Gleam compiles a constructor like `RepublicOfChina` to `republic_of_china`.
 export const atom = (constructor: string) =>
   constructor.replaceAll(/(?<=.)(?=[A-Z])/g, "_").toLowerCase();
 
@@ -54,7 +54,7 @@ export function module(
 ${functions.map((clauses) => `\n${clauses.join(";\n")}.\n`).join("")}`;
 }
 
-// A big negative number standing in for the start of time.
+// Era rules use this big negative number for the start of time.
 const START_OF_TIME = -1_000_000_000_000;
 
 export function math(m: Math_): string {

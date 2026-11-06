@@ -7,8 +7,11 @@ import gleam/time/duration
 import gleam/time/timestamp
 import gleeunit
 import glintl
+@target(erlang)
 import glintl/calendar_fixtures
+import glintl/date_time
 import glintl/fixtures
+@target(erlang)
 import glintl/internal/render
 import glintl/locale/en
 import glintl/locale/en_gb
@@ -25,14 +28,15 @@ pub fn main() -> Nil {
 
 pub fn example_test() {
   let formatter =
-    glintl.date_time_formatter(
+    date_time.date_time_formatter(
       en_gb.locale(),
-      date: glintl.Long,
-      time: glintl.Short,
+      date: date_time.Long,
+      time: date_time.Short,
     )
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
-  let assert Ok(offset) = glintl.offset(hours: 1, minutes: 0)
-  assert glintl.format(formatter, moment, offset:) == "25 October 2026 at 23:40"
+  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
+  assert date_time.format(formatter, moment, offset:)
+    == "25 October 2026 at 23:40"
 }
 
 pub fn from_tag_test() {
@@ -68,8 +72,8 @@ pub fn accept_language_test() {
 pub fn hour_cycle_test() {
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-26T22:40:00Z")
   let time = fn(locale) {
-    glintl.time_formatter(locale, style: glintl.Short)
-    |> glintl.format(moment, offset: glintl.utc)
+    date_time.time_formatter(locale, style: date_time.Short)
+    |> date_time.format(moment, offset: date_time.utc)
   }
   assert glintl.locale_hour_cycle(en_gb.locale()) == glintl.H23
   assert glintl.locale_hour_cycle(en.locale()) == glintl.H12
@@ -84,42 +88,49 @@ pub fn hour_cycle_test() {
   // Japanese writes the date differently next to a 12 hour time.
   assert ja.locale()
     |> glintl.with_hour_cycle(glintl.H12)
-    |> glintl.date_time_formatter(date: glintl.Long, time: glintl.Short)
-    |> glintl.format(moment, offset: glintl.utc)
+    |> date_time.date_time_formatter(
+      date: date_time.Long,
+      time: date_time.Short,
+    )
+    |> date_time.format(moment, offset: date_time.utc)
     == "2026/10/26 午後10:40"
 }
 
 pub fn format_date_test() {
   let birthday = calendar.Date(2026, calendar.October, 26)
-  assert glintl.date_formatter(en_gb.locale(), style: glintl.Long)
-    |> glintl.format_date(birthday)
+  assert date_time.date_formatter(en_gb.locale(), style: date_time.Long)
+    |> date_time.format_date(birthday)
     == "26 October 2026"
-  assert glintl.date_time_formatter(
+  assert date_time.date_time_formatter(
       en_gb.locale(),
-      date: glintl.Short,
-      time: glintl.Short,
+      date: date_time.Short,
+      time: date_time.Short,
     )
-    |> glintl.format_date_time(birthday, calendar.TimeOfDay(9, 5, 0, 0))
+    |> date_time.format_date_time(birthday, calendar.TimeOfDay(9, 5, 0, 0))
     == "26/10/2026, 09:05"
 }
 
-/// Offsets are under 24 hours either way, like JavaScript's `Intl` allows.
+/// Offsets must be under 24 hours either way, because that's all JavaScript's
+/// `Intl` allows.
 pub fn offset_test() {
-  assert glintl.offset(hours: 5, minutes: 30) |> result.is_ok
-  assert glintl.offset(hours: -3, minutes: -30) |> result.is_ok
-  assert glintl.offset(hours: 23, minutes: 59) |> result.is_ok
-  assert glintl.offset(hours: -23, minutes: -59) |> result.is_ok
-  assert glintl.offset(hours: 24, minutes: 0) == Error(glintl.OffsetTooLarge)
-  assert glintl.offset(hours: -24, minutes: 0) == Error(glintl.OffsetTooLarge)
-  assert glintl.offset(hours: 1, minutes: 60) == Error(glintl.MinutesTooLarge)
-  assert glintl.offset(hours: -3, minutes: 30) == Error(glintl.MixedSigns)
-  assert glintl.duration_to_offset(duration.hours(1)) == Ok(hours(1))
-  assert glintl.duration_to_offset(duration.seconds(-1))
-    == glintl.offset(hours: 0, minutes: -1)
-  assert glintl.duration_to_offset(duration.hours(24))
-    == Error(glintl.OffsetTooLarge)
-  assert glintl.duration_to_offset(duration.hours(-25))
-    == Error(glintl.OffsetTooLarge)
+  assert date_time.offset(hours: 5, minutes: 30) |> result.is_ok
+  assert date_time.offset(hours: -3, minutes: -30) |> result.is_ok
+  assert date_time.offset(hours: 23, minutes: 59) |> result.is_ok
+  assert date_time.offset(hours: -23, minutes: -59) |> result.is_ok
+  assert date_time.offset(hours: 24, minutes: 0)
+    == Error(date_time.OffsetTooLarge)
+  assert date_time.offset(hours: -24, minutes: 0)
+    == Error(date_time.OffsetTooLarge)
+  assert date_time.offset(hours: 1, minutes: 60)
+    == Error(date_time.MinutesTooLarge)
+  assert date_time.offset(hours: -3, minutes: 30) == Error(date_time.MixedSigns)
+  assert date_time.duration_to_offset(duration.hours(1)) == Ok(hours(1))
+  assert date_time.duration_to_offset(duration.seconds(-1))
+    == date_time.offset(hours: 0, minutes: -1)
+  assert date_time.duration_to_offset(duration.hours(24))
+    == Error(date_time.OffsetTooLarge)
+  assert date_time.duration_to_offset(duration.hours(-25))
+    == Error(date_time.OffsetTooLarge)
 }
 
 /// Locales can be compared and used as `Dict` keys on both targets.
@@ -135,8 +146,8 @@ pub fn locale_equality_test() {
 pub fn calendar_test() {
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
   let format = fn(locale, moment) {
-    glintl.date_formatter(locale, style: glintl.Long)
-    |> glintl.format(moment, offset: hours(1))
+    date_time.date_formatter(locale, style: date_time.Long)
+    |> date_time.format(moment, offset: hours(1))
   }
   assert glintl.locale_calendar(en_gb.locale()) == glintl.Gregorian
   assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
@@ -164,8 +175,8 @@ pub fn outside_calendar_tables_test() {
   let hebrew =
     en_gb.locale()
     |> glintl.with_calendar(glintl.Hebrew)
-    |> glintl.date_formatter(style: glintl.Long)
-    |> glintl.format(year_5000, offset: glintl.utc)
+    |> date_time.date_formatter(style: date_time.Long)
+    |> date_time.format(year_5000, offset: date_time.utc)
   let expected = case on_erlang() {
     True -> "1 January 5000"
     False -> "20 Kislev 8760"
@@ -175,10 +186,10 @@ pub fn outside_calendar_tables_test() {
 
 // --- Generated fixtures --------------------------------------------------------
 //
-// Only the first failures are shown, as a broken pattern can fail thousands of
-// cases at once.
+// Only the first failures are shown, because a broken pattern can fail
+// thousands of cases at once.
 
-/// Every locale, style and calendar, checked against `Intl.DateTimeFormat`.
+/// Checks every locale, style and calendar against `Intl.DateTimeFormat`.
 pub fn fixtures_test() {
   let failures =
     fixtures.cases()
@@ -190,19 +201,19 @@ pub fn fixtures_test() {
         id -> glintl.with_calendar(locale, calendar_from_id(id))
       }
       let formatter = case date, time {
-        0, time -> glintl.time_formatter(locale, style: style(time))
-        date, 0 -> glintl.date_formatter(locale, style: style(date))
+        0, time -> date_time.time_formatter(locale, style: style(time))
+        date, 0 -> date_time.date_formatter(locale, style: style(date))
         date, time ->
-          glintl.date_time_formatter(
+          date_time.date_time_formatter(
             locale,
             date: style(date),
             time: style(time),
           )
       }
       let assert Ok(utc_offset) =
-        glintl.duration_to_offset(duration.minutes(offset))
+        date_time.duration_to_offset(duration.minutes(offset))
       let actual =
-        glintl.format(
+        date_time.format(
           formatter,
           timestamp.from_unix_seconds(seconds),
           offset: utc_offset,
@@ -224,31 +235,27 @@ pub fn fixtures_test() {
   assert list.take(failures, 30) == []
 }
 
-/// The Erlang calendar maths, checked field by field. JavaScript uses `Intl`
-/// for this, so there is nothing to check there.
+@target(erlang)
+/// Checks the Erlang calendar maths field by field. JavaScript uses `Intl`
+/// for this, so there's nothing to check there.
 pub fn calendar_fields_test() {
-  case on_erlang() {
-    False -> Nil
-    True -> {
-      let failures =
-        calendar_fixtures.cases()
-        |> list.filter(fn(case_) {
-          let #(calendar, day, expected) = case_
-          render.calendar_fields(
-            glintl.calendar_math(calendar_from_id(calendar)),
-            day,
-          )
-          != expected
-        })
-      assert list.take(failures, 30) == []
-    }
-  }
+  let failures =
+    calendar_fixtures.cases()
+    |> list.filter(fn(case_) {
+      let #(calendar, day, expected) = case_
+      render.calendar_fields(
+        date_time.calendar_math(calendar_from_id(calendar)),
+        day,
+      )
+      != expected
+    })
+  assert list.take(failures, 30) == []
 }
 
 // --- Helpers -------------------------------------------------------------------
 
-fn hours(hours: Int) -> glintl.Offset {
-  let assert Ok(offset) = glintl.offset(hours:, minutes: 0)
+fn hours(hours: Int) -> date_time.Offset {
+  let assert Ok(offset) = date_time.offset(hours:, minutes: 0)
   offset
 }
 
@@ -263,7 +270,7 @@ fn result_tag(result: Result(glintl.Locale, Nil)) -> Result(String, Nil) {
   }
 }
 
-/// ICU's name for a calendar, as the fixtures use.
+/// The calendar for an ICU calendar name, which the fixtures use.
 fn calendar_from_id(id: String) -> glintl.Calendar {
   case id {
     "gregory" -> glintl.Gregorian
@@ -287,12 +294,12 @@ fn calendar_from_id(id: String) -> glintl.Calendar {
 }
 
 /// A style as the fixtures write it: 1 to 4 for full to short.
-fn style(index: Int) -> glintl.Style {
+fn style(index: Int) -> date_time.Style {
   case index {
-    1 -> glintl.Full
-    2 -> glintl.Long
-    3 -> glintl.Medium
-    4 -> glintl.Short
+    1 -> date_time.Full
+    2 -> date_time.Long
+    3 -> date_time.Medium
+    4 -> date_time.Short
     _ -> panic as { "unknown style in the fixtures: " <> int.to_string(index) }
   }
 }

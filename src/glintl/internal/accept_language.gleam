@@ -3,6 +3,7 @@
 import gleam/float
 import gleam/int
 import gleam/list
+import gleam/pair
 import gleam/string
 
 /// The highest weight, given to tags without a `q`.
@@ -15,7 +16,7 @@ pub fn tags(header: String) -> List(String) {
   |> string.split(",")
   |> list.filter_map(weighted)
   |> list.sort(fn(a, b) { float.compare(b.1, a.1) })
-  |> list.map(fn(pair) { pair.0 })
+  |> list.map(pair.first)
 }
 
 fn weighted(item: String) -> Result(#(String, Float), Nil) {
