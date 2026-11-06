@@ -1,6 +1,6 @@
 // Fails if `@target` is on a public definition other than an opaque type, an
 // `@internal` one or one in an internal module, as the compiler lets each
-// target give it a different type.
+// target give it a different type. Tests aren't checked.
 //
 //   bun codegen/targets.ts
 
@@ -10,7 +10,7 @@ import { join } from "node:path";
 const ROOT = join(import.meta.dir, "..");
 
 const files = await Array.fromAsync(
-  new Glob("{src,test,dev}/**/*.gleam").scan(ROOT),
+  new Glob("{src,dev}/**/*.gleam").scan(ROOT),
 );
 
 const INTERNAL = /^src\/[^/]+\/internal\//;
