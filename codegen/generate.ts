@@ -23,6 +23,7 @@ import * as erlang from "./erlang.ts";
 import { packer } from "./pack.ts";
 import { calendarFixtures, fixtures } from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
+import { requirePinnedBun } from "./runtime.ts";
 import {
   type Formats,
   HOUR_CYCLES,
@@ -32,6 +33,8 @@ import {
   formats,
   localDigits,
 } from "./patterns.ts";
+
+requirePinnedBun("codegen/generate.ts");
 
 const ROOT = join(import.meta.dir, "..");
 const CACHE = join(import.meta.dir, ".cache");

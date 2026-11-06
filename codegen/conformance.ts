@@ -27,6 +27,7 @@ import {
 import { HOUR_CYCLES } from "./patterns.ts";
 import { LOCALES } from "./locales.ts";
 import { random } from "./random.ts";
+import { requirePinnedBun } from "./runtime.ts";
 import {
   HOURS_PER_DAY,
   HOURS_PER_HALF_DAY,
@@ -43,6 +44,11 @@ const [mode, file] =
   process.argv[2] === "--save" || process.argv[2] === "--check"
     ? [process.argv[2], process.argv[3]!]
     : ["--live", ""];
+
+// Checking saved cases doesn't ask Intl anything.
+if (mode !== "--check") {
+  requirePinnedBun("codegen/conformance.ts");
+}
 
 const counts =
   mode === "--live" ? process.argv.slice(2) : process.argv.slice(4);
