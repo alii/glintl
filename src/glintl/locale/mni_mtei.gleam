@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Manipuri (Meitei Mayek), whose tag is `mni-Mtei`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mni-Mtei", glintl.Gregorian, 220)
+  glintl.new_locale("mni-Mtei", glintl.Gregorian, 232)
 }

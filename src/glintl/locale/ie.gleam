@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Interlingue, whose tag is `ie`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ie", glintl.Gregorian, 153)
+  glintl.new_locale("ie", glintl.Gregorian, 164)
 }

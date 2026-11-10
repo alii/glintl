@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Dogri, whose tag is `doi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("doi", glintl.Gregorian, 55)
+  glintl.new_locale("doi", glintl.Gregorian, 60)
 }

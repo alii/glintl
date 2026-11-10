@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Basaa, whose tag is `bas`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bas", glintl.Gregorian, 20)
+  glintl.new_locale("bas", glintl.Gregorian, 23)
 }

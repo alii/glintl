@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Italian (Vatican City), whose tag is `it-VA`.
 pub fn locale() -> Locale {
-  glintl.new_locale("it-VA", glintl.Gregorian, 157)
+  glintl.new_locale("it-VA", glintl.Gregorian, 168)
 }

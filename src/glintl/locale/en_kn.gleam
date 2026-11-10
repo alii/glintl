@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (St Kitts & Nevis), whose tag is `en-KN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-KN", glintl.Gregorian, 65)
+  glintl.new_locale("en-KN", glintl.Gregorian, 70)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chuvash, whose tag is `cv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("cv", glintl.Gregorian, 48)
+  glintl.new_locale("cv", glintl.Gregorian, 51)
 }

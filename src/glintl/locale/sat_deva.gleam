@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Santali (Devanagari), whose tag is `sat-Deva`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat-Deva", glintl.Gregorian, 271)
+  glintl.new_locale("sat-Deva", glintl.Gregorian, 287)
 }

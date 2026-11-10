@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Friulian, whose tag is `fur`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fur", glintl.Gregorian, 130)
+  glintl.new_locale("fur", glintl.Gregorian, 141)
 }

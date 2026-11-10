@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kuvi (Latin), whose tag is `kxv-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kxv-Latn", glintl.Gregorian, 189)
+  glintl.new_locale("kxv-Latn", glintl.Gregorian, 201)
 }

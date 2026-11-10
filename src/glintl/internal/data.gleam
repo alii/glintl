@@ -147,6 +147,18 @@ pub type Local {
 const years_in_cycle = 60
 
 @target(erlang)
+/// ICU counts Chinese and Dangi years from 2637 BC.
+const cycle_epoch = 2637
+
+@target(erlang)
+/// Works out ICU's era in the Chinese and Dangi calendars from the related
+/// Gregorian year. The era is which 60 year cycle the year is in, counting
+/// from 1.
+pub fn cycle_era(related: Int) -> Int {
+  { related + cycle_epoch - 1 } / years_in_cycle + 1
+}
+
+@target(erlang)
 pub const days_per_week = 7
 
 @target(erlang)

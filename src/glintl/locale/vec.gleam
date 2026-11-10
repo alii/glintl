@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Venetian, whose tag is `vec`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vec", glintl.Gregorian, 339)
+  glintl.new_locale("vec", glintl.Gregorian, 356)
 }

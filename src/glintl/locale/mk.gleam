@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Macedonian, whose tag is `mk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mk", glintl.Gregorian, 217)
+  glintl.new_locale("mk", glintl.Gregorian, 229)
 }

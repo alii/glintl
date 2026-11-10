@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chinese, whose tag is `zh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zh", glintl.Gregorian, 358)
+  glintl.new_locale("zh", glintl.Gregorian, 375)
 }

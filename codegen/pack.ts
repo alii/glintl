@@ -7,9 +7,21 @@
 //   aren't glued, then eras.
 // - digits: a tuple of ten digits, for locales without ASCII digits.
 // - locales: a digits number (0 for ASCII), the default hour cycle, then for
-//   each calendar its formats, then its formats in each hour cycle.
+//   each calendar its formats, then its formats in each hour cycle, then for
+//   each calendar its fields.
+// - fields: what the matcher needs for a locale and calendar. The letter for
+//   the locale's own hour, its entries, its texts, then its runs for each
+//   field. Most fields' runs are the same in every calendar, so they're
+//   shared.
+// - field_entries: each stored pattern's skeleton and pattern, as numbers in
+//   field_strings, then 1 if CLDR gave the skeleton.
+// - field_texts: numbers in field_strings for the append items and display
+//   names by field, the glues by style, then the decimal separator.
+// - field_runs: each run's letter, length and flags, then its token.
 
 import { CALENDARS } from "./calendars.ts";
+import type { FieldsData } from "./fields.ts";
+import { FIELD_COUNT, fieldOf, keyParts } from "./matcher.ts";
 import { bytes, string } from "./erlang.ts";
 import {
   type EraFormats,
@@ -34,7 +46,7 @@ const BYTE = 0xff;
 const BITS_PER_BYTE = 8;
 const LARGEST_NUMBER = 0xffff;
 
-// Numbers items from 1, as Erlang's `element` does. A repeat gets the number
+// Numbers items from 1, because Erlang's `element` counts from 1. A repeat gets the number
 // it had first.
 function table() {
   const numbers = new Map<string, number>();
@@ -86,11 +98,13 @@ function token(t: Token): string {
     case "year":
       return `{year,${bool(t.twoDigit)},${string(t.minus)},${string(t.first)},${string(t.minusFirst)}}`;
     case "week_year":
-      return `{week_year,${string(t.minus)},${t.firstDay},${t.minimalDays},[${t.exceptions.map(([year, day]) => `{${year},${day}}`).join(",")}]}`;
+      return `{week_year,${string(t.minus)},${bool(t.twoDigit)},${t.firstDay},${t.minimalDays},[${t.exceptions.map(([year, day]) => `{${year},${day}}`).join(",")}]}`;
     case "extended_year":
-      return `{extended_year,${string(t.minus)}}`;
+      return `{extended_year,${string(t.minus)},${bool(t.twoDigit)}}`;
     case "related_year":
-      return "related_year";
+      return `{related_year,${bool(t.pad)}}`;
+    case "cycle_era":
+      return "cycle_era";
     case "year_name":
     case "month_name":
     case "day_name":
@@ -104,6 +118,8 @@ function token(t: Token): string {
       return `{${t.t},${bool(t.pad)}}`;
     case "hour":
       return `{hour,${bool(t.pad)},${t.cycle}}`;
+    case "fraction":
+      return `{fraction,${t.digits}}`;
     case "day_period":
       return `{day_period,${tuple(t.byHour.map(string))},${string(t.midnight)},${string(t.noon)}}`;
     case "zone":
@@ -131,6 +147,69 @@ export function packer() {
   const formats = table();
   const digits = table();
   const locales = table();
+  const fieldStrings = table();
+  const fieldEntries = table();
+  const fieldTexts = table();
+  const fieldRuns = table();
+  const fields = table();
+
+  const fieldString = (s: string) => u16(fieldStrings.add(string(s)));
+
+  function packFields(f: FieldsData): number {
+    if (
+      f.appendItems.length !== FIELD_COUNT ||
+      f.displayNames.length !== FIELD_COUNT ||
+      f.glues.length !== STYLE_COUNT
+    ) {
+      throw new Error("A field's texts are missing");
+    }
+
+    const entries = fieldEntries.add(
+      bytes(
+        f.entries.flatMap(([skeleton, pattern, specified]) => [
+          ...fieldString(skeleton),
+          ...fieldString(pattern),
+          ...u8(specified ? 1 : 0),
+        ]),
+      ),
+    );
+
+    const texts = fieldTexts.add(
+      bytes(
+        [...f.appendItems, ...f.displayNames, ...f.glues, f.decimal].flatMap(
+          fieldString,
+        ),
+      ),
+    );
+
+    const runs = Array.from({ length: FIELD_COUNT }, (_, field) =>
+      fieldRuns.add(
+        bytes(
+          f.runs.flatMap(([key, t]) => {
+            const [letter, length, flags] = keyParts(key);
+
+            return fieldOf(letter) === field
+              ? [
+                  ...u8(letter.charCodeAt(0)),
+                  ...u8(length),
+                  ...u8(flags),
+                  ...u16(tokens.add(token(t))),
+                ]
+              : [];
+          }),
+        ),
+      ),
+    );
+
+    return fields.add(
+      bytes([
+        ...u8(f.hourLetter.charCodeAt(0)),
+        ...u16(entries),
+        ...u16(texts),
+        ...runs.flatMap(u16),
+      ]),
+    );
+  }
 
   // Adds a `Pattern` term and returns its number as two bytes.
   const pattern = (
@@ -210,9 +289,11 @@ export function packer() {
     localDigits: string[],
     hourCycle: HourCycle,
     all: Formats[][],
+    allFields: FieldsData[],
   ): number {
     if (
       all.length !== CALENDARS.length ||
+      allFields.length !== CALENDARS.length ||
       all.some((f) => f.length !== HOUR_CYCLES.length + 1)
     ) {
       throw new Error("A calendar or hour cycle is missing");
@@ -228,6 +309,7 @@ export function packer() {
         ...u16(digitsNumber),
         ...u16(HOUR_CYCLES.indexOf(hourCycle)),
         ...all.flat().flatMap((f) => u16(packFormats(f))),
+        ...allFields.flatMap((f) => u16(packFields(f))),
       ]),
     );
   }
@@ -241,6 +323,11 @@ export function packer() {
       formats: formats.items,
       digits: digits.items,
       locales: locales.items,
+      fields: fields.items,
+      field_entries: fieldEntries.items,
+      field_texts: fieldTexts.items,
+      field_runs: fieldRuns.items,
+      field_strings: fieldStrings.items,
     }),
   };
 }

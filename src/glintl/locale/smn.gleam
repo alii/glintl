@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Inari Sami, whose tag is `smn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("smn", glintl.Gregorian, 288)
+  glintl.new_locale("smn", glintl.Gregorian, 304)
 }

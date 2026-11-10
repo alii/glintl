@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Mongolian (Mongolian), whose tag is `mn-Mong`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mn-Mong", glintl.Gregorian, 219)
+  glintl.new_locale("mn-Mong", glintl.Gregorian, 231)
 }

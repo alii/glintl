@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Makhuwa, whose tag is `vmw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vmw", glintl.Gregorian, 341)
+  glintl.new_locale("vmw", glintl.Gregorian, 358)
 }

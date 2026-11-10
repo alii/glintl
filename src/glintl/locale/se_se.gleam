@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Northern Sami (Sweden), whose tag is `se-SE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("se-SE", glintl.Gregorian, 277)
+  glintl.new_locale("se-SE", glintl.Gregorian, 293)
 }

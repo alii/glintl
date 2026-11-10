@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Gusii, whose tag is `guz`.
 pub fn locale() -> Locale {
-  glintl.new_locale("guz", glintl.Gregorian, 138)
+  glintl.new_locale("guz", glintl.Gregorian, 149)
 }

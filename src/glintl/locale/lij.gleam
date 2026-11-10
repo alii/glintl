@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ligurian, whose tag is `lij`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lij", glintl.Gregorian, 197)
+  glintl.new_locale("lij", glintl.Gregorian, 209)
 }

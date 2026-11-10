@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Quechua (Ecuador), whose tag is `qu-EC`.
 pub fn locale() -> Locale {
-  glintl.new_locale("qu-EC", glintl.Gregorian, 260)
+  glintl.new_locale("qu-EC", glintl.Gregorian, 273)
 }

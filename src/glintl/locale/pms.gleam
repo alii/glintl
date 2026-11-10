@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Piedmontese, whose tag is `pms`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pms", glintl.Gregorian, 253)
+  glintl.new_locale("pms", glintl.Gregorian, 266)
 }

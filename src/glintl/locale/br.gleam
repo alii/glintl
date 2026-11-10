@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Breton, whose tag is `br`.
 pub fn locale() -> Locale {
-  glintl.new_locale("br", glintl.Gregorian, 33)
+  glintl.new_locale("br", glintl.Gregorian, 36)
 }

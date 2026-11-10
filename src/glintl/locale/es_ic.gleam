@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Canary Islands), whose tag is `es-IC`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-IC", glintl.Gregorian, 93)
+  glintl.new_locale("es-IC", glintl.Gregorian, 99)
 }

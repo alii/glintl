@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Manx, whose tag is `gv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("gv", glintl.Gregorian, 139)
+  glintl.new_locale("gv", glintl.Gregorian, 150)
 }

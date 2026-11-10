@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Machame, whose tag is `jmc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("jmc", glintl.Gregorian, 161)
+  glintl.new_locale("jmc", glintl.Gregorian, 172)
 }

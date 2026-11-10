@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Mazanderani, whose tag is `mzn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mzn", glintl.Persian, 228)
+  glintl.new_locale("mzn", glintl.Persian, 240)
 }

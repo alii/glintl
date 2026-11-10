@@ -13,6 +13,14 @@ export const MONTHS_PER_YEAR = 12;
 // The Chinese and Dangi calendars name years in a cycle of this many.
 export const YEARS_IN_CYCLE = 60;
 
+// ICU counts Chinese and Dangi years from 2637 BC.
+const CYCLE_EPOCH = 2637;
+
+// Works out ICU's era in those calendars from the related Gregorian year. The
+// era is which 60 year cycle the year is in, counting from 1.
+export const cycleEra = (related: number) =>
+  Math.floor((related + CYCLE_EPOCH - 1) / YEARS_IN_CYCLE) + 1;
+
 // Lunar months are at most this long, so day names cover days 1 to this.
 export const LONGEST_LUNAR_MONTH = 30;
 
@@ -264,8 +272,8 @@ function cached<K, V>(cache: Map<K, V>, key: K, make: (key: K) => V): V {
 export const FIRST_DAY = day(FIRST_YEAR, 1, 1);
 export const LAST_DAY = day(LAST_YEAR, MONTHS_PER_YEAR, 31);
 
-// One day in a calendar as ICU sees it. Names are in English and only tell
-// values apart.
+// The date Intl gives for one day in a calendar. We read the era and month in
+// English, but only to compare them, never to show them.
 export type Fields = {
   era: string;
   year: number;
@@ -627,7 +635,7 @@ export function table(calendar: CalendarId): Table {
       : next - (x - 1);
   };
 
-  // Each month we read, as its first day and fields.
+  // The first day of each month we read, with its fields.
   const months = unfold(
     advance(FIRST_DAY, 1, (d) => at(d).day !== 1),
     (start) => {

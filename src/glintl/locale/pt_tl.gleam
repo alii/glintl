@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Portuguese (Timor-Leste), whose tag is `pt-TL`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-TL", glintl.Gregorian, 258)
+  glintl.new_locale("pt-TL", glintl.Gregorian, 271)
 }

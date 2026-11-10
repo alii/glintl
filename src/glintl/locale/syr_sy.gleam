@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Syriac (Syria), whose tag is `syr-SY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("syr-SY", glintl.Gregorian, 310)
+  glintl.new_locale("syr-SY", glintl.Gregorian, 327)
 }

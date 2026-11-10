@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bhojpuri, whose tag is `bho`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bho", glintl.Gregorian, 26)
+  glintl.new_locale("bho", glintl.Gregorian, 29)
 }

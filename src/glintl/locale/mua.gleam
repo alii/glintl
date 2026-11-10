@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Mundang, whose tag is `mua`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mua", glintl.Gregorian, 226)
+  glintl.new_locale("mua", glintl.Gregorian, 238)
 }

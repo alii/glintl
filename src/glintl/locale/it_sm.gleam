@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Italian (San Marino), whose tag is `it-SM`.
 pub fn locale() -> Locale {
-  glintl.new_locale("it-SM", glintl.Gregorian, 157)
+  glintl.new_locale("it-SM", glintl.Gregorian, 168)
 }

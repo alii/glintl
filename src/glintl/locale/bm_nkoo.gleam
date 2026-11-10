@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bambara (N’Ko), whose tag is `bm-Nkoo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bm-Nkoo", glintl.Gregorian, 28)
+  glintl.new_locale("bm-Nkoo", glintl.Gregorian, 31)
 }

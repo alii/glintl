@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Samburu, whose tag is `saq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("saq", glintl.Gregorian, 270)
+  glintl.new_locale("saq", glintl.Gregorian, 286)
 }

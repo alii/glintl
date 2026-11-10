@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Colognian, whose tag is `ksh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksh", glintl.Gregorian, 186)
+  glintl.new_locale("ksh", glintl.Gregorian, 197)
 }

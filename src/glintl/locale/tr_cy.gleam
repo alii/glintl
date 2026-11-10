@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Turkish (Cyprus), whose tag is `tr-CY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tr-CY", glintl.Gregorian, 325)
+  glintl.new_locale("tr-CY", glintl.Gregorian, 342)
 }

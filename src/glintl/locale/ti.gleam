@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tigrinya, whose tag is `ti`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ti", glintl.Gregorian, 318)
+  glintl.new_locale("ti", glintl.Gregorian, 335)
 }

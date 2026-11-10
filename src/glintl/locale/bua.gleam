@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Buriat, whose tag is `bua`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bua", glintl.Gregorian, 37)
+  glintl.new_locale("bua", glintl.Gregorian, 40)
 }

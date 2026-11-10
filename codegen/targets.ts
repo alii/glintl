@@ -1,5 +1,5 @@
 // Fails if `@target` is on a public definition other than an opaque type, an
-// `@internal` one or one in an internal module, as the compiler lets each
+// `@internal` one or one in an internal module, because the compiler lets each
 // target give it a different type. Tests aren't checked.
 //
 //   bun codegen/targets.ts

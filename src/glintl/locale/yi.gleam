@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Yiddish, whose tag is `yi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yi", glintl.Gregorian, 348)
+  glintl.new_locale("yi", glintl.Gregorian, 365)
 }

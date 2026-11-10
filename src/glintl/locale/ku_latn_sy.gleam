@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kurdish (Latin, Syria), whose tag is `ku-Latn-SY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ku-Latn-SY", glintl.Gregorian, 187)
+  glintl.new_locale("ku-Latn-SY", glintl.Gregorian, 198)
 }

@@ -15,11 +15,13 @@ import {
   MONTHS_PER_YEAR,
   SCAN_FROM,
   calendarDate,
+  cycleEra,
   civil,
   civilDay,
   day,
   isoWeekday,
 } from "./calendars.ts";
+import type { FieldOptions } from "./matcher.ts";
 import { random } from "./random.ts";
 import { type Moment, join, render } from "./render.ts";
 import {
@@ -40,7 +42,7 @@ export type Token =
   | { t: "literal"; value: string }
   // A part written with ASCII digits, whatever the locale's digits are.
   | { t: "ascii"; token: Token }
-  | { t: "extended_year"; minus: string }
+  | { t: "extended_year"; minus: string; twoDigit: boolean }
   | {
       t: "year";
       twoDigit: boolean;
@@ -51,15 +53,21 @@ export type Token =
   | {
       t: "week_year";
       minus: string;
+      twoDigit: boolean;
       firstDay: number;
       minimalDays: number;
       exceptions: [number, number][];
     }
-  | { t: "related_year" }
+  // `pad` writes related years under ten with two digits.
+  | { t: "related_year"; pad: boolean }
+  // The Chinese and Dangi era: which 60 year cycle the year is in.
+  | { t: "cycle_era" }
   | { t: "year_name"; names: string[] }
   | { t: "month_number" | "day" | "minute" | "second"; pad: boolean }
   | { t: "month_name" | "day_name" | "weekday" | "era"; names: string[] }
   | { t: "hour"; pad: boolean; cycle: "h11" | "h12" | "h23" | "h24" }
+  // The first digits of the fraction of a second, cut off, not rounded.
+  | { t: "fraction"; digits: number }
   | { t: "day_period"; byHour: string[]; midnight: string; noon: string }
   | {
       t: "zone";
@@ -180,11 +188,10 @@ export const HOUR_CYCLES = ["h11", "h12", "h23", "h24"] as const;
 
 export type HourCycle = (typeof HOUR_CYCLES)[number];
 
-type Options = {
+type Options = FieldOptions & {
   dateStyle?: Style;
   timeStyle?: Style;
   timeZone?: string;
-  hourCycle?: HourCycle;
 };
 
 function formatter(tag: string, calendar: CalendarId, options: Options) {
@@ -219,6 +226,8 @@ export function derive(
   options: Options,
   digits: string[],
   probeDay = PROBE_DAY,
+  // Days to leave out when reading how years are written.
+  skip: (epochDay: number) => boolean = () => false,
 ): Token[] {
   const name = `${tag} ${calendar} ${JSON.stringify(options)} on day ${probeDay}`;
   const f = formatter(tag, calendar, options);
@@ -246,7 +255,7 @@ export function derive(
 
   const date = calendarDate(math, probeDay)!;
   const near = (days: number[]) => nearest(days, probeDay);
-  const days = () => sampleDays(math);
+  const days = () => sampleDays(math).filter((d) => !skip(d));
 
   // Reads a part written in `active` digits. These are the locale's, or ASCII
   // for parts that ICU writes in ASCII anyway.
@@ -330,13 +339,31 @@ export function derive(
             const c = calendarDate(math, differs)!;
             const shown = valueAt(at(differs), i);
 
+            const extended = (d: number) => calendarDate(math, d)?.extended;
+
+            const lastTwo = (n: number) =>
+              local(Math.abs(n) % TWO_DIGIT_YEARS, true);
+
             if (
               shown.endsWith(local(Math.abs(c.extended), false)) &&
               !shown.endsWith(local(Math.abs(c.year), false))
             ) {
-              const extended = (d: number) => calendarDate(math, d)?.extended;
+              return {
+                t: "extended_year",
+                minus: minus(i, extended),
+                twoDigit: false,
+              };
+            }
 
-              return { t: "extended_year", minus: minus(i, extended) };
+            if (
+              shown.endsWith(lastTwo(c.extended)) &&
+              !shown.endsWith(lastTwo(c.year))
+            ) {
+              return {
+                t: "extended_year",
+                minus: minus(i, extended, true),
+                twoDigit: true,
+              };
             }
           }
 
@@ -404,8 +431,19 @@ export function derive(
         }
 
         case "unknown": {
-          // This is ICU's week-based year, which only Galician's patterns use.
+          // This is ICU's week-based year, which only Galician's patterns use,
+          // and some locales' patterns for fields.
           const firstDay = new Intl.Locale(tag).getWeekInfo().firstDay;
+
+          // A two digit week-based year shows its last two digits.
+          const twoDigit =
+            Math.abs(date.extended) >= TWO_DIGIT_YEARS &&
+            value === local(Math.abs(date.extended) % TWO_DIGIT_YEARS, true);
+
+          const written = (n: number) =>
+            twoDigit
+              ? (n < 0 ? "-" : "") + local(Math.abs(n) % TWO_DIGIT_YEARS, true)
+              : number(n, "-", local);
 
           const yearStarts =
             math.kind === "table"
@@ -419,7 +457,7 @@ export function derive(
           const observed = yearStarts.flatMap(
             (start): [number, number, number][] => {
               const extended = calendarDate(math, start)!.extended;
-              const text = number(extended, "-", local);
+              const text = written(extended);
 
               const shown = WEEK_YEAR_SEARCH.map(
                 (offset) => start + offset,
@@ -461,19 +499,35 @@ export function derive(
 
           return {
             t: "week_year",
-            minus: minus(i, extended),
+            minus: minus(i, extended, twoDigit),
+            twoDigit,
             firstDay,
             minimalDays,
             exceptions,
           };
         }
 
-        case "relatedYear":
+        case "relatedYear": {
           if (value !== local(date.related, false)) {
             throw new Error(`${name}: odd related year`);
           }
 
-          return { t: "related_year" };
+          // Padding only shows on related years 1 to 9.
+          const small = days().find((d) => {
+            const related = calendarDate(math, d)?.related ?? 0;
+
+            return related > 0 && related < ONE_DIGIT_BELOW;
+          });
+
+          const related =
+            small === undefined ? 0 : calendarDate(math, small)!.related;
+
+          return {
+            t: "related_year",
+            pad: small !== undefined && padded(valueAt(at(small), i), related),
+          };
+        }
+
         case "yearName":
           if (math.kind !== "table") {
             throw new Error(`${name}: year names without a table`);
@@ -557,6 +611,14 @@ export function derive(
         }
 
         case "era":
+          if (math.kind === "table" && math.cyclic) {
+            if (value !== local(cycleEra(date.related), false)) {
+              throw new Error(`${name}: odd cycle ${value}`);
+            }
+
+            return { t: "cycle_era" };
+          }
+
           return {
             t: "era",
             names: math.eraDays.map((d) => valueAt(at(d), i)),
@@ -580,6 +642,17 @@ export function derive(
           return { t: "minute", pad: padded(value, PROBE_TIME[1]) };
         case "second":
           return { t: "second", pad: padded(value, PROBE_TIME[2]) };
+        case "fractionalSecond": {
+          // The probe is on a whole second, so the fraction is all zeros.
+          const shown = [...value].length;
+
+          if (value !== local(0, false).repeat(shown)) {
+            throw new Error(`${name}: odd fraction ${value}`);
+          }
+
+          return { t: "fraction", digits: shown };
+        }
+
         case "dayPeriod":
           return {
             t: "day_period",
@@ -884,7 +957,7 @@ const BEFORE_1970 = 1960;
 // the edges of the table and some random days.
 const checkDayCache = new WeakMap<Math_, number[]>();
 
-function checkDays(math: Math_): number[] {
+export function checkDays(math: Math_): number[] {
   const cached = checkDayCache.get(math);
 
   if (cached) {
@@ -964,13 +1037,14 @@ function checkDays(math: Math_): number[] {
   return result;
 }
 
-function moment(
+export function moment(
   math: Math_,
   epochDay: number,
   offsetMinutes: number,
   hour = PROBE_TIME[0],
   minute = PROBE_TIME[1],
   second = PROBE_TIME[2],
+  milliseconds = 0,
 ): Moment {
   return {
     epochDay,
@@ -978,6 +1052,7 @@ function moment(
     hour,
     minute,
     second,
+    milliseconds,
     offsetMinutes,
     unixSeconds:
       epochDay * SECONDS_PER_DAY +
@@ -987,7 +1062,7 @@ function moment(
   };
 }
 
-function icu(
+export function icu(
   tag: string,
   calendar: CalendarId,
   options: Options,
@@ -996,7 +1071,7 @@ function icu(
   return formatter(tag, calendar, {
     ...options,
     timeZone: offsetString(m.offsetMinutes),
-  }).format(m.unixSeconds * MS_PER_SECOND);
+  }).format(m.unixSeconds * MS_PER_SECOND + m.milliseconds);
 }
 
 // With `hourCycle`, this keeps `base`'s dates and works out times, glues and

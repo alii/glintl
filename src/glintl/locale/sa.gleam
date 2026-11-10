@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sanskrit, whose tag is `sa`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sa", glintl.Gregorian, 268)
+  glintl.new_locale("sa", glintl.Gregorian, 284)
 }

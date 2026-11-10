@@ -1,5 +1,5 @@
 // Checks glintl on Erlang against Intl.DateTimeFormat on random cases, each
-// with its own locale, calendar, styles, moment and offset.
+// with its own locale, calendar, styles or fields, moment and offset.
 //
 //   bun codegen/conformance.ts [cases] [seed]
 //
@@ -24,6 +24,7 @@ import {
   SCAN_FROM,
   day,
 } from "./calendars.ts";
+import { fieldsText, randomFields } from "./fixtures.ts";
 import { HOUR_CYCLES } from "./patterns.ts";
 import { LOCALES } from "./locales.ts";
 import { random } from "./random.ts";
@@ -62,6 +63,9 @@ const BATCH = 20_000;
 
 // Style names by number, where 0 means none.
 const STYLES = [undefined, "full", "long", "medium", "short"] as const;
+
+// How often a group picks fields instead of styles.
+const FIELDS_SHARE = 0.5;
 
 // How often a moment falls exactly on midnight, noon or the hour, where day
 // periods change. The rest are random.
@@ -163,14 +167,20 @@ function group(): Case[] {
 
   // Empty means the locale's own hour cycle.
   const hourCycle = next() < 0.5 ? "" : pick(HOUR_CYCLES);
+  const fields = next() < FIELDS_SHARE ? randomFields(next) : [];
 
   const formatter = new Intl.DateTimeFormat(tag, {
     calendar: resolved,
-    dateStyle: STYLES[date],
-    timeStyle: STYLES[time],
+    ...(fields.length > 0
+      ? Object.fromEntries(fields)
+      : { dateStyle: STYLES[date], timeStyle: STYLES[time] }),
     timeZone: offsetString(offset),
     hourCycle: hourCycle === "" ? undefined : hourCycle,
   });
+
+  const fieldsLine = fieldsText(fields);
+
+  const [dateShown, timeShown] = fields.length > 0 ? [0, 0] : [date, time];
 
   return gather(GROUP, (): Case[] => {
     const epochDay = between(kind === "table" ? TABLE_DAYS : ALL_DAYS);
@@ -192,12 +202,23 @@ function group(): Case[] {
       return [];
     }
 
+    const milliseconds =
+      fields.length > 0 ? Math.floor(next() * MS_PER_SECOND) : 0;
+
     return [
       {
-        line: [tag, calendar, date, time, hourCycle, seconds, offset].join(
-          "\t",
-        ),
-        expected: formatter.format(seconds * MS_PER_SECOND),
+        line: [
+          tag,
+          calendar,
+          dateShown,
+          timeShown,
+          hourCycle,
+          fieldsLine,
+          seconds,
+          milliseconds,
+          offset,
+        ].join("\t"),
+        expected: formatter.format(seconds * MS_PER_SECOND + milliseconds),
       },
     ];
   });

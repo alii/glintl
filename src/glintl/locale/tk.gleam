@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Turkmen, whose tag is `tk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tk", glintl.Gregorian, 320)
+  glintl.new_locale("tk", glintl.Gregorian, 337)
 }

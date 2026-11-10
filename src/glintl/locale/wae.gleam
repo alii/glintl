@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Walser, whose tag is `wae`.
 pub fn locale() -> Locale {
-  glintl.new_locale("wae", glintl.Gregorian, 342)
+  glintl.new_locale("wae", glintl.Gregorian, 359)
 }

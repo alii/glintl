@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Taita, whose tag is `dav`.
 pub fn locale() -> Locale {
-  glintl.new_locale("dav", glintl.Gregorian, 51)
+  glintl.new_locale("dav", glintl.Gregorian, 54)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Shambala, whose tag is `ksb`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksb", glintl.Gregorian, 184)
+  glintl.new_locale("ksb", glintl.Gregorian, 195)
 }

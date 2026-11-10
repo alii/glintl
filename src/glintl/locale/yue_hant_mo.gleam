@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Cantonese (Traditional, Macao SAR China), whose tag is `yue-Hant-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yue-Hant-MO", glintl.Gregorian, 353)
+  glintl.new_locale("yue-Hant-MO", glintl.Gregorian, 370)
 }

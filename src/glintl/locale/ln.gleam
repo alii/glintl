@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Lingala, whose tag is `ln`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ln", glintl.Gregorian, 200)
+  glintl.new_locale("ln", glintl.Gregorian, 212)
 }

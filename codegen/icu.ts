@@ -1,0 +1,572 @@
+// Reads ICU's own data file, for what Intl doesn't show, like the patterns
+// ICU picks from when you ask for some fields. It's the same release as the
+// pinned Bun's ICU, so the two agree.
+
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { inflateRawSync } from "node:zlib";
+
+const ICU_VERSION = "78.3";
+const MAJOR = ICU_VERSION.split(".")[0];
+const ZIP = `icu4c-${ICU_VERSION}-data-bin-l.zip`;
+const URL = `https://github.com/unicode-org/icu/releases/download/release-${ICU_VERSION}/${ZIP}`;
+
+const ZIP_SHA256 =
+  "982619632b78887f1895b063e96e8c3cc7f99283337c8abbd05aa71635de613c";
+
+const DAT = `icudt${MAJOR}l.dat`;
+
+// Kept out of `.cache`, which each run empties.
+const DIR = join(import.meta.dir, ".icu");
+
+// --- The zip ------------------------------------------------------------------
+
+const ZIP_END_SIGNATURE = 0x06054b50;
+const ZIP_END_SIZE = 22;
+const ZIP_END_ENTRIES = 10;
+const ZIP_END_DIRECTORY = 16;
+const ZIP_ENTRY_SIGNATURE = 0x02014b50;
+const ZIP_ENTRY_SIZE = 46;
+const ZIP_ENTRY_METHOD = 10;
+const ZIP_ENTRY_COMPRESSED = 20;
+const ZIP_ENTRY_NAME_LENGTH = 28;
+const ZIP_ENTRY_EXTRA_LENGTH = 30;
+const ZIP_ENTRY_COMMENT_LENGTH = 32;
+const ZIP_ENTRY_HEADER = 42;
+const ZIP_HEADER_SIZE = 30;
+const ZIP_HEADER_NAME_LENGTH = 26;
+const ZIP_HEADER_EXTRA_LENGTH = 28;
+const DEFLATE = 8;
+
+// Takes one file out of a zip with no comment at its end.
+function unzip(zip: Buffer, name: string): Buffer {
+  const end = zip.length - ZIP_END_SIZE;
+
+  if (zip.readUInt32LE(end) !== ZIP_END_SIGNATURE) {
+    throw new Error(`${ZIP}: not a zip`);
+  }
+
+  type Entry = { header: number; method: number; size: number };
+
+  // Walks the central directory for the file's entry.
+  const search = (at: number, left: number): Entry | undefined => {
+    if (left === 0) {
+      return undefined;
+    }
+
+    if (zip.readUInt32LE(at) !== ZIP_ENTRY_SIGNATURE) {
+      throw new Error(`${ZIP}: bad entry`);
+    }
+
+    const nameLength = zip.readUInt16LE(at + ZIP_ENTRY_NAME_LENGTH);
+    const start = at + ZIP_ENTRY_SIZE;
+
+    if (zip.toString("utf8", start, start + nameLength) === name) {
+      return {
+        header: zip.readUInt32LE(at + ZIP_ENTRY_HEADER),
+        method: zip.readUInt16LE(at + ZIP_ENTRY_METHOD),
+        size: zip.readUInt32LE(at + ZIP_ENTRY_COMPRESSED),
+      };
+    }
+
+    return search(
+      start +
+        nameLength +
+        zip.readUInt16LE(at + ZIP_ENTRY_EXTRA_LENGTH) +
+        zip.readUInt16LE(at + ZIP_ENTRY_COMMENT_LENGTH),
+      left - 1,
+    );
+  };
+
+  const entry = search(
+    zip.readUInt32LE(end + ZIP_END_DIRECTORY),
+    zip.readUInt16LE(end + ZIP_END_ENTRIES),
+  );
+
+  if (entry === undefined || entry.method !== DEFLATE) {
+    throw new Error(`${ZIP}: no deflated ${name}`);
+  }
+
+  const { header } = entry;
+
+  const data =
+    header +
+    ZIP_HEADER_SIZE +
+    zip.readUInt16LE(header + ZIP_HEADER_NAME_LENGTH) +
+    zip.readUInt16LE(header + ZIP_HEADER_EXTRA_LENGTH);
+
+  return inflateRawSync(zip.subarray(data, data + entry.size));
+}
+
+async function download(): Promise<Buffer> {
+  const path = join(DIR, DAT);
+
+  if (existsSync(path)) {
+    return readFileSync(path);
+  }
+
+  const response = await fetch(URL);
+
+  if (!response.ok) {
+    throw new Error(`Can't download ${URL}: ${response.status}`);
+  }
+
+  const zip = Buffer.from(await response.arrayBuffer());
+  const sha = createHash("sha256").update(zip).digest("hex");
+
+  if (sha !== ZIP_SHA256) {
+    throw new Error(`${URL} has SHA-256 ${sha}, not ${ZIP_SHA256}`);
+  }
+
+  const dat = unzip(zip, DAT);
+  mkdirSync(DIR, { recursive: true });
+  writeFileSync(path, dat);
+
+  return dat;
+}
+
+if (process.versions.icu !== ICU_VERSION) {
+  throw new Error(
+    `Bun has ICU ${process.versions.icu}, but icu.ts reads ICU ${ICU_VERSION}`,
+  );
+}
+
+const buffer = await download();
+const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+// --- The data file's table of contents ------------------------------------------
+
+const BYTES_PER_WORD = 4;
+const BYTES_PER_UNIT = 2;
+const TOC_ENTRY = 8;
+
+const word = (at: number) => view.getUint32(at, true);
+const unit = (at: number) => view.getUint16(at, true);
+
+const cString = (at: number): string =>
+  buffer.toString("latin1", at, buffer.indexOf(0, at));
+
+const tocStart = unit(0);
+
+const toc = new Map(
+  Array.from({ length: word(tocStart) }, (_, i): [string, number] => {
+    const entry = tocStart + BYTES_PER_WORD + i * TOC_ENTRY;
+
+    return [
+      cString(tocStart + word(entry)),
+      tocStart + word(entry + BYTES_PER_WORD),
+    ];
+  }),
+);
+
+const PACKAGE = `icudt${MAJOR}l`;
+
+// --- Resource bundles -------------------------------------------------------------
+
+// A value in a bundle, with tables kept in ICU's order.
+export type Resource =
+  | { t: "string"; value: string }
+  | { t: "alias"; path: string }
+  | { t: "int"; value: number }
+  | { t: "table"; entries: [string, Resource][] }
+  | { t: "array"; items: Resource[] }
+  | { t: "other" };
+
+// Resource types, from ICU's `uresdata.h`.
+const STRING = 0;
+const BINARY = 1;
+const TABLE = 2;
+const ALIAS = 3;
+const TABLE32 = 4;
+const TABLE16 = 5;
+const STRING_V2 = 6;
+const INT = 7;
+const ARRAY = 8;
+const ARRAY16 = 9;
+const INT_VECTOR = 14;
+
+const TYPE_SHIFT = 28;
+const OFFSET_MASK = 0x0fffffff;
+const INT_SIGN_SHIFT = 4;
+const HEADER_FORMAT_VERSION = 16;
+const FORMAT_VERSION_WITH_POOL_LIMIT = 3;
+const INDEX_KEYS_TOP = 2;
+const INDEX_ATTRIBUTES = 5;
+const ATTRIBUTE_USES_POOL = 4;
+const ATTRIBUTE_POOL_LIMIT_MASK = 0xf000;
+const ATTRIBUTE_POOL_LIMIT_SHIFT = 12;
+const ATTRIBUTE_POOL_16_SHIFT = 16;
+const INDEX_LENGTH_MASK = 0xff;
+const POOL_LIMIT_SHIFT = 8;
+const KEY_OFFSET_MASK = 0x7fffffff;
+
+// Lengths of UTF-16 strings, from ICU's `uresdata.cpp`.
+const LEAD_LENGTH_FIRST = 0xdc00;
+const LEAD_LENGTH_SHORT = 0xdfef;
+const LEAD_LENGTH_LONG = 0xdfff;
+const SHORT_LENGTH_MASK = 0x3ff;
+const UNITS_SHIFT = 16;
+
+type Bundle = {
+  base: number;
+  indexLength: number;
+  p16: number;
+  usesPool: boolean;
+  poolStringLimit: number;
+  poolString16Limit: number;
+  root: number;
+  pool: Bundle | undefined;
+};
+
+function openBundle(at: number, pool: Bundle | undefined): Bundle {
+  const base = at + unit(at);
+  const index = (i: number) => word(base + (1 + i) * BYTES_PER_WORD);
+  const indexLength = index(0) & INDEX_LENGTH_MASK;
+
+  const attributes =
+    indexLength > INDEX_ATTRIBUTES ? index(INDEX_ATTRIBUTES) : 0;
+
+  const formatVersion = buffer[at + HEADER_FORMAT_VERSION]!;
+
+  const limit =
+    formatVersion >= FORMAT_VERSION_WITH_POOL_LIMIT
+      ? index(0) >>> POOL_LIMIT_SHIFT
+      : 0;
+
+  return {
+    base,
+    indexLength,
+    p16: base + (index(INDEX_KEYS_TOP - 1) << 2),
+    usesPool: (attributes & ATTRIBUTE_USES_POOL) !== 0,
+    poolStringLimit:
+      limit |
+      ((attributes & ATTRIBUTE_POOL_LIMIT_MASK) << ATTRIBUTE_POOL_LIMIT_SHIFT),
+    poolString16Limit: attributes >>> ATTRIBUTE_POOL_16_SHIFT,
+    root: word(base),
+    pool,
+  };
+}
+
+const keysStart = (b: Bundle) => b.base + (1 + b.indexLength) * BYTES_PER_WORD;
+
+function poolKeyLimit(b: Bundle): number {
+  const pool = b.pool!;
+
+  return (
+    (word(pool.base + INDEX_KEYS_TOP * BYTES_PER_WORD) << 2) -
+    (1 + pool.indexLength) * BYTES_PER_WORD
+  );
+}
+
+function key16(b: Bundle, offset: number): string {
+  if (!b.usesPool) {
+    return cString(b.base + offset);
+  }
+
+  const limit = poolKeyLimit(b);
+
+  return offset < limit
+    ? cString(keysStart(b.pool!) + offset)
+    : cString(keysStart(b) + offset - limit);
+}
+
+const key32 = (b: Bundle, offset: number): string =>
+  offset >= 0
+    ? cString(b.base + offset)
+    : cString(keysStart(b.pool!) + (offset & KEY_OFFSET_MASK));
+
+const zeroUnitFrom = (at: number): number =>
+  unit(at) === 0 ? at : zeroUnitFrom(at + BYTES_PER_UNIT);
+
+function utf16(at: number, length: number): string {
+  return buffer.toString("utf16le", at, at + length * BYTES_PER_UNIT);
+}
+
+function string16(b: Bundle, offset: number): string {
+  const at =
+    offset < b.poolStringLimit
+      ? b.pool!.p16 + offset * BYTES_PER_UNIT
+      : b.p16 + (offset - b.poolStringLimit) * BYTES_PER_UNIT;
+
+  const first = unit(at);
+
+  if (first < LEAD_LENGTH_FIRST || first > LEAD_LENGTH_LONG) {
+    return utf16(at, (zeroUnitFrom(at) - at) / BYTES_PER_UNIT);
+  }
+
+  if (first < LEAD_LENGTH_SHORT) {
+    return utf16(at + BYTES_PER_UNIT, first & SHORT_LENGTH_MASK);
+  }
+
+  if (first < LEAD_LENGTH_LONG) {
+    return utf16(
+      at + 2 * BYTES_PER_UNIT,
+      ((first - LEAD_LENGTH_SHORT) << UNITS_SHIFT) | unit(at + BYTES_PER_UNIT),
+    );
+  }
+
+  return utf16(
+    at + 3 * BYTES_PER_UNIT,
+    (unit(at + BYTES_PER_UNIT) << UNITS_SHIFT) | unit(at + 2 * BYTES_PER_UNIT),
+  );
+}
+
+function string(b: Bundle, res: number): string {
+  const offset = res & OFFSET_MASK;
+
+  if (res >>> TYPE_SHIFT === STRING_V2) {
+    return string16(b, offset);
+  }
+
+  if (res === 0) {
+    return "";
+  }
+
+  const at = b.base + offset * BYTES_PER_WORD;
+
+  return utf16(at + BYTES_PER_WORD, view.getInt32(at, true));
+}
+
+const from16 = (b: Bundle, r16: number): number =>
+  (STRING_V2 << TYPE_SHIFT) |
+  (r16 < b.poolString16Limit
+    ? r16
+    : r16 - b.poolString16Limit + b.poolStringLimit);
+
+function read(b: Bundle, res: number): Resource {
+  const type = res >>> TYPE_SHIFT;
+  const offset = res & OFFSET_MASK;
+  const at = b.base + offset * BYTES_PER_WORD;
+  const at16 = b.p16 + offset * BYTES_PER_UNIT;
+
+  switch (type) {
+    case STRING:
+    case STRING_V2:
+      return { t: "string", value: string(b, res) };
+    case ALIAS:
+      return { t: "alias", path: string(b, offset) };
+    case INT:
+      return { t: "int", value: (offset << INT_SIGN_SHIFT) >> INT_SIGN_SHIFT };
+    case BINARY:
+    case INT_VECTOR:
+      return { t: "other" };
+    case TABLE: {
+      if (offset === 0) {
+        return { t: "table", entries: [] };
+      }
+
+      const n = unit(at);
+      const keys = at + BYTES_PER_UNIT;
+      const values = keys + n * BYTES_PER_UNIT + ((n + 1) % 2) * BYTES_PER_UNIT;
+
+      return {
+        t: "table",
+        entries: Array.from({ length: n }, (_, i): [string, Resource] => [
+          key16(b, unit(keys + i * BYTES_PER_UNIT)),
+          read(b, word(values + i * BYTES_PER_WORD)),
+        ]),
+      };
+    }
+
+    case TABLE16: {
+      const n = unit(at16);
+      const keys = at16 + BYTES_PER_UNIT;
+
+      return {
+        t: "table",
+        entries: Array.from({ length: n }, (_, i): [string, Resource] => [
+          key16(b, unit(keys + i * BYTES_PER_UNIT)),
+          read(b, from16(b, unit(keys + (n + i) * BYTES_PER_UNIT))),
+        ]),
+      };
+    }
+
+    case TABLE32: {
+      if (offset === 0) {
+        return { t: "table", entries: [] };
+      }
+
+      const n = view.getInt32(at, true);
+      const keys = at + BYTES_PER_WORD;
+
+      return {
+        t: "table",
+        entries: Array.from({ length: n }, (_, i): [string, Resource] => [
+          key32(b, view.getInt32(keys + i * BYTES_PER_WORD, true)),
+          read(b, word(keys + (n + i) * BYTES_PER_WORD)),
+        ]),
+      };
+    }
+
+    case ARRAY: {
+      if (offset === 0) {
+        return { t: "array", items: [] };
+      }
+
+      return {
+        t: "array",
+        items: Array.from({ length: view.getInt32(at, true) }, (_, i) =>
+          read(b, word(at + (1 + i) * BYTES_PER_WORD)),
+        ),
+      };
+    }
+
+    case ARRAY16:
+      return {
+        t: "array",
+        items: Array.from({ length: unit(at16) }, (_, i) =>
+          read(b, from16(b, unit(at16 + (1 + i) * BYTES_PER_UNIT))),
+        ),
+      };
+    default:
+      throw new Error(`Unknown resource type ${type}`);
+  }
+}
+
+const POOL = `${PACKAGE}/pool.res`;
+const pool = toc.has(POOL) ? openBundle(toc.get(POOL)!, undefined) : undefined;
+const bundles = new Map<string, Resource | undefined>();
+
+// A locale's bundle, like `en_GB`, or undefined if ICU has none.
+function bundle(name: string): Resource | undefined {
+  if (bundles.has(name)) {
+    return bundles.get(name);
+  }
+
+  const at = toc.get(`${PACKAGE}/${name}.res`);
+  const opened = at === undefined ? undefined : openBundle(at, pool);
+  const resource = opened === undefined ? undefined : read(opened, opened.root);
+  bundles.set(name, resource);
+
+  return resource;
+}
+
+export const child = (r: Resource | undefined, key: string) =>
+  r?.t === "table" ? r.entries.find(([k]) => k === key)?.[1] : undefined;
+
+const stringChild = (r: Resource | undefined, key: string) => {
+  const found = child(r, key);
+
+  return found?.t === "string" ? found.value : undefined;
+};
+
+// --- Fallback ---------------------------------------------------------------------
+
+const ROOT = "root";
+
+// The bundles ICU looks in for a locale, most specific first: it follows
+// `%%ALIAS` and `%%Parent`, or else drops the last part, and ends with root.
+export function chain(name: string): string[] {
+  const b = bundle(name);
+  const alias = stringChild(b, "%%ALIAS");
+
+  if (b !== undefined && alias !== undefined) {
+    return chain(alias);
+  }
+
+  if (name === ROOT) {
+    return [ROOT];
+  }
+
+  const cut = name.lastIndexOf("_");
+
+  const parent =
+    stringChild(b, "%%Parent") ?? (cut < 0 ? ROOT : name.slice(0, cut));
+
+  return b === undefined ? chain(parent) : [name, ...chain(parent)];
+}
+
+// Where ICU found a resource: the bundles from the one holding it, and its
+// path there once aliases are followed.
+type Found = { resource: Resource; from: string[]; path: string[] };
+
+const LOCALE_ALIAS = "/LOCALE/";
+const ICUDATA_ALIAS = "/ICUDATA/";
+
+// Like ICU's `ures_getByKeyWithFallback`. `requested` is the chain that
+// `/LOCALE/` aliases start again from.
+function find(
+  bundles: string[],
+  path: string[],
+  requested: string[] = bundles,
+): Found | undefined {
+  const [first, ...rest] = bundles;
+
+  if (first === undefined) {
+    return undefined;
+  }
+
+  const walk = (r: Resource | undefined, i: number): Found | undefined => {
+    if (r === undefined) {
+      return undefined;
+    }
+
+    if (r.t === "alias") {
+      const remaining = path.slice(i);
+
+      if (r.path.startsWith(LOCALE_ALIAS)) {
+        return find(requested, [
+          ...r.path.slice(LOCALE_ALIAS.length).split("/"),
+          ...remaining,
+        ]);
+      }
+
+      const [locale, ...aliasPath] = r.path
+        .replace(ICUDATA_ALIAS, "")
+        .split("/");
+
+      return find(chain(locale!), [...aliasPath, ...remaining].filter(Boolean));
+    }
+
+    if (i === path.length) {
+      return { resource: r, from: bundles, path };
+    }
+
+    return walk(child(r, path[i]!), i + 1);
+  };
+
+  return walk(bundle(first), 0) ?? find(rest, path, requested);
+}
+
+// Looks for a resource in `bundles`. A `/LOCALE/` alias starts again from
+// `requested`.
+export const lookup = (
+  bundles: string[],
+  path: string[],
+  requested: string[] = bundles,
+) => find(bundles, path, requested)?.resource;
+
+export const locate = (bundles: string[], path: string[]) =>
+  find(bundles, path);
+
+// Like ICU's `ures_getAllChildrenWithFallback`: each child of a table, from
+// the bundle ICU finds it in and then each of that one's parents. A key can
+// come more than once, most specific first.
+//
+// A `/LOCALE/` alias in a parent starts again from the requested locale.
+export function everyChild(
+  bundles: string[],
+  path: string[],
+  requested: string[] = bundles,
+): [string, Resource][] {
+  const found = find(bundles, path, requested);
+
+  if (found === undefined) {
+    return [];
+  }
+
+  const [, ...parents] = found.from;
+  const here = found.resource.t === "table" ? found.resource.entries : [];
+
+  return [...here, ...everyChild(parents, found.path, requested)];
+}
+
+// Each child once, with its most specific value.
+export const allChildren = (bundles: string[], path: string[]) =>
+  everyChild(bundles, path).filter(
+    ([key], i, all) => all.findIndex(([k]) => k === key) === i,
+  );
+
+// ICU's bundle name for a BCP 47 tag.
+export const bundleName = (tag: string) => tag.replaceAll("-", "_");

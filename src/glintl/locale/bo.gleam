@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tibetan, whose tag is `bo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bo", glintl.Gregorian, 31)
+  glintl.new_locale("bo", glintl.Gregorian, 34)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kannada, whose tag is `kn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kn", glintl.Gregorian, 177)
+  glintl.new_locale("kn", glintl.Gregorian, 188)
 }

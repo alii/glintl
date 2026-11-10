@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Nuer, whose tag is `nus`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nus", glintl.Gregorian, 242)
+  glintl.new_locale("nus", glintl.Gregorian, 254)
 }

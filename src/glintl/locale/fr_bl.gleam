@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for French (St Barthélemy), whose tag is `fr-BL`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-BL", glintl.Gregorian, 123)
+  glintl.new_locale("fr-BL", glintl.Gregorian, 132)
 }

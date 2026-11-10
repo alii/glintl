@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Koyra Chiini, whose tag is `khq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("khq", glintl.Gregorian, 169)
+  glintl.new_locale("khq", glintl.Gregorian, 180)
 }

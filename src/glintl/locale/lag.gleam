@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Langi, whose tag is `lag`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lag", glintl.Gregorian, 194)
+  glintl.new_locale("lag", glintl.Gregorian, 206)
 }

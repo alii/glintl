@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Santali, whose tag is `sat`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat", glintl.Gregorian, 271)
+  glintl.new_locale("sat", glintl.Gregorian, 287)
 }

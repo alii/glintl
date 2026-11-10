@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Gujarati, whose tag is `gu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("gu", glintl.Gregorian, 137)
+  glintl.new_locale("gu", glintl.Gregorian, 148)
 }

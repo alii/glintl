@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Marathi, whose tag is `mr`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mr", glintl.Gregorian, 221)
+  glintl.new_locale("mr", glintl.Gregorian, 233)
 }

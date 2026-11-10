@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Esperanto, whose tag is `eo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("eo", glintl.Gregorian, 92)
+  glintl.new_locale("eo", glintl.Gregorian, 98)
 }

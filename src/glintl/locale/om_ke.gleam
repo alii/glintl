@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Oromo (Kenya), whose tag is `om-KE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("om-KE", glintl.Gregorian, 246)
+  glintl.new_locale("om-KE", glintl.Gregorian, 259)
 }

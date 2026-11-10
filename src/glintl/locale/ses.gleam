@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Koyraboro Senni, whose tag is `ses`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ses", glintl.Gregorian, 280)
+  glintl.new_locale("ses", glintl.Gregorian, 296)
 }

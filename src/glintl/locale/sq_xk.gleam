@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Albanian (Kosovo), whose tag is `sq-XK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sq-XK", glintl.Gregorian, 293)
+  glintl.new_locale("sq-XK", glintl.Gregorian, 309)
 }

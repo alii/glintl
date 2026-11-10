@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Asturian, whose tag is `ast`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ast", glintl.Gregorian, 16)
+  glintl.new_locale("ast", glintl.Gregorian, 19)
 }

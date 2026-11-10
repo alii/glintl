@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Zarma, whose tag is `dje`.
 pub fn locale() -> Locale {
-  glintl.new_locale("dje", glintl.Gregorian, 54)
+  glintl.new_locale("dje", glintl.Gregorian, 59)
 }

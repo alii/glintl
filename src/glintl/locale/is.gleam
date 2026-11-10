@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Icelandic, whose tag is `is`.
 pub fn locale() -> Locale {
-  glintl.new_locale("is", glintl.Gregorian, 156)
+  glintl.new_locale("is", glintl.Gregorian, 167)
 }

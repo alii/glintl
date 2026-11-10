@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Belarusian (Taraskievica orthography), whose tag is `be-tarask`.
 pub fn locale() -> Locale {
-  glintl.new_locale("be-tarask", glintl.Gregorian, 21)
+  glintl.new_locale("be-tarask", glintl.Gregorian, 24)
 }

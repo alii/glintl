@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Central Kurdish (Iran), whose tag is `ckb-IR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ckb-IR", glintl.Persian, 45)
+  glintl.new_locale("ckb-IR", glintl.Persian, 48)
 }

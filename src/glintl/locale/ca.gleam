@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Catalan, whose tag is `ca`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ca", glintl.Gregorian, 38)
+  glintl.new_locale("ca", glintl.Gregorian, 41)
 }

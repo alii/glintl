@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bodo, whose tag is `brx`.
 pub fn locale() -> Locale {
-  glintl.new_locale("brx", glintl.Gregorian, 34)
+  glintl.new_locale("brx", glintl.Gregorian, 37)
 }

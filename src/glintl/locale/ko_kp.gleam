@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Korean (North Korea), whose tag is `ko-KP`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ko-KP", glintl.Gregorian, 178)
+  glintl.new_locale("ko-KP", glintl.Gregorian, 189)
 }

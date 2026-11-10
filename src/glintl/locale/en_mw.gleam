@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Malawi), whose tag is `en-MW`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-MW", glintl.Gregorian, 65)
+  glintl.new_locale("en-MW", glintl.Gregorian, 70)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kabuverdianu, whose tag is `kea`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kea", glintl.Gregorian, 167)
+  glintl.new_locale("kea", glintl.Gregorian, 178)
 }

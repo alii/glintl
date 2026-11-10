@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Diego Garcia), whose tag is `en-DG`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-DG", glintl.Gregorian, 66)
+  glintl.new_locale("en-DG", glintl.Gregorian, 71)
 }

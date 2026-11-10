@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Anii, whose tag is `blo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("blo", glintl.Gregorian, 27)
+  glintl.new_locale("blo", glintl.Gregorian, 30)
 }

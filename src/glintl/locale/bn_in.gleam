@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bangla (India), whose tag is `bn-IN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bn-IN", glintl.Gregorian, 30)
+  glintl.new_locale("bn-IN", glintl.Gregorian, 33)
 }

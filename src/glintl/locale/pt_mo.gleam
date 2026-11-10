@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Portuguese (Macao SAR China), whose tag is `pt-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-MO", glintl.Gregorian, 259)
+  glintl.new_locale("pt-MO", glintl.Gregorian, 272)
 }

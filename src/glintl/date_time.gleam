@@ -28,7 +28,9 @@ import gleam/time/calendar
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
 import glintl.{type Locale}
+import glintl/date_time/fields.{type Fields}
 import glintl/internal/data
+import glintl/internal/matcher
 import glintl/internal/render
 
 /// How much detail to show, from most to least.
@@ -86,6 +88,57 @@ pub fn date_time_formatter(
     locale,
     render.DateAndTime(date: internal_style(date), time: internal_style(time)),
   )
+}
+
+/// Why a formatter for fields couldn't be made.
+pub type FieldsError {
+  /// There's no date or time field to show. An era or a time zone isn't
+  /// enough on its own.
+  NoFields
+}
+
+/// Format the fields you pick, like the `weekday`, `month` and `hour`
+/// options of JavaScript's `Intl.DateTimeFormat`. See `glintl/date_time/fields`.
+///
+/// ```gleam
+/// fields.new()
+/// |> fields.day(fields.Numeric)
+/// |> fields.month_name(fields.Short)
+/// |> date_time.fields_formatter(en_gb.locale(), _)
+/// // -> Ok(formatter), which formats as "25 Oct"
+/// ```
+pub fn fields_formatter(
+  locale: Locale,
+  fields: Fields,
+) -> Result(Formatter, FieldsError) {
+  let request = fields.request(fields, glintl.intl_hour_cycle_option(locale))
+  let matcher.Request(
+    weekday:,
+    year:,
+    month:,
+    day:,
+    day_period:,
+    hour:,
+    minute:,
+    second:,
+    fractional_second_digits:,
+    ..,
+  ) = request
+  let shown =
+    [weekday, year, month, day, day_period, hour, minute, second]
+    |> list_any_set
+  case shown || fractional_second_digits > 0 {
+    True -> Ok(new_fields(locale, request))
+    False -> Error(NoFields)
+  }
+}
+
+fn list_any_set(options: List(String)) -> Bool {
+  case options {
+    [] -> False
+    ["", ..rest] -> list_any_set(rest)
+    [_, ..] -> True
+  }
 }
 
 /// How far a place's clocks are ahead of UTC. It's a whole number of minutes,
@@ -200,6 +253,37 @@ fn new(locale: Locale, shown: render.Shown) -> Formatter {
       )
   })
 }
+
+@target(erlang)
+fn new_fields(locale: Locale, request: matcher.Request) -> Formatter {
+  let calendar = glintl.locale_calendar(locale)
+  Formatter(
+    render.compile_fields(
+      glintl.locale_data(locale),
+      glintl.calendar_position(calendar),
+      request,
+      glintl.icu_calendar(calendar),
+      fn() { calendar_math(calendar) },
+    ),
+  )
+}
+
+@target(javascript)
+fn new_fields(locale: Locale, request: matcher.Request) -> Formatter {
+  Formatter(intl_fields_formatter(
+    glintl.locale_tag(locale),
+    glintl.icu_calendar(glintl.locale_calendar(locale)),
+    request,
+  ))
+}
+
+@target(javascript)
+@external(javascript, "../glintl_ffi.mjs", "fieldsFormatter")
+fn intl_fields_formatter(
+  tag: String,
+  calendar: String,
+  request: matcher.Request,
+) -> IntlFormatter
 
 @target(javascript)
 fn new(locale: Locale, shown: render.Shown) -> Formatter {
@@ -335,13 +419,21 @@ fn islamic_tabular_math() -> data.Math
 fn islamic_umm_al_qura_math() -> data.Math
 
 @target(erlang)
+const nanoseconds_per_millisecond = 1_000_000
+
+@target(erlang)
 fn do_format(
   formatter: render.Compiled,
   seconds: Int,
-  _nanoseconds: Int,
+  nanoseconds: Int,
   offset_minutes: Int,
 ) -> String {
-  render.render(formatter, seconds, offset_minutes)
+  render.render(
+    formatter,
+    seconds,
+    nanoseconds / nanoseconds_per_millisecond,
+    offset_minutes,
+  )
 }
 
 @target(javascript)

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Makhuwa-Meetto, whose tag is `mgh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mgh", glintl.Gregorian, 214)
+  glintl.new_locale("mgh", glintl.Gregorian, 226)
 }

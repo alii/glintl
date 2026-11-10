@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Samoa), whose tag is `en-WS`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-WS", glintl.Gregorian, 65)
+  glintl.new_locale("en-WS", glintl.Gregorian, 70)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Nicaragua), whose tag is `es-NI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-NI", glintl.Gregorian, 100)
+  glintl.new_locale("es-NI", glintl.Gregorian, 111)
 }

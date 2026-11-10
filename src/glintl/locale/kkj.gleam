@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kako, whose tag is `kkj`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kkj", glintl.Gregorian, 173)
+  glintl.new_locale("kkj", glintl.Gregorian, 184)
 }

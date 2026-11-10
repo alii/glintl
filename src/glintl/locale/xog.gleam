@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Soga, whose tag is `xog`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xog", glintl.Gregorian, 346)
+  glintl.new_locale("xog", glintl.Gregorian, 363)
 }

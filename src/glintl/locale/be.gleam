@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Belarusian, whose tag is `be`.
 pub fn locale() -> Locale {
-  glintl.new_locale("be", glintl.Gregorian, 21)
+  glintl.new_locale("be", glintl.Gregorian, 24)
 }

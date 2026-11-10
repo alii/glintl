@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Dutch (Curaçao), whose tag is `nl-CW`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nl-CW", glintl.Gregorian, 235)
+  glintl.new_locale("nl-CW", glintl.Gregorian, 247)
 }

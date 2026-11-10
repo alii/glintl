@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Filipino, whose tag is `fil`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fil", glintl.Gregorian, 121)
+  glintl.new_locale("fil", glintl.Gregorian, 130)
 }

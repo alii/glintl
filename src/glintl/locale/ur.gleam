@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Urdu, whose tag is `ur`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ur", glintl.Gregorian, 332)
+  glintl.new_locale("ur", glintl.Gregorian, 349)
 }

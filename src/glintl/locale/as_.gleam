@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Assamese, whose tag is `as`.
 pub fn locale() -> Locale {
-  glintl.new_locale("as", glintl.Gregorian, 14)
+  glintl.new_locale("as", glintl.Gregorian, 17)
 }

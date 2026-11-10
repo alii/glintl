@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Teso (Kenya), whose tag is `teo-KE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("teo-KE", glintl.Gregorian, 315)
+  glintl.new_locale("teo-KE", glintl.Gregorian, 332)
 }

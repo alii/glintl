@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Cocos [Keeling] Islands), whose tag is `en-CC`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-CC", glintl.Gregorian, 66)
+  glintl.new_locale("en-CC", glintl.Gregorian, 71)
 }

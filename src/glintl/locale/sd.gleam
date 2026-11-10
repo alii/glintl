@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sindhi, whose tag is `sd`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sd", glintl.Gregorian, 275)
+  glintl.new_locale("sd", glintl.Gregorian, 291)
 }

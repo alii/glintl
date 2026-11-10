@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Palau), whose tag is `en-PW`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-PW", glintl.Gregorian, 65)
+  glintl.new_locale("en-PW", glintl.Gregorian, 70)
 }

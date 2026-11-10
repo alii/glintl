@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Arabic (Saudi Arabia), whose tag is `ar-SA`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ar-SA", glintl.Gregorian, 7)
+  glintl.new_locale("ar-SA", glintl.Gregorian, 16)
 }

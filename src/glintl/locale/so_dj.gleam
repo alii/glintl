@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Somali (Djibouti), whose tag is `so-DJ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("so-DJ", glintl.Gregorian, 290)
+  glintl.new_locale("so-DJ", glintl.Gregorian, 306)
 }

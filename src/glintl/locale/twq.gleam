@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tasawaq, whose tag is `twq`.
 pub fn locale() -> Locale {
-  glintl.new_locale("twq", glintl.Gregorian, 327)
+  glintl.new_locale("twq", glintl.Gregorian, 344)
 }

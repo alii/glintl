@@ -1,7 +1,12 @@
 // Renders patterns the way `src/glintl/internal/render.gleam` does, so the
 // generator can check what it learned against ICU before writing it.
 
-import { type CalendarDate, isoWeekday, weekBasedYear } from "./calendars.ts";
+import {
+  type CalendarDate,
+  cycleEra,
+  isoWeekday,
+  weekBasedYear,
+} from "./calendars.ts";
 import {
   DAYS_PER_WEEK,
   HOURS_PER_DAY,
@@ -18,6 +23,7 @@ export type Moment = {
   hour: number;
   minute: number;
   second: number;
+  milliseconds: number;
   offsetMinutes: number;
   unixSeconds: number;
 };
@@ -39,7 +45,18 @@ export function join(date: Token[], glue: GluePiece[], time: Token[]): Token[] {
 
 const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-export function render(tokens: Token[], digits: string[], m: Moment): string {
+// Milliseconds have three digits.
+const MS_DIGITS = 3;
+
+export const render = (tokens: Token[], digits: string[], m: Moment) =>
+  renderParts(tokens, digits, m).join("");
+
+// Each token's text.
+export function renderParts(
+  tokens: Token[],
+  digits: string[],
+  m: Moment,
+): string[] {
   const number = (n: number, pad: boolean, minus = "-"): string => {
     if (n < 0) {
       return minus + number(-n, pad);
@@ -55,131 +72,145 @@ export function render(tokens: Token[], digits: string[], m: Moment): string {
   // Weekday names are numbered from 0 for Sunday, so this is too.
   const weekday = isoWeekday(m.epochDay) % DAYS_PER_WEEK;
 
-  return tokens
-    .map((token) => {
-      switch (token.t) {
-        case "literal":
-          return token.value;
-        case "ascii":
-          return render([token.token], ASCII_DIGITS, m);
-        case "year": {
-          const year = m.date.year;
+  return tokens.map((token) => {
+    switch (token.t) {
+      case "literal":
+        return token.value;
+      case "ascii":
+        return renderParts([token.token], ASCII_DIGITS, m).join("");
+      case "year": {
+        const year = m.date.year;
 
-          if (token.twoDigit) {
-            return (
-              (year < 0 ? token.minus : "") +
+        if (token.twoDigit) {
+          return (
+            (year < 0 ? token.minus : "") +
+            number(Math.abs(year) % TWO_DIGIT_YEARS, true)
+          );
+        }
+
+        if (year === 1 && token.first) {
+          return token.first;
+        }
+
+        if (year === -1 && token.minusFirst) {
+          return token.minusFirst;
+        }
+
+        return number(year, false, token.minus);
+      }
+
+      case "week_year": {
+        const year = weekBasedYear(
+          m.date,
+          m.epochDay,
+          token.firstDay,
+          token.minimalDays,
+          token.exceptions,
+        );
+
+        return token.twoDigit
+          ? (year < 0 ? token.minus : "") +
               number(Math.abs(year) % TWO_DIGIT_YEARS, true)
-            );
-          }
+          : number(year, false, token.minus);
+      }
 
-          if (year === 1 && token.first) {
-            return token.first;
-          }
+      case "extended_year":
+        return token.twoDigit
+          ? (m.date.extended < 0 ? token.minus : "") +
+              number(Math.abs(m.date.extended) % TWO_DIGIT_YEARS, true)
+          : number(m.date.extended, false, token.minus);
+      case "related_year":
+        return number(m.date.related, token.pad);
+      case "cycle_era":
+        return number(cycleEra(m.date.related), false);
+      case "year_name":
+        return token.names[m.date.cycle]!;
+      case "month_number":
+        return number(m.date.month + 1, token.pad);
+      case "month_name":
+        return token.names[m.date.month]!;
+      case "day":
+        return number(m.date.day, token.pad);
+      case "day_name":
+        return token.names[m.date.day]!;
+      case "weekday":
+        return token.names[weekday]!;
+      case "era":
+        return token.names[m.date.era]!;
+      case "hour": {
+        const h = m.hour;
 
-          if (year === -1 && token.minusFirst) {
-            return token.minusFirst;
-          }
+        const shown =
+          token.cycle === "h23"
+            ? h
+            : token.cycle === "h11"
+              ? h % HOURS_PER_HALF_DAY
+              : token.cycle === "h12"
+                ? h % HOURS_PER_HALF_DAY || HOURS_PER_HALF_DAY
+                : h || HOURS_PER_DAY;
 
-          return number(year, false, token.minus);
+        return number(shown, token.pad);
+      }
+
+      case "minute":
+        return number(m.minute, token.pad);
+      case "second":
+        return number(m.second, token.pad);
+      case "fraction":
+        return [
+          ...String(m.milliseconds)
+            .padStart(MS_DIGITS, "0")
+            .slice(0, token.digits),
+        ]
+          .map((c) => digits[+c])
+          .join("");
+      case "day_period": {
+        const onTheHour =
+          (!hasMinute || m.minute === 0) && (!hasSecond || m.second === 0);
+
+        if (onTheHour && m.hour === 0) {
+          return token.midnight;
         }
 
-        case "week_year":
-          return number(
-            weekBasedYear(
-              m.date,
-              m.epochDay,
-              token.firstDay,
-              token.minimalDays,
-              token.exceptions,
-            ),
-            false,
-            token.minus,
-          );
-        case "extended_year":
-          return number(m.date.extended, false, token.minus);
-        case "related_year":
-          return number(m.date.related, false);
-        case "year_name":
-          return token.names[m.date.cycle]!;
-        case "month_number":
-          return number(m.date.month + 1, token.pad);
-        case "month_name":
-          return token.names[m.date.month]!;
-        case "day":
-          return number(m.date.day, token.pad);
-        case "day_name":
-          return token.names[m.date.day]!;
-        case "weekday":
-          return token.names[weekday]!;
-        case "era":
-          return token.names[m.date.era]!;
-        case "hour": {
-          const h = m.hour;
-
-          const shown =
-            token.cycle === "h23"
-              ? h
-              : token.cycle === "h11"
-                ? h % HOURS_PER_HALF_DAY
-                : token.cycle === "h12"
-                  ? h % HOURS_PER_HALF_DAY || HOURS_PER_HALF_DAY
-                  : h || HOURS_PER_DAY;
-
-          return number(shown, token.pad);
+        if (onTheHour && m.hour === HOURS_PER_HALF_DAY) {
+          return token.noon;
         }
 
-        case "minute":
-          return number(m.minute, token.pad);
-        case "second":
-          return number(m.second, token.pad);
-        case "day_period": {
-          const onTheHour =
-            (!hasMinute || m.minute === 0) && (!hasSecond || m.second === 0);
+        return token.byHour[m.hour]!;
+      }
 
-          if (onTheHour && m.hour === 0) {
-            return token.midnight;
-          }
+      case "zone": {
+        const offset = m.offsetMinutes;
 
-          if (onTheHour && m.hour === HOURS_PER_HALF_DAY) {
-            return token.noon;
-          }
-
-          return token.byHour[m.hour]!;
+        if (offset === 0 && m.unixSeconds >= 0) {
+          return token.zero;
         }
 
-        case "zone": {
-          const offset = m.offsetMinutes;
+        const negative = offset < 0;
+        const abs = Math.abs(offset);
+        const sign = negative ? token.negative : token.positive;
 
-          if (offset === 0 && m.unixSeconds >= 0) {
-            return token.zero;
-          }
+        const hours = number(
+          Math.floor(abs / MINUTES_PER_HOUR),
+          token.padHours,
+        );
 
-          const negative = offset < 0;
-          const abs = Math.abs(offset);
-          const sign = negative ? token.negative : token.positive;
-
-          const hours = number(
-            Math.floor(abs / MINUTES_PER_HOUR),
-            token.padHours,
-          );
-
-          if (abs % MINUTES_PER_HOUR === 0 && token.optionalMinutes) {
-            return (
-              sign +
-              hours +
-              (negative ? token.negativeWholeSuffix : token.positiveWholeSuffix)
-            );
-          }
-
+        if (abs % MINUTES_PER_HOUR === 0 && token.optionalMinutes) {
           return (
             sign +
             hours +
-            token.separator +
-            number(abs % MINUTES_PER_HOUR, true) +
-            (negative ? token.negativeSuffix : token.positiveSuffix)
+            (negative ? token.negativeWholeSuffix : token.positiveWholeSuffix)
           );
         }
+
+        return (
+          sign +
+          hours +
+          token.separator +
+          number(abs % MINUTES_PER_HOUR, true) +
+          (negative ? token.negativeSuffix : token.positiveSuffix)
+        );
       }
-    })
-    .join("");
+    }
+  });
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Tokelau), whose tag is `en-TK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-TK", glintl.Gregorian, 66)
+  glintl.new_locale("en-TK", glintl.Gregorian, 71)
 }

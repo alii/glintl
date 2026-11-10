@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Western Frisian, whose tag is `fy`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fy", glintl.Gregorian, 131)
+  glintl.new_locale("fy", glintl.Gregorian, 142)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tswana (Botswana), whose tag is `tn-BW`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tn-BW", glintl.Gregorian, 321)
+  glintl.new_locale("tn-BW", glintl.Gregorian, 338)
 }

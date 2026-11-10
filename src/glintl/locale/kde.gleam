@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Makonde, whose tag is `kde`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kde", glintl.Gregorian, 166)
+  glintl.new_locale("kde", glintl.Gregorian, 177)
 }

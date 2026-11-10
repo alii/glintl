@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bena, whose tag is `bez`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bez", glintl.Gregorian, 23)
+  glintl.new_locale("bez", glintl.Gregorian, 26)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Rwa, whose tag is `rwk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("rwk", glintl.Gregorian, 161)
+  glintl.new_locale("rwk", glintl.Gregorian, 172)
 }

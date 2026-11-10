@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chakma (India), whose tag is `ccp-IN`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ccp-IN", glintl.Gregorian, 39)
+  glintl.new_locale("ccp-IN", glintl.Gregorian, 42)
 }

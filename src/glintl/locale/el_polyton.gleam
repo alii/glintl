@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Greek (Polytonic), whose tag is `el-polyton`.
 pub fn locale() -> Locale {
-  glintl.new_locale("el-polyton", glintl.Gregorian, 63)
+  glintl.new_locale("el-polyton", glintl.Gregorian, 68)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kalaallisut, whose tag is `kl`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kl", glintl.Gregorian, 174)
+  glintl.new_locale("kl", glintl.Gregorian, 185)
 }

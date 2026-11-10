@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chechen, whose tag is `ce`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ce", glintl.Gregorian, 40)
+  glintl.new_locale("ce", glintl.Gregorian, 43)
 }

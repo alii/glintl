@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Haryanvi, whose tag is `bgc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("bgc", glintl.Gregorian, 25)
+  glintl.new_locale("bgc", glintl.Gregorian, 28)
 }

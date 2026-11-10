@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ganda, whose tag is `lg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lg", glintl.Gregorian, 196)
+  glintl.new_locale("lg", glintl.Gregorian, 208)
 }

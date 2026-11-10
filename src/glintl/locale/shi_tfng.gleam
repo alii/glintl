@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tachelhit (Tifinagh), whose tag is `shi-Tfng`.
 pub fn locale() -> Locale {
-  glintl.new_locale("shi-Tfng", glintl.Gregorian, 282)
+  glintl.new_locale("shi-Tfng", glintl.Gregorian, 298)
 }

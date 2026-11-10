@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Uyghur, whose tag is `ug`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ug", glintl.Gregorian, 330)
+  glintl.new_locale("ug", glintl.Gregorian, 347)
 }

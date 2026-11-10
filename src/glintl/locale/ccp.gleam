@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chakma, whose tag is `ccp`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ccp", glintl.Gregorian, 39)
+  glintl.new_locale("ccp", glintl.Gregorian, 42)
 }

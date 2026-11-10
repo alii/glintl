@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ewe, whose tag is `ee`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ee", glintl.Gregorian, 61)
+  glintl.new_locale("ee", glintl.Gregorian, 66)
 }

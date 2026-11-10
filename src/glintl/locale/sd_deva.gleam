@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sindhi (Devanagari), whose tag is `sd-Deva`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sd-Deva", glintl.Gregorian, 276)
+  glintl.new_locale("sd-Deva", glintl.Gregorian, 292)
 }

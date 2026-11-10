@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Thai, whose tag is `th`.
 pub fn locale() -> Locale {
-  glintl.new_locale("th", glintl.Buddhist, 317)
+  glintl.new_locale("th", glintl.Buddhist, 334)
 }

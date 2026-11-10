@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Jola-Fonyi, whose tag is `dyo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("dyo", glintl.Gregorian, 58)
+  glintl.new_locale("dyo", glintl.Gregorian, 63)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Swahili, whose tag is `sw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sw", glintl.Gregorian, 308)
+  glintl.new_locale("sw", glintl.Gregorian, 324)
 }

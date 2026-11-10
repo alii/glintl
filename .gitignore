@@ -4,3 +4,4 @@
 erl_crash.dump
 /codegen/node_modules
 /codegen/.cache
+/codegen/.icu

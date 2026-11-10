@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tuvinian, whose tag is `tyv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tyv", glintl.Gregorian, 328)
+  glintl.new_locale("tyv", glintl.Gregorian, 345)
 }

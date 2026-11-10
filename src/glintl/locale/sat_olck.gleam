@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Santali (Ol Chiki), whose tag is `sat-Olck`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat-Olck", glintl.Gregorian, 271)
+  glintl.new_locale("sat-Olck", glintl.Gregorian, 287)
 }

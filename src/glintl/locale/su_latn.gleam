@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sundanese (Latin), whose tag is `su-Latn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("su-Latn", glintl.Gregorian, 304)
+  glintl.new_locale("su-Latn", glintl.Gregorian, 320)
 }

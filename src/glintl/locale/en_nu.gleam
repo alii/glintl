@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Niue), whose tag is `en-NU`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-NU", glintl.Gregorian, 66)
+  glintl.new_locale("en-NU", glintl.Gregorian, 71)
 }

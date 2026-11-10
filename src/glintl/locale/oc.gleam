@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Occitan, whose tag is `oc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("oc", glintl.Gregorian, 244)
+  glintl.new_locale("oc", glintl.Gregorian, 256)
 }

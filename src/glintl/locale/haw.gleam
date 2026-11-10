@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Hawaiian, whose tag is `haw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("haw", glintl.Gregorian, 142)
+  glintl.new_locale("haw", glintl.Gregorian, 153)
 }

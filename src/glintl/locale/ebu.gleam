@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Embu, whose tag is `ebu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ebu", glintl.Gregorian, 60)
+  glintl.new_locale("ebu", glintl.Gregorian, 65)
 }

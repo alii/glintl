@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kalenjin, whose tag is `kln`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kln", glintl.Gregorian, 175)
+  glintl.new_locale("kln", glintl.Gregorian, 186)
 }

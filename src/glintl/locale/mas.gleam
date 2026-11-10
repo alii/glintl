@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Masai, whose tag is `mas`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mas", glintl.Gregorian, 210)
+  glintl.new_locale("mas", glintl.Gregorian, 222)
 }

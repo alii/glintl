@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Luba-Katanga, whose tag is `lu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lu", glintl.Gregorian, 205)
+  glintl.new_locale("lu", glintl.Gregorian, 217)
 }

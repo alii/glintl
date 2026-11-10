@@ -9,6 +9,7 @@ import gleam/io
 import gleam/list
 import gleam/time/timestamp.{type Timestamp}
 import glintl/date_time
+import glintl/date_time/fields
 import glintl/locale/en_gb
 
 /// The first date is 14 November 2023, and the rest follow a week apart.
@@ -53,6 +54,32 @@ pub fn main() -> Nil {
     <> ms(again_time),
   )
   io.println("make a formatter: " <> kb(make))
+  let #(make_fields, _) =
+    measure(fn() {
+      fields_formatter()
+      Nil
+    })
+  let #(_, make_fields_time) =
+    measure(fn() {
+      int.range(from: 0, to: timed_runs, with: Nil, run: fn(_, _) {
+        fields_formatter()
+        Nil
+      })
+    })
+  let #(_, fields_time) =
+    measure(fn() { format_dates_with(fields_formatter(), timed_runs) })
+  io.println(
+    "make a fields formatter: "
+    <> kb(make_fields)
+    <> ", "
+    <> per(make_fields_time, timed_runs),
+  )
+  io.println(
+    "per date with fields, over "
+    <> int.to_string(timed_runs * dates_per_run)
+    <> ": "
+    <> per(fields_time, timed_runs * dates_per_run),
+  )
   io.println(
     "per date, over "
     <> int.to_string(timed_runs * dates_per_run)
@@ -73,9 +100,34 @@ fn formatter() -> date_time.Formatter {
   )
 }
 
+/// Shows the same fields as `formatter`, so the two timings compare like with
+/// like.
+fn fields_formatter() -> date_time.Formatter {
+  let assert Ok(formatter) =
+    fields.new()
+    |> fields.day(fields.Numeric)
+    |> fields.month_name(fields.Long)
+    |> fields.year(fields.Numeric)
+    |> fields.hour(fields.TwoDigit)
+    |> fields.minute(fields.TwoDigit)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+  formatter
+}
+
+fn per(micros: Int, count: Int) -> String {
+  float.to_string(float.to_precision(
+    int.to_float(micros) /. int.to_float(count),
+    decimal_places,
+  ))
+  <> " µs"
+}
+
 /// Formats the dates, `times` times over, with one formatter.
 fn format_dates(times: Int) -> Nil {
-  let formatter = formatter()
+  format_dates_with(formatter(), times)
+}
+
+fn format_dates_with(formatter: date_time.Formatter, times: Int) -> Nil {
   let dates = dates()
   let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
   int.range(from: 0, to: times, with: Nil, run: fn(_, _) {

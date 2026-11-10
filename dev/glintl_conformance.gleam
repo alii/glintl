@@ -2,19 +2,22 @@
 //// compare with `Intl.DateTimeFormat`. Each line is a locale tag, an ICU
 //// calendar name (empty for the locale's own), a date style and a time style
 //// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
-//// the locale's own), Unix seconds and an offset in minutes, separated by
-//// tabs.
+//// the locale's own), fields as Intl options like `day=numeric,month=short`
+//// (empty for styles), Unix seconds, milliseconds and an offset in minutes,
+//// separated by tabs.
 ////
 //// It only runs on Erlang, because on JavaScript glintl just calls `Intl`.
 
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
+import gleam/list
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import glintl
 import glintl/date_time.{type Formatter}
+import glintl/date_time/fields.{type Fields}
 import glintl/locales
 
 pub fn main() -> Nil {
@@ -25,24 +28,33 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
   case read_line() {
     Error(Nil) -> Nil
     Ok(line) -> {
-      let assert [tag, calendar, date, time, hour_cycle, seconds, offset] =
-        string.split(line, "\t")
-      let key = string.join([tag, calendar, date, time, hour_cycle], "\t")
+      let assert [
+        tag,
+        calendar,
+        date,
+        time,
+        hour_cycle,
+        fields,
+        seconds,
+        milliseconds,
+        offset,
+      ] = string.split(line, "\t")
+      let key =
+        string.join([tag, calendar, date, time, hour_cycle, fields], "\t")
       let #(formatter, formatters) = case dict.get(formatters, key) {
         Ok(formatter) -> #(formatter, formatters)
         Error(Nil) -> {
           let formatter =
-            new(tag, calendar, hour_cycle, number(date), number(time))
+            new(tag, calendar, hour_cycle, number(date), number(time), fields)
           #(formatter, dict.insert(formatters, key, formatter))
         }
       }
       let assert Ok(offset) =
         date_time.duration_to_offset(duration.minutes(number(offset)))
-      date_time.format(
-        formatter,
-        timestamp.from_unix_seconds(number(seconds)),
-        offset:,
-      )
+      let moment =
+        timestamp.from_unix_seconds(number(seconds))
+        |> timestamp.add(duration.milliseconds(number(milliseconds)))
+      date_time.format(formatter, moment, offset:)
       |> io.println
       loop(formatters)
     }
@@ -55,6 +67,7 @@ fn new(
   hour_cycle: String,
   date: Int,
   time: Int,
+  fields: String,
 ) -> Formatter {
   let assert Ok(locale) = locales.from_tag(tag)
   let locale = case calendar {
@@ -70,6 +83,11 @@ fn new(
     _ -> panic as { "unknown hour cycle: " <> hour_cycle }
   }
   case date, time {
+    0, 0 -> {
+      let assert Ok(formatter) =
+        date_time.fields_formatter(locale, parse_fields(fields))
+      formatter
+    }
     0, time -> date_time.time_formatter(locale, style: style(time))
     date, 0 -> date_time.date_formatter(locale, style: style(date))
     date, time ->
@@ -78,6 +96,60 @@ fn new(
         date: style(date),
         time: style(time),
       )
+  }
+}
+
+fn parse_fields(text: String) -> Fields {
+  text
+  |> string.split(",")
+  |> list.fold(fields.new(), fn(f, option) {
+    let assert [name, value] = string.split(option, "=")
+    case name {
+      "weekday" -> fields.weekday(f, width(value))
+      "era" -> fields.era(f, width(value))
+      "year" -> fields.year(f, digits(value))
+      "month" ->
+        case value {
+          "numeric" | "2-digit" -> fields.month(f, digits(value))
+          _ -> fields.month_name(f, width(value))
+        }
+      "day" -> fields.day(f, digits(value))
+      "dayPeriod" -> fields.day_period(f, width(value))
+      "hour" -> fields.hour(f, digits(value))
+      "minute" -> fields.minute(f, digits(value))
+      "second" -> fields.second(f, digits(value))
+      "fractionalSecondDigits" ->
+        fields.fraction(f, case value {
+          "1" -> fields.Tenths
+          "2" -> fields.Hundredths
+          _ -> fields.Thousandths
+        })
+      "timeZoneName" ->
+        fields.time_zone(f, case value {
+          "short" -> fields.ShortName
+          "long" -> fields.LongName
+          "shortOffset" -> fields.ShortOffset
+          _ -> fields.LongOffset
+        })
+      _ -> panic as { "unknown field: " <> name }
+    }
+  })
+}
+
+fn width(value: String) -> fields.Width {
+  case value {
+    "narrow" -> fields.Narrow
+    "short" -> fields.Short
+    "long" -> fields.Long
+    _ -> panic as { "unknown width: " <> value }
+  }
+}
+
+fn digits(value: String) -> fields.Digits {
+  case value {
+    "numeric" -> fields.Numeric
+    "2-digit" -> fields.TwoDigit
+    _ -> panic as { "unknown digits: " <> value }
   }
 }
 

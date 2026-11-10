@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ossetic, whose tag is `os`.
 pub fn locale() -> Locale {
-  glintl.new_locale("os", glintl.Gregorian, 248)
+  glintl.new_locale("os", glintl.Gregorian, 261)
 }

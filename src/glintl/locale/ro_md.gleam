@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Moldavian, whose tag is `ro-MD`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ro-MD", glintl.Gregorian, 264)
+  glintl.new_locale("ro-MD", glintl.Gregorian, 279)
 }

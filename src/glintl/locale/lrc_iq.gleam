@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Northern Luri (Iraq), whose tag is `lrc-IQ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lrc-IQ", glintl.Gregorian, 203)
+  glintl.new_locale("lrc-IQ", glintl.Gregorian, 215)
 }

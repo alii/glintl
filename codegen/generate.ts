@@ -20,8 +20,9 @@ import {
   checkEveryDay,
 } from "./calendars.ts";
 import * as erlang from "./erlang.ts";
+import { type FieldsData, fieldsData } from "./fields.ts";
 import { packer } from "./pack.ts";
-import { calendarFixtures, fixtures } from "./fixtures.ts";
+import { calendarFixtures, fieldFixtures, fixtures } from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
 import { requirePinnedBun } from "./runtime.ts";
 import {
@@ -59,6 +60,8 @@ type LocaleData = {
   hourCycle: HourCycle;
   // Each calendar has its formats, then its formats in each hour cycle.
   formats: Formats[][];
+  // What each calendar's matcher needs for fields.
+  fields: FieldsData[];
 };
 
 // Each calendar's maths is worked out and checked once in its own process,
@@ -98,6 +101,7 @@ function readLocale(tag: string): LocaleData {
         ),
       ];
     }),
+    fields: CALENDARS.map(({ id }) => fieldsData(tag, id, mathFor(id), digits)),
   };
 }
 
@@ -241,7 +245,10 @@ const localeNumbers = new Map(
   LOCALES.map(([, tag]) => {
     const data = byTag.get(tag)!;
 
-    return [tag, packed.locale(data.digits, data.hourCycle, data.formats)];
+    return [
+      tag,
+      packed.locale(data.digits, data.hourCycle, data.formats, data.fields),
+    ];
   }),
 );
 
@@ -253,6 +260,11 @@ const DATA_TABLES = [
   "formats",
   "digits",
   "locales",
+  "fields",
+  "field_entries",
+  "field_texts",
+  "field_runs",
+  "field_strings",
 ] as const;
 
 // Lists Gleam's `Calendar` and `HourCycle` values in the order the packed
@@ -497,6 +509,15 @@ await write(
 await write(
   "test/glintl/calendar_fixtures.gleam",
   calendarFixtures(mathFor, RUNTIME),
+);
+
+await write(
+  "test/glintl/field_fixtures.gleam",
+  fieldFixtures(
+    LOCALES.map(([, tag]) => [tag, byTag.get(tag)!.calendar]),
+    mathFor,
+    RUNTIME,
+  ),
 );
 
 if (!keep) {

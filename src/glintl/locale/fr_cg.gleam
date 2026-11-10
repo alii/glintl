@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for French (Congo - Brazzaville), whose tag is `fr-CG`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-CG", glintl.Gregorian, 123)
+  glintl.new_locale("fr-CG", glintl.Gregorian, 132)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chiga, whose tag is `cgg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("cgg", glintl.Gregorian, 42)
+  glintl.new_locale("cgg", glintl.Gregorian, 45)
 }

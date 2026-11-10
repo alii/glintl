@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sinhala, whose tag is `si`.
 pub fn locale() -> Locale {
-  glintl.new_locale("si", glintl.Gregorian, 285)
+  glintl.new_locale("si", glintl.Gregorian, 301)
 }

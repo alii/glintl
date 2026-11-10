@@ -233,7 +233,6 @@ fn position(items: List(a), item: a, index: Int) -> Int {
   }
 }
 
-@target(javascript)
 /// The `hourCycle` option of `Intl.DateTimeFormat`, or `""` for the
 /// locale's own.
 @internal
@@ -247,7 +246,6 @@ pub fn intl_hour_cycle_option(locale: Locale) -> String {
   }
 }
 
-@target(javascript)
 /// ICU's name for a calendar.
 @internal
 pub fn icu_calendar(calendar: Calendar) -> String {

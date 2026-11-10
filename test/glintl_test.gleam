@@ -10,6 +10,8 @@ import glintl
 @target(erlang)
 import glintl/calendar_fixtures
 import glintl/date_time
+import glintl/date_time/fields.{type Fields}
+import glintl/field_fixtures
 import glintl/fixtures
 @target(erlang)
 import glintl/internal/render
@@ -37,6 +39,42 @@ pub fn example_test() {
   let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
   assert date_time.format(formatter, moment, offset:)
     == "25 October 2026 at 23:40"
+}
+
+pub fn fields_example_test() {
+  let assert Ok(formatter) =
+    fields.new()
+    |> fields.weekday(fields.Long)
+    |> fields.day(fields.Numeric)
+    |> fields.month_name(fields.Long)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+  let sunday = timestamp.from_unix_seconds(1_792_929_600)
+  assert date_time.format(formatter, sunday, offset: date_time.utc)
+    == "Sunday 25 October"
+}
+
+pub fn no_fields_test() {
+  assert date_time.fields_formatter(en_gb.locale(), fields.new())
+    == Error(date_time.NoFields)
+  let era_and_zone =
+    fields.new()
+    |> fields.era(fields.Short)
+    |> fields.time_zone(fields.ShortName)
+  assert date_time.fields_formatter(en_gb.locale(), era_and_zone)
+    == Error(date_time.NoFields)
+}
+
+pub fn fraction_test() {
+  let assert Ok(formatter) =
+    fields.new()
+    |> fields.second(fields.Numeric)
+    |> fields.fraction(fields.Hundredths)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+  let moment =
+    timestamp.from_unix_seconds(1_792_929_604)
+    |> timestamp.add(duration.milliseconds(987))
+  // Fractions are cut off, not rounded.
+  assert date_time.format(formatter, moment, offset: date_time.utc) == "4.98"
 }
 
 pub fn from_tag_test() {
@@ -235,6 +273,102 @@ pub fn fixtures_test() {
   assert list.take(failures, 30) == []
 }
 
+/// Checks fields in every locale and calendar against `Intl.DateTimeFormat`.
+pub fn field_fixtures_test() {
+  let failures =
+    field_fixtures.cases()
+    |> list.filter_map(fn(case_) {
+      let #(
+        tag,
+        calendar,
+        hour_cycle,
+        shown,
+        seconds,
+        milliseconds,
+        offset,
+        expected,
+      ) = case_
+      let assert Ok(locale) = locales.from_tag(tag)
+      let locale = case calendar {
+        "" -> locale
+        id -> glintl.with_calendar(locale, calendar_from_id(id))
+      }
+      let locale = case hour_cycle {
+        "" -> locale
+        "h11" -> glintl.with_hour_cycle(locale, glintl.H11)
+        "h12" -> glintl.with_hour_cycle(locale, glintl.H12)
+        "h23" -> glintl.with_hour_cycle(locale, glintl.H23)
+        _ -> glintl.with_hour_cycle(locale, glintl.H24)
+      }
+      let assert Ok(formatter) =
+        date_time.fields_formatter(locale, parse_fields(shown))
+      let assert Ok(utc_offset) =
+        date_time.duration_to_offset(duration.minutes(offset))
+      let moment =
+        timestamp.from_unix_seconds(seconds)
+        |> timestamp.add(duration.milliseconds(milliseconds))
+      let actual = date_time.format(formatter, moment, offset: utc_offset)
+      case actual == expected {
+        True -> Error(Nil)
+        False ->
+          Ok(
+            [tag, calendar, hour_cycle, shown]
+            |> list.append(list.map(
+              [seconds, milliseconds, offset],
+              int.to_string,
+            ))
+            |> list.append([string.inspect(expected), string.inspect(actual)])
+            |> string.join(" "),
+          )
+      }
+    })
+  assert list.take(failures, 30) == []
+}
+
+/// Reads fields from a fixture, like `day=numeric,month=short`.
+fn parse_fields(text: String) -> Fields {
+  text
+  |> string.split(",")
+  |> list.fold(fields.new(), fn(f, option) {
+    let assert [name, value] = string.split(option, "=")
+    case name, value {
+      "weekday", _ -> fields.weekday(f, width(value))
+      "era", _ -> fields.era(f, width(value))
+      "year", _ -> fields.year(f, digits(value))
+      "month", "numeric" | "month", "2-digit" -> fields.month(f, digits(value))
+      "month", _ -> fields.month_name(f, width(value))
+      "day", _ -> fields.day(f, digits(value))
+      "dayPeriod", _ -> fields.day_period(f, width(value))
+      "hour", _ -> fields.hour(f, digits(value))
+      "minute", _ -> fields.minute(f, digits(value))
+      "second", _ -> fields.second(f, digits(value))
+      "fractionalSecondDigits", "1" -> fields.fraction(f, fields.Tenths)
+      "fractionalSecondDigits", "2" -> fields.fraction(f, fields.Hundredths)
+      "fractionalSecondDigits", _ -> fields.fraction(f, fields.Thousandths)
+      "timeZoneName", "short" -> fields.time_zone(f, fields.ShortName)
+      "timeZoneName", "long" -> fields.time_zone(f, fields.LongName)
+      "timeZoneName", "shortOffset" -> fields.time_zone(f, fields.ShortOffset)
+      "timeZoneName", _ -> fields.time_zone(f, fields.LongOffset)
+      _, _ -> panic as { "unknown field in the fixtures: " <> name }
+    }
+  })
+}
+
+fn width(value: String) -> fields.Width {
+  case value {
+    "narrow" -> fields.Narrow
+    "short" -> fields.Short
+    _ -> fields.Long
+  }
+}
+
+fn digits(value: String) -> fields.Digits {
+  case value {
+    "numeric" -> fields.Numeric
+    _ -> fields.TwoDigit
+  }
+}
+
 @target(erlang)
 /// Checks the Erlang calendar maths field by field. JavaScript uses `Intl`
 /// for this, so there's nothing to check there.
@@ -293,7 +427,7 @@ fn calendar_from_id(id: String) -> glintl.Calendar {
   }
 }
 
-/// A style as the fixtures write it: 1 to 4 for full to short.
+/// Reads a style from a fixture, where 1 is full and 4 is short.
 fn style(index: Int) -> date_time.Style {
   case index {
     1 -> date_time.Full
