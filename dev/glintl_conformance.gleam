@@ -4,14 +4,15 @@
 //// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
 //// the locale's own), fields as Intl options like `day=numeric,month=short`
 //// (empty for styles), Unix seconds, milliseconds and an offset in minutes,
-//// separated by tabs.
+//// separated by tabs. Cases that share a formatter come one after another,
+//// so it only keeps the last formatter.
 ////
 //// It only runs on Erlang, because on JavaScript glintl just calls `Intl`.
 
-import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
@@ -21,10 +22,10 @@ import glintl/date_time/fields.{type Fields}
 import glintl/locales
 
 pub fn main() -> Nil {
-  loop(dict.new())
+  loop(None)
 }
 
-fn loop(formatters: Dict(String, Formatter)) -> Nil {
+fn loop(last: Option(#(String, Formatter))) -> Nil {
   case read_line() {
     Error(Nil) -> Nil
     Ok(line) -> {
@@ -41,13 +42,9 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
       ] = string.split(line, "\t")
       let key =
         string.join([tag, calendar, date, time, hour_cycle, fields], "\t")
-      let #(formatter, formatters) = case dict.get(formatters, key) {
-        Ok(formatter) -> #(formatter, formatters)
-        Error(Nil) -> {
-          let formatter =
-            new(tag, calendar, hour_cycle, number(date), number(time), fields)
-          #(formatter, dict.insert(formatters, key, formatter))
-        }
+      let formatter = case last {
+        Some(#(last_key, formatter)) if last_key == key -> formatter
+        _ -> new(tag, calendar, hour_cycle, number(date), number(time), fields)
       }
       let assert Ok(offset) =
         date_time.duration_to_offset(duration.minutes(number(offset)))
@@ -56,7 +53,7 @@ fn loop(formatters: Dict(String, Formatter)) -> Nil {
         |> timestamp.add(duration.milliseconds(number(milliseconds)))
       date_time.format(formatter, moment, offset:)
       |> io.println
-      loop(formatters)
+      loop(Some(#(key, formatter)))
     }
   }
 }

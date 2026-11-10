@@ -10,6 +10,12 @@
 //   bun codegen/conformance.ts --save cases.tsv [cases] [seed]
 //   bun codegen/conformance.ts --check cases.tsv
 //
+// To check every mix of fields in every hour cycle for one locale and calendar,
+// at fixed moments, run this. A part, like 3/16, checks every 16th request
+// from the 3rd, so several runs can share the work.
+//
+//   bun codegen/conformance.ts --every ja@japanese [part/parts]
+//
 // Cases come in groups that share a formatter, because making an
 // Intl.DateTimeFormat is slow. Moments lean towards midnight, noon and
 // whole hours, where day periods change.
@@ -24,9 +30,15 @@ import {
   SCAN_FROM,
   day,
 } from "./calendars.ts";
-import { fieldsText, randomFields } from "./fixtures.ts";
-import { HOUR_CYCLES } from "./patterns.ts";
+import {
+  FIELD_CHOICES,
+  type Field,
+  NOT_ENOUGH,
+  fieldsText,
+  randomFields,
+} from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
+import { HOUR_CYCLES } from "./patterns.ts";
 import { random } from "./random.ts";
 import { requirePinnedBun } from "./runtime.ts";
 import {
@@ -41,10 +53,11 @@ import {
 
 const ROOT = join(import.meta.dir, "..");
 
-const [mode, file] =
-  process.argv[2] === "--save" || process.argv[2] === "--check"
-    ? [process.argv[2], process.argv[3]!]
-    : ["--live", ""];
+const MODES = ["--save", "--check", "--every"];
+
+const [mode, argument] = MODES.includes(process.argv[2]!)
+  ? [process.argv[2]!, process.argv[3]!]
+  : ["--live", ""];
 
 // Checking saved cases doesn't ask Intl anything.
 if (mode !== "--check") {
@@ -92,6 +105,9 @@ const next = random(SEED);
 
 const pick = <T>(items: readonly T[]): T =>
   items[Math.floor(next() * items.length)]!;
+
+const kindOf = (calendar: string) =>
+  CALENDARS.find((c) => c.id === calendar)!.kind;
 
 const between = ([from, to]: [number, number]) =>
   from + Math.floor(next() * (to - from));
@@ -152,7 +168,7 @@ function group(): Case[] {
   const resolved =
     calendar || new Intl.DateTimeFormat(tag).resolvedOptions().calendar;
 
-  const kind = CALENDARS.find((c) => c.id === resolved)!.kind;
+  const kind = kindOf(resolved);
   // 0 means no date style. A case without a date must have a time.
   const drawn = Math.floor(next() * STYLES.length);
 
@@ -224,10 +240,177 @@ function group(): Case[] {
   });
 }
 
+// --- Every mix of fields ------------------------------------------------------
+
+// Local times where day periods change, and fractions that test cutting off.
+const EVERY_TIMES: [number, number, number, number][] = [
+  [0, 0, 0, 0],
+  [0, 1, 0, 7],
+  [11, 59, 59, 999],
+  [12, 0, 0, 0],
+  [12, 30, 45, 123],
+  [18, 0, 0, 0],
+  [23, 59, 59, 987],
+];
+
+// A normal day, then days where years or eras are written in a special way:
+// the first year of Reiwa, the last day of Shōwa, and days before the Islamic
+// and Coptic eras.
+const EVERY_DAYS = [
+  day(2026, 3, 5),
+  day(2019, 5, 1),
+  day(1989, 1, 7),
+  day(500, 6, 15),
+  day(200, 6, 15),
+];
+
+// The first day gets every time. The others get these ones.
+const OTHER_DAY_TIMES = [EVERY_TIMES[0]!, EVERY_TIMES[4]!];
+
+const EVERY_OFFSETS = [0, 60, 330, -600];
+
+const EVERY_HOUR_CYCLE = ["", ...HOUR_CYCLES] as const;
+
+// Each field can be left out, or shown with any of its values.
+const EVERY_REQUEST =
+  FIELD_CHOICES.reduce((n, [, values]) => n * (values.length + 1), 1) *
+  EVERY_HOUR_CYCLE.length;
+
+// Reads a request number as a choice for each field, then an hour cycle.
+function requestAt(
+  index: number,
+): [Field[], (typeof EVERY_HOUR_CYCLE)[number]] {
+  const fields: Field[] = [];
+
+  const rest = FIELD_CHOICES.reduce((rest, [name, values]) => {
+    const choice = rest % (values.length + 1);
+
+    if (choice > 0) {
+      fields.push([name, values[choice - 1]!]);
+    }
+
+    return Math.floor(rest / (values.length + 1));
+  }, index);
+
+  return [fields, EVERY_HOUR_CYCLE[rest]!];
+}
+
+const everyMoments = [
+  ...EVERY_TIMES.map((time): [number, (typeof EVERY_TIMES)[number]] => [
+    EVERY_DAYS[0]!,
+    time,
+  ]),
+  ...EVERY_DAYS.slice(1).flatMap((d) =>
+    OTHER_DAY_TIMES.map((time): [number, (typeof EVERY_TIMES)[number]] => [
+      d,
+      time,
+    ]),
+  ),
+].map(([epochDay, [hours, minutes, seconds, milliseconds]], n) => {
+  const offset = EVERY_OFFSETS[n % EVERY_OFFSETS.length]!;
+
+  return {
+    epochDay,
+    offset,
+    milliseconds,
+    seconds:
+      epochDay * SECONDS_PER_DAY +
+      hours * SECONDS_PER_HOUR +
+      minutes * SECONDS_PER_MINUTE +
+      seconds -
+      offset * SECONDS_PER_MINUTE,
+  };
+});
+
+function everyCases(tag: string, calendar: string, index: number): Case[] {
+  const [fields, hourCycle] = requestAt(index);
+
+  if (!fields.some(([name]) => !NOT_ENOUGH.includes(name))) {
+    return [];
+  }
+
+  const resolved =
+    calendar || new Intl.DateTimeFormat(tag).resolvedOptions().calendar;
+
+  const kind = kindOf(resolved);
+  const fieldsLine = fieldsText(fields);
+
+  const formatters = EVERY_OFFSETS.map(
+    (offset) =>
+      new Intl.DateTimeFormat(tag, {
+        calendar: resolved,
+        ...Object.fromEntries(fields),
+        timeZone: offsetString(offset),
+        hourCycle: hourCycle === "" ? undefined : hourCycle,
+      }),
+  );
+
+  return everyMoments.flatMap(({ epochDay, offset, seconds, milliseconds }) => {
+    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) {
+      return [];
+    }
+
+    const formatter = formatters[EVERY_OFFSETS.indexOf(offset)]!;
+
+    return [
+      {
+        line: [
+          tag,
+          calendar,
+          0,
+          0,
+          hourCycle,
+          fieldsLine,
+          seconds,
+          milliseconds,
+          offset,
+        ].join("\t"),
+        expected: formatter.format(seconds * MS_PER_SECOND + milliseconds),
+      },
+    ];
+  });
+}
+
+function every(): IteratorObject<Case[]> {
+  const [tag = "", calendar = ""] = argument.split("@");
+  const [part = 1, parts = 1] = (counts[0] ?? "1/1").split("/").map(Number);
+
+  // Gathers cases from every `parts`th request until there are enough for a
+  // batch. Returns them and the next request.
+  const batchFrom = (
+    index: number,
+    gathered: Case[] = [],
+  ): [Case[], number] => {
+    if (gathered.length >= BATCH || index >= EVERY_REQUEST) {
+      return [gathered, index];
+    }
+
+    gathered.push(...everyCases(tag, calendar, index));
+
+    return batchFrom(index + parts, gathered);
+  };
+
+  function* from(index: number): Generator<Case[]> {
+    if (index >= EVERY_REQUEST) {
+      return;
+    }
+
+    const [batch, next] = batchFrom(index);
+    yield batch;
+    yield* from(next);
+  }
+
+  return from(part - 1);
+}
+
+// --- Checking -----------------------------------------------------------------
+
 // Cases are made here, or read from a saved file whose first line names the
 // Intl that made them.
 const [header, ...saved] =
-  mode === "--check" ? readFileSync(file, "utf8").trimEnd().split("\n") : [];
+  mode === "--check"
+    ? readFileSync(argument, "utf8").trimEnd().split("\n")
+    : [];
 
 const intl = header ?? `Bun ${Bun.version}, ICU ${process.versions.icu}`;
 
@@ -260,7 +443,7 @@ function batches(): IteratorObject<Case[]> {
       .map((n) => saved.slice(n, n + BATCH).map(parse));
   }
 
-  return made(0);
+  return mode === "--every" ? every() : made(0);
 }
 
 if (mode === "--save") {
@@ -271,9 +454,9 @@ if (mode === "--save") {
       .map((c) => `${c.line}\t${JSON.stringify(c.expected)}`),
   ];
 
-  writeFileSync(file, lines.join("\n") + "\n");
+  writeFileSync(argument, lines.join("\n") + "\n");
   console.log(
-    `Saved ${lines.length - 1} cases from ${intl}, seed ${SEED}, to ${file}.`,
+    `Saved ${lines.length - 1} cases from ${intl}, seed ${SEED}, to ${argument}.`,
   );
   process.exit(0);
 }
