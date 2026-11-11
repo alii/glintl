@@ -20,6 +20,7 @@ import glintl
 import glintl/date_time.{type Formatter}
 import glintl/date_time/fields.{type Fields}
 import glintl/locales
+import glintl/time_zone
 
 pub fn main() -> Nil {
   loop(None)
@@ -46,12 +47,12 @@ fn loop(last: Option(#(String, Formatter))) -> Nil {
         Some(#(last_key, formatter)) if last_key == key -> formatter
         _ -> new(tag, calendar, hour_cycle, number(date), number(time), fields)
       }
-      let assert Ok(offset) =
-        date_time.duration_to_offset(duration.minutes(number(offset)))
+      let assert Ok(zone) =
+        time_zone.from_duration(duration.minutes(number(offset)))
       let moment =
         timestamp.from_unix_seconds(number(seconds))
         |> timestamp.add(duration.milliseconds(number(milliseconds)))
-      date_time.format(formatter, moment, offset:)
+      date_time.format(formatter, moment, zone:)
       |> io.println
       loop(Some(#(key, formatter)))
     }

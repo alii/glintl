@@ -112,7 +112,7 @@ pub fn locale_calendar(locale: Locale) -> Calendar {
 /// en_gb.locale()
 /// |> glintl.with_calendar(glintl.Hebrew)
 /// |> date_time.date_formatter(style: date_time.Long)
-/// |> date_time.format(timestamp.system_time(), offset: date_time.utc)
+/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
 /// // -> "14 Heshvan 5787"
 /// ```
 pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
@@ -145,7 +145,7 @@ pub type HourCycle {
 /// en.locale()
 /// |> glintl.with_hour_cycle(glintl.H23)
 /// |> date_time.time_formatter(style: date_time.Short)
-/// |> date_time.format(timestamp.system_time(), offset: date_time.utc)
+/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
 /// // -> "22:40"
 /// ```
 pub fn with_hour_cycle(locale: Locale, hour_cycle: HourCycle) -> Locale {

@@ -7,6 +7,7 @@
 //// import glintl/date_time
 //// import glintl/date_time/fields
 //// import glintl/locale/en_gb
+//// import glintl/time_zone
 ////
 //// let assert Ok(formatter) =
 ////   fields.new()
@@ -15,7 +16,7 @@
 ////   |> fields.month_name(fields.Long)
 ////   |> date_time.fields_formatter(en_gb.locale(), _)
 ////
-//// date_time.format(formatter, timestamp.system_time(), offset: date_time.utc)
+//// date_time.format(formatter, timestamp.system_time(), zone: time_zone.utc)
 //// // -> "Sunday 25 October"
 //// ```
 ////

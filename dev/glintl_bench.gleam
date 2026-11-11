@@ -11,6 +11,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glintl/date_time
 import glintl/date_time/fields
 import glintl/locale/en_gb
+import glintl/time_zone
 
 /// The first date is 14 November 2023, and the rest follow a week apart.
 const first_date = 1_700_000_000
@@ -129,9 +130,9 @@ fn format_dates(times: Int) -> Nil {
 
 fn format_dates_with(formatter: date_time.Formatter, times: Int) -> Nil {
   let dates = dates()
-  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
   int.range(from: 0, to: times, with: Nil, run: fn(_, _) {
-    list.each(dates, fn(date) { date_time.format(formatter, date, offset:) })
+    list.each(dates, fn(date) { date_time.format(formatter, date, zone:) })
   })
 }
 

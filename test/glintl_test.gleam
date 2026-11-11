@@ -21,6 +21,7 @@ import glintl/locale/ja
 import glintl/locale/th
 import glintl/locale/zh
 import glintl/locales
+import glintl/time_zone
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -36,8 +37,8 @@ pub fn example_test() {
       time: date_time.Short,
     )
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
-  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
-  assert date_time.format(formatter, moment, offset:)
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
+  assert date_time.format(formatter, moment, zone:)
     == "25 October 2026 at 23:40"
 }
 
@@ -49,7 +50,7 @@ pub fn fields_example_test() {
     |> fields.month_name(fields.Long)
     |> date_time.fields_formatter(en_gb.locale(), _)
   let sunday = timestamp.from_unix_seconds(1_792_929_600)
-  assert date_time.format(formatter, sunday, offset: date_time.utc)
+  assert date_time.format(formatter, sunday, zone: time_zone.utc)
     == "Sunday 25 October"
 }
 
@@ -74,7 +75,7 @@ pub fn fraction_test() {
     timestamp.from_unix_seconds(1_792_929_604)
     |> timestamp.add(duration.milliseconds(987))
   // Fractions are cut off, not rounded.
-  assert date_time.format(formatter, moment, offset: date_time.utc) == "4.98"
+  assert date_time.format(formatter, moment, zone: time_zone.utc) == "4.98"
 }
 
 pub fn from_tag_test() {
@@ -111,7 +112,7 @@ pub fn hour_cycle_test() {
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-26T22:40:00Z")
   let time = fn(locale) {
     date_time.time_formatter(locale, style: date_time.Short)
-    |> date_time.format(moment, offset: date_time.utc)
+    |> date_time.format(moment, zone: time_zone.utc)
   }
   assert glintl.locale_hour_cycle(en_gb.locale()) == glintl.H23
   assert glintl.locale_hour_cycle(en.locale()) == glintl.H12
@@ -130,7 +131,7 @@ pub fn hour_cycle_test() {
       date: date_time.Long,
       time: date_time.Short,
     )
-    |> date_time.format(moment, offset: date_time.utc)
+    |> date_time.format(moment, zone: time_zone.utc)
     == "2026/10/26 午後10:40"
 }
 
@@ -151,24 +152,24 @@ pub fn format_date_test() {
 /// Offsets must be under 24 hours either way, because that's all JavaScript's
 /// `Intl` allows.
 pub fn offset_test() {
-  assert date_time.offset(hours: 5, minutes: 30) |> result.is_ok
-  assert date_time.offset(hours: -3, minutes: -30) |> result.is_ok
-  assert date_time.offset(hours: 23, minutes: 59) |> result.is_ok
-  assert date_time.offset(hours: -23, minutes: -59) |> result.is_ok
-  assert date_time.offset(hours: 24, minutes: 0)
-    == Error(date_time.OffsetTooLarge)
-  assert date_time.offset(hours: -24, minutes: 0)
-    == Error(date_time.OffsetTooLarge)
-  assert date_time.offset(hours: 1, minutes: 60)
-    == Error(date_time.MinutesTooLarge)
-  assert date_time.offset(hours: -3, minutes: 30) == Error(date_time.MixedSigns)
-  assert date_time.duration_to_offset(duration.hours(1)) == Ok(hours(1))
-  assert date_time.duration_to_offset(duration.seconds(-1))
-    == date_time.offset(hours: 0, minutes: -1)
-  assert date_time.duration_to_offset(duration.hours(24))
-    == Error(date_time.OffsetTooLarge)
-  assert date_time.duration_to_offset(duration.hours(-25))
-    == Error(date_time.OffsetTooLarge)
+  assert time_zone.offset(hours: 5, minutes: 30) |> result.is_ok
+  assert time_zone.offset(hours: -3, minutes: -30) |> result.is_ok
+  assert time_zone.offset(hours: 23, minutes: 59) |> result.is_ok
+  assert time_zone.offset(hours: -23, minutes: -59) |> result.is_ok
+  assert time_zone.offset(hours: 24, minutes: 0)
+    == Error(time_zone.OffsetTooLarge)
+  assert time_zone.offset(hours: -24, minutes: 0)
+    == Error(time_zone.OffsetTooLarge)
+  assert time_zone.offset(hours: 1, minutes: 60)
+    == Error(time_zone.MinutesTooLarge)
+  assert time_zone.offset(hours: -3, minutes: 30) == Error(time_zone.MixedSigns)
+  assert time_zone.from_duration(duration.hours(1)) == Ok(hours(1))
+  assert time_zone.from_duration(duration.seconds(-1))
+    == time_zone.offset(hours: 0, minutes: -1)
+  assert time_zone.from_duration(duration.hours(24))
+    == Error(time_zone.OffsetTooLarge)
+  assert time_zone.from_duration(duration.hours(-25))
+    == Error(time_zone.OffsetTooLarge)
 }
 
 /// Locales can be compared and used as `Dict` keys on both targets.
@@ -185,7 +186,7 @@ pub fn calendar_test() {
   let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
   let format = fn(locale, moment) {
     date_time.date_formatter(locale, style: date_time.Long)
-    |> date_time.format(moment, offset: hours(1))
+    |> date_time.format(moment, zone: hours(1))
   }
   assert glintl.locale_calendar(en_gb.locale()) == glintl.Gregorian
   assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
@@ -214,7 +215,7 @@ pub fn outside_calendar_tables_test() {
     en_gb.locale()
     |> glintl.with_calendar(glintl.Hebrew)
     |> date_time.date_formatter(style: date_time.Long)
-    |> date_time.format(year_5000, offset: date_time.utc)
+    |> date_time.format(year_5000, zone: time_zone.utc)
   let expected = case on_erlang() {
     True -> "1 January 5000"
     False -> "20 Kislev 8760"
@@ -248,14 +249,9 @@ pub fn fixtures_test() {
             time: style(time),
           )
       }
-      let assert Ok(utc_offset) =
-        date_time.duration_to_offset(duration.minutes(offset))
+      let assert Ok(zone) = time_zone.from_duration(duration.minutes(offset))
       let actual =
-        date_time.format(
-          formatter,
-          timestamp.from_unix_seconds(seconds),
-          offset: utc_offset,
-        )
+        date_time.format(formatter, timestamp.from_unix_seconds(seconds), zone:)
       case actual == expected {
         True -> Error(Nil)
         False ->
@@ -302,12 +298,11 @@ pub fn field_fixtures_test() {
       }
       let assert Ok(formatter) =
         date_time.fields_formatter(locale, parse_fields(shown))
-      let assert Ok(utc_offset) =
-        date_time.duration_to_offset(duration.minutes(offset))
+      let assert Ok(zone) = time_zone.from_duration(duration.minutes(offset))
       let moment =
         timestamp.from_unix_seconds(seconds)
         |> timestamp.add(duration.milliseconds(milliseconds))
-      let actual = date_time.format(formatter, moment, offset: utc_offset)
+      let actual = date_time.format(formatter, moment, zone:)
       case actual == expected {
         True -> Error(Nil)
         False ->
@@ -388,9 +383,9 @@ pub fn calendar_fields_test() {
 
 // --- Helpers -------------------------------------------------------------------
 
-fn hours(hours: Int) -> date_time.Offset {
-  let assert Ok(offset) = date_time.offset(hours:, minutes: 0)
-  offset
+fn hours(hours: Int) -> time_zone.TimeZone {
+  let assert Ok(zone) = time_zone.offset(hours:, minutes: 0)
+  zone
 }
 
 @external(erlang, "glintl_test_ffi", "on_erlang")

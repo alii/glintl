@@ -4,6 +4,7 @@
 //// import gleam/time/timestamp
 //// import glintl/date_time
 //// import glintl/locale/en_gb
+//// import glintl/time_zone
 ////
 //// let formatter =
 ////   date_time.date_time_formatter(
@@ -12,9 +13,9 @@
 ////     time: date_time.Short,
 ////   )
 ////
-//// let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
+//// let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
 ////
-//// date_time.format(formatter, timestamp.system_time(), offset:)
+//// date_time.format(formatter, timestamp.system_time(), zone:)
 //// // -> "25 October 2026 at 23:40"
 //// ```
 ////
@@ -23,15 +24,14 @@
 //// `Intl.DateTimeFormat` is used, so the output can differ slightly between
 //// targets and between JavaScript runtimes.
 
-import gleam/int
 import gleam/time/calendar
-import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
 import glintl.{type Locale}
 import glintl/date_time/fields.{type Fields}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
+import glintl/time_zone.{type TimeZone}
 
 /// How much detail to show, from most to least.
 ///
@@ -141,76 +141,23 @@ fn list_any_set(options: List(String)) -> Bool {
   }
 }
 
-/// How far a place's clocks are ahead of UTC. It's a whole number of minutes,
-/// under 24 hours either way.
-pub opaque type Offset {
-  Offset(minutes: Int)
-}
-
-/// The offset of UTC, which is zero.
-pub const utc = Offset(minutes: 0)
-
-const seconds_per_minute = 60
-
-const minutes_per_hour = 60
-
-const hours_per_day = 24
-
-/// Why an offset couldn't be made.
-pub type OffsetError {
-  /// `hours` and `minutes` have different signs, like
-  /// `offset(hours: -3, minutes: 30)`.
-  MixedSigns
-  /// `minutes` is an hour or more either way.
-  MinutesTooLarge
-  /// The offset is 24 hours or more either way.
-  OffsetTooLarge
-}
-
-/// An offset of `hours` and `minutes` ahead of UTC, like
-/// `offset(hours: 5, minutes: 30)` for India. Behind UTC both are negative,
-/// like `offset(hours: -3, minutes: -30)` for Newfoundland.
-pub fn offset(
-  hours hours: Int,
-  minutes minutes: Int,
-) -> Result(Offset, OffsetError) {
-  let same_sign =
-    { hours >= 0 && minutes >= 0 } || { hours <= 0 && minutes <= 0 }
-  case same_sign, int.absolute_value(minutes) < minutes_per_hour {
-    False, _ -> Error(MixedSigns)
-    True, False -> Error(MinutesTooLarge)
-    True, True -> from_minutes(hours * minutes_per_hour + minutes)
-  }
-}
-
-/// An offset from a `gleam_time` duration, like `calendar.local_offset()`,
-/// rounded down to whole minutes.
-pub fn duration_to_offset(duration: Duration) -> Result(Offset, OffsetError) {
-  let #(seconds, _) = duration.to_seconds_and_nanoseconds(duration)
-  let remainder =
-    { seconds % seconds_per_minute + seconds_per_minute } % seconds_per_minute
-  from_minutes({ seconds - remainder } / seconds_per_minute)
-}
-
-fn from_minutes(minutes: Int) -> Result(Offset, OffsetError) {
-  case int.absolute_value(minutes) < hours_per_day * minutes_per_hour {
-    True -> Ok(Offset(minutes:))
-    False -> Error(OffsetTooLarge)
-  }
-}
-
-/// Format a timestamp in the local time of a place `offset` ahead of UTC.
+/// Format a moment as the clocks in `zone` show it.
 ///
 /// Time zones are written as a GMT offset, like `GMT+1`, because glintl knows
 /// the offset but not the zone's name.
 pub fn format(
   formatter: Formatter,
   timestamp: Timestamp,
-  offset offset: Offset,
+  zone zone: TimeZone,
 ) -> String {
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
-  do_format(formatter.compiled, seconds, nanoseconds, offset.minutes)
+  do_format(
+    formatter.compiled,
+    seconds,
+    nanoseconds,
+    time_zone.offset_minutes(zone),
+  )
 }
 
 /// Format a date, like a birthday, that isn't tied to a time zone. If the
@@ -233,7 +180,7 @@ pub fn format_date_time(
   time: calendar.TimeOfDay,
 ) -> String {
   timestamp.from_calendar(date:, time:, offset: calendar.utc_offset)
-  |> format(formatter, _, offset: utc)
+  |> format(formatter, _, zone: time_zone.utc)
 }
 
 @target(erlang)

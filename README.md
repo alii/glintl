@@ -17,21 +17,22 @@ import gleam/time/timestamp
 import glintl/date_time
 import glintl/locale/en_gb
 import glintl/locale/fr
+import glintl/time_zone
 
 pub fn main() {
   let now = timestamp.system_time()
-  let assert Ok(offset) = date_time.offset(hours: 1, minutes: 0)
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
 
   date_time.date_time_formatter(
     en_gb.locale(),
     date: date_time.Long,
     time: date_time.Short,
   )
-  |> date_time.format(now, offset:)
+  |> date_time.format(now, zone:)
   // -> "25 October 2026 at 23:40"
 
   date_time.date_formatter(fr.locale(), style: date_time.Full)
-  |> date_time.format(now, offset:)
+  |> date_time.format(now, zone:)
   // -> "dimanche 25 octobre 2026"
 }
 ```
