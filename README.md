@@ -1,6 +1,10 @@
 # glintl
 
-glintl formats dates and times in your users' languages. It works on Erlang and JavaScript, and on Erlang it aims to give the same output as JavaScript's `Intl.DateTimeFormat`.
+Format dates and times in many languages, on Erlang and JavaScript.
+
+On Erlang, Glintl it aims to give the same output as JavaScript's `Intl` API, and is faster and has a much smaller memory footprint than other internationalisation libraries. On JavaScript, Glintl defers to the host's implementation of `Intl`.
+
+[Documentation](https://hexdocs.pm/glintl/) • [Repository](https://github.com/alii/glintl)
 
 It isn't ready to depend on yet, so expect breaking changes.
 
@@ -32,9 +36,9 @@ pub fn main() {
 }
 ```
 
-Making a formatter takes some work, so make it once and reuse it. You'll find every function explained on [Hexdocs](https://hexdocs.pm/glintl/).
+Creating a formatter is slightly expensive, so it's always best to make it once and reuse it when possible.
 
-Each locale is a module you import, like `glintl/locale/fr`. If you don't know the locale until your app runs, look it up with `glintl/locales`. It can also read an `Accept-Language` header.
+Each locale is a separate Gleam module, like `glintl/locale/fr`. If you don't know the locale until your app runs, you can look it up with the helpers in `glintl/locales`. You can use these helpers to read an `Accept-Language` header, for example.
 
 ```gleam
 import glintl/locales
@@ -46,18 +50,18 @@ locales.from_tag("xx") // -> Error(Nil)
 
 ## How it works
 
-On JavaScript, glintl calls `Intl.DateTimeFormat`, so your bundle doesn't include any locale data.
+On JavaScript, glintl calls JavaScript's `Intl.DateTimeFormat` directly. No locale data is included on JavaScript so it's safe to include Glintl in size-sensitive programs, like for the browser.
 
-On Erlang, we take the data from ICU when we build glintl and ship it inside the package. Your app never downloads it or reads it from disk. We store it as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), which Erlang keeps in one place for every process to share. We're still working on making it load faster.
+On Erlang, we take the data from ICU when we build glintl and ship it inside the package, so your program never needs to download it or read it from disk. We store it as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), which Erlang keeps in one place for every process to share. We're still working on making it load faster.
 
-If you're coming from Elixir, [Localize](https://github.com/elixir-localize/localize) does much more than glintl, like numbers and units. The main difference is that Localize loads locale data from files, and if a file is missing it quietly falls back to another locale. glintl builds the data in, and `glintl/locales` returns an `Error` for a tag it doesn't know.
+If you're coming from Elixir, [Localize](https://github.com/elixir-localize/localize) does much more than glintl, like formatting numbers and units. This is planned to be added to Glintl, but until then the main difference is that Localize loads locale data from files or the network, and if a file is missing it quietly falls back to another locale. Glintl gives you a lookup function. It never falls back on an unknown locale, but it has helpers so you can do that yourself.
 
 ## Limits
 
-- We take time zones as offsets, so you'll see `GMT+1` and not `British Summer Time`.
+- glintl doesn't take time zones like `Europe/London` yet, only an offset in hours and minutes from UTC. Full time zone support is planned.
 - On Erlang, calendars with their own months only work from year 1 to 4000. Other years fall back to the Gregorian calendar.
-- Erlang uses the ICU data we bundle, but JavaScript uses your runtime's own ICU. They can disagree on small things like spaces and commas.
-- ICU 78.3 puts Chinese New Year 2027 and 2030 a day off. JavaScript gets this wrong too, so we match it.
+- glintl on Erlang uses the ICU bundled at Glintl's own build time, but JavaScript uses ICU built into the runtime. Differences in ICU versions mean the two targets can disagree on small things, often in spaces and commas.
+- ICU 78.3 puts Chinese New Year 2027 and 2030 a day off. JavaScript gets this wrong too, so we intentionally match it in the name of behaviour parity.
 - Around midnight near AD 284 and AD 622, ICU shows the wrong year in the Coptic and Islamic calendars. We don't copy this bug yet, so glintl and JavaScript can disagree there.
 
 ## Contributing
