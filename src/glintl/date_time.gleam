@@ -93,10 +93,12 @@ pub fn date_time_formatter(
 /// options of JavaScript's `Intl.DateTimeFormat`. See `glintl/date_time/fields`.
 ///
 /// ```gleam
-/// fields.new()
-/// |> fields.day(fields.Numeric)
-/// |> fields.month_name(fields.Short)
-/// |> date_time.fields_formatter(en_gb.locale(), _)
+/// let options =
+///   fields.new()
+///   |> fields.day(fields.Numeric)
+///   |> fields.month_name(fields.Short)
+///
+/// date_time.fields_formatter(en_gb.locale(), options)
 /// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
 /// // -> "25 Oct"
 /// ```

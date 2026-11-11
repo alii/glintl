@@ -9,12 +9,13 @@
 //// import glintl/locale/en_gb
 //// import glintl/time_zone
 ////
-//// let formatter =
+//// let options =
 ////   fields.new()
 ////   |> fields.weekday(fields.Long)
 ////   |> fields.day(fields.Numeric)
 ////   |> fields.month_name(fields.Long)
-////   |> date_time.fields_formatter(en_gb.locale(), _)
+////
+//// let formatter = date_time.fields_formatter(en_gb.locale(), options)
 ////
 //// date_time.format(formatter, timestamp.system_time(), zone: time_zone.utc)
 //// // -> "Sunday 25 October"

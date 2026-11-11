@@ -21,12 +21,13 @@ import glintl/time_zone
 
 pub fn main() {
   // Like Intl's { day: "numeric", month: "short", year: "numeric" }
-  let formatter =
+  let options =
     fields.new()
     |> fields.day(fields.Numeric)
     |> fields.month_name(fields.Short)
     |> fields.year(fields.Numeric)
-    |> date_time.fields_formatter(en_gb.locale(), _)
+
+  let formatter = date_time.fields_formatter(en_gb.locale(), options)
 
   date_time.format(formatter, timestamp.system_time(), zone: time_zone.utc)
   // -> "25 Oct 2026"
