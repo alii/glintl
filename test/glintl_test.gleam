@@ -182,6 +182,24 @@ pub fn from_name_test() {
   assert time_zone.from_name("") == Error(Nil)
 }
 
+pub fn local_test() {
+  assert time_zone.local() |> result.is_ok
+}
+
+@target(erlang)
+/// On Erlang, `TZ` wins over the system's settings, as a name or a path.
+pub fn local_from_tz_test() {
+  assert with_tz("Asia/Tokyo", time_zone.local)
+    == time_zone.from_name("Asia/Tokyo")
+  assert with_tz(":/usr/share/zoneinfo/Europe/Paris", time_zone.local)
+    == time_zone.from_name("Europe/Paris")
+  assert with_tz("Nowhere/Special", time_zone.local) == Error(Nil)
+}
+
+@target(erlang)
+@external(erlang, "glintl_test_ffi", "with_tz")
+fn with_tz(value: String, run: fn() -> a) -> a
+
 /// A named zone's offset follows summer time, and old local mean time,
 /// which can be off by seconds.
 pub fn named_zone_test() {

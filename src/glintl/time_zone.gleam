@@ -6,8 +6,9 @@
 //// import glintl/time_zone
 ////
 //// let london = time_zone.from_name("Europe/London")
+//// let here = time_zone.local()
 //// let india = time_zone.offset(hours: 5, minutes: 30)
-//// let here = time_zone.from_duration(calendar.local_offset())
+//// let offset_now = time_zone.from_duration(calendar.local_offset())
 //// ```
 
 import gleam/int
@@ -39,6 +40,23 @@ pub const utc = Offset(minutes: 0)
 pub fn from_name(name: String) -> Result(TimeZone, Nil) {
   find(name)
 }
+
+/// The computer's own time zone, the one Intl uses when you don't give it
+/// one. In a browser, that's the user's zone.
+///
+/// On Erlang it comes from the `TZ` setting, or else from `/etc/localtime` or
+/// `/etc/timezone`. It returns `Error(Nil)` if none of them names a zone
+/// glintl knows.
+pub fn local() -> Result(TimeZone, Nil) {
+  case local_name() {
+    Ok(name) -> from_name(name)
+    Error(Nil) -> Error(Nil)
+  }
+}
+
+@external(erlang, "glintl_ffi", "local_time_zone")
+@external(javascript, "../glintl_ffi.mjs", "localTimeZone")
+fn local_name() -> Result(String, Nil)
 
 @target(erlang)
 fn find(name: String) -> Result(TimeZone, Nil) {

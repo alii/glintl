@@ -135,3 +135,12 @@ export function timeZoneName(name) {
     return new GleamError(undefined);
   }
 }
+
+/**
+ * The time zone Intl uses when it isn't given one.
+ * @returns {Ok | GleamError}
+ */
+export function localTimeZone() {
+  const zone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return zone ? new Ok(zone) : new GleamError(undefined);
+}
