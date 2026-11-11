@@ -43,7 +43,7 @@ pub fn example_test() {
 }
 
 pub fn fields_example_test() {
-  let assert Ok(formatter) =
+  let formatter =
     fields.new()
     |> fields.weekday(fields.Long)
     |> fields.day(fields.Numeric)
@@ -54,19 +54,20 @@ pub fn fields_example_test() {
     == "Sunday 25 October"
 }
 
-pub fn no_fields_test() {
-  assert date_time.fields_formatter(en_gb.locale(), fields.new())
-    == Error(date_time.NoFields)
-  let era_and_zone =
-    fields.new()
-    |> fields.era(fields.Short)
-    |> fields.time_zone(fields.ShortName)
-  assert date_time.fields_formatter(en_gb.locale(), era_and_zone)
-    == Error(date_time.NoFields)
+/// Like Intl, with no date or time part a formatter shows a numeric date.
+pub fn default_fields_test() {
+  let midday = timestamp.from_unix_seconds(1_792_929_600)
+  let format = fn(fields) {
+    date_time.fields_formatter(en_gb.locale(), fields)
+    |> date_time.format(midday, zone: time_zone.utc)
+  }
+  assert format(fields.new()) == "25/10/2026"
+  assert format(fields.new() |> fields.era(fields.Long))
+    == "25/10/2026 Anno Domini"
 }
 
 pub fn fraction_test() {
-  let assert Ok(formatter) =
+  let formatter =
     fields.new()
     |> fields.second(fields.Numeric)
     |> fields.fraction(fields.Hundredths)
@@ -135,17 +136,24 @@ pub fn hour_cycle_test() {
     == "2026/10/26 午後10:40"
 }
 
-pub fn format_date_test() {
-  let birthday = calendar.Date(2026, calendar.October, 26)
+/// A date with no time zone, like a birthday, is formatted as a moment at
+/// UTC, shown in UTC.
+pub fn plain_date_test() {
+  let birthday =
+    timestamp.from_calendar(
+      date: calendar.Date(2026, calendar.October, 26),
+      time: calendar.TimeOfDay(9, 5, 0, 0),
+      offset: calendar.utc_offset,
+    )
   assert date_time.date_formatter(en_gb.locale(), style: date_time.Long)
-    |> date_time.format_date(birthday)
+    |> date_time.format(birthday, zone: time_zone.utc)
     == "26 October 2026"
   assert date_time.date_time_formatter(
       en_gb.locale(),
       date: date_time.Short,
       time: date_time.Short,
     )
-    |> date_time.format_date_time(birthday, calendar.TimeOfDay(9, 5, 0, 0))
+    |> date_time.format(birthday, zone: time_zone.utc)
     == "26/10/2026, 09:05"
 }
 
@@ -296,8 +304,7 @@ pub fn field_fixtures_test() {
         "h23" -> glintl.with_hour_cycle(locale, glintl.H23)
         _ -> glintl.with_hour_cycle(locale, glintl.H24)
       }
-      let assert Ok(formatter) =
-        date_time.fields_formatter(locale, parse_fields(shown))
+      let formatter = date_time.fields_formatter(locale, parse_fields(shown))
       let assert Ok(zone) = time_zone.from_duration(duration.minutes(offset))
       let moment =
         timestamp.from_unix_seconds(seconds)

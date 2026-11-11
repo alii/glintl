@@ -24,7 +24,6 @@
 //// `Intl.DateTimeFormat` is used, so the output can differ slightly between
 //// targets and between JavaScript runtimes.
 
-import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glintl.{type Locale}
 import glintl/date_time/fields.{type Fields}
@@ -90,13 +89,6 @@ pub fn date_time_formatter(
   )
 }
 
-/// Why a formatter for fields couldn't be made.
-pub type FieldsError {
-  /// There's no date or time field to show. An era or a time zone isn't
-  /// enough on its own.
-  NoFields
-}
-
 /// Format the fields you pick, like the `weekday`, `month` and `hour`
 /// options of JavaScript's `Intl.DateTimeFormat`. See `glintl/date_time/fields`.
 ///
@@ -105,12 +97,13 @@ pub type FieldsError {
 /// |> fields.day(fields.Numeric)
 /// |> fields.month_name(fields.Short)
 /// |> date_time.fields_formatter(en_gb.locale(), _)
-/// // -> Ok(formatter), which formats as "25 Oct"
+/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
+/// // -> "25 Oct"
 /// ```
-pub fn fields_formatter(
-  locale: Locale,
-  fields: Fields,
-) -> Result(Formatter, FieldsError) {
+///
+/// Like Intl, if you pick no date or time part, this adds a numeric year,
+/// month and day. An era or a time zone's name is added to that.
+pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
   let request = fields.request(fields, glintl.intl_hour_cycle_option(locale))
   let matcher.Request(
     weekday:,
@@ -128,10 +121,17 @@ pub fn fields_formatter(
     [weekday, year, month, day, day_period, hour, minute, second]
     |> list_any_set
   case shown || fractional_second_digits > 0 {
-    True -> Ok(new_fields(locale, request))
-    False -> Error(NoFields)
+    True -> new_fields(locale, request)
+    False ->
+      new_fields(
+        locale,
+        matcher.Request(..request, year: numeric, month: numeric, day: numeric),
+      )
   }
 }
+
+/// Intl's value for a number with as many digits as it needs.
+const numeric = "numeric"
 
 fn list_any_set(options: List(String)) -> Bool {
   case options {
@@ -142,6 +142,22 @@ fn list_any_set(options: List(String)) -> Bool {
 }
 
 /// Format a moment as the clocks in `zone` show it.
+///
+/// A date with no time zone, like a birthday, is a moment at UTC shown in
+/// UTC:
+///
+/// ```gleam
+/// let birthday =
+///   timestamp.from_calendar(
+///     date: calendar.Date(2026, calendar.October, 26),
+///     time: calendar.TimeOfDay(0, 0, 0, 0),
+///     offset: calendar.utc_offset,
+///   )
+///
+/// date_time.date_formatter(en_gb.locale(), style: date_time.Long)
+/// |> date_time.format(birthday, zone: time_zone.utc)
+/// // -> "26 October 2026"
+/// ```
 ///
 /// Time zones are written as a GMT offset, like `GMT+1`, because glintl knows
 /// the offset but not the zone's name.
@@ -158,29 +174,6 @@ pub fn format(
     nanoseconds,
     time_zone.offset_minutes(zone),
   )
-}
-
-/// Format a date, like a birthday, that isn't tied to a time zone. If the
-/// formatter shows a time, it shows midnight.
-///
-/// ```gleam
-/// date_time.date_formatter(en_gb.locale(), style: date_time.Long)
-/// |> date_time.format_date(calendar.Date(2026, calendar.October, 26))
-/// // -> "26 October 2026"
-/// ```
-pub fn format_date(formatter: Formatter, date: calendar.Date) -> String {
-  format_date_time(formatter, date, calendar.TimeOfDay(0, 0, 0, 0))
-}
-
-/// Format a date and a time of day that aren't tied to a time zone. If the
-/// formatter shows a time zone, it shows UTC.
-pub fn format_date_time(
-  formatter: Formatter,
-  date: calendar.Date,
-  time: calendar.TimeOfDay,
-) -> String {
-  timestamp.from_calendar(date:, time:, offset: calendar.utc_offset)
-  |> format(formatter, _, zone: time_zone.utc)
 }
 
 @target(erlang)

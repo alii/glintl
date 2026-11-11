@@ -104,15 +104,13 @@ fn formatter() -> date_time.Formatter {
 /// Shows the same fields as `formatter`, so the two timings compare like with
 /// like.
 fn fields_formatter() -> date_time.Formatter {
-  let assert Ok(formatter) =
-    fields.new()
-    |> fields.day(fields.Numeric)
-    |> fields.month_name(fields.Long)
-    |> fields.year(fields.Numeric)
-    |> fields.hour(fields.TwoDigit)
-    |> fields.minute(fields.TwoDigit)
-    |> date_time.fields_formatter(en_gb.locale(), _)
-  formatter
+  fields.new()
+  |> fields.day(fields.Numeric)
+  |> fields.month_name(fields.Long)
+  |> fields.year(fields.Numeric)
+  |> fields.hour(fields.TwoDigit)
+  |> fields.minute(fields.TwoDigit)
+  |> date_time.fields_formatter(en_gb.locale(), _)
 }
 
 fn per(micros: Int, count: Int) -> String {

@@ -81,11 +81,7 @@ fn new(
     _ -> panic as { "unknown hour cycle: " <> hour_cycle }
   }
   case date, time {
-    0, 0 -> {
-      let assert Ok(formatter) =
-        date_time.fields_formatter(locale, parse_fields(fields))
-      formatter
-    }
+    0, 0 -> date_time.fields_formatter(locale, parse_fields(fields))
     0, time -> date_time.time_formatter(locale, style: style(time))
     date, 0 -> date_time.date_formatter(locale, style: style(date))
     date, time ->
@@ -98,8 +94,10 @@ fn new(
 }
 
 fn parse_fields(text: String) -> Fields {
-  text
-  |> string.split(",")
+  case text {
+    "" -> []
+    _ -> string.split(text, ",")
+  }
   |> list.fold(fields.new(), fn(f, option) {
     let assert [name, value] = string.split(option, "=")
     case name {

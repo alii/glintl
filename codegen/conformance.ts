@@ -33,7 +33,6 @@ import {
 import {
   FIELD_CHOICES,
   type Field,
-  NOT_ENOUGH,
   fieldsText,
   randomFields,
 } from "./fixtures.ts";
@@ -324,10 +323,6 @@ const everyMoments = [
 
 function everyCases(tag: string, calendar: string, index: number): Case[] {
   const [fields, hourCycle] = requestAt(index);
-
-  if (!fields.some(([name]) => !NOT_ENOUGH.includes(name))) {
-    return [];
-  }
 
   const resolved =
     calendar || new Intl.DateTimeFormat(tag).resolvedOptions().calendar;

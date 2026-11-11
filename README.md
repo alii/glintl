@@ -2,7 +2,7 @@
 
 Format dates and times in many languages, on Erlang and JavaScript.
 
-On Erlang, Glintl it aims to give the same output as JavaScript's `Intl` API, and is faster and has a much smaller memory footprint than other internationalisation libraries. On JavaScript, Glintl defers to the host's implementation of `Intl`.
+On Erlang, Glintl aims to give the same output as JavaScript's `Intl` API, and is faster and has a much smaller memory footprint than other internationalisation libraries. On JavaScript, Glintl defers to the host's implementation of `Intl`.
 
 [Documentation](https://hexdocs.pm/glintl/) • [Repository](https://github.com/alii/glintl)
 
@@ -15,29 +15,25 @@ gleam add glintl gleam_time
 ```gleam
 import gleam/time/timestamp
 import glintl/date_time
+import glintl/date_time/fields
 import glintl/locale/en_gb
-import glintl/locale/fr
 import glintl/time_zone
 
 pub fn main() {
-  let now = timestamp.system_time()
-  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
+  // Like Intl's { day: "numeric", month: "short", year: "numeric" }
+  let formatter =
+    fields.new()
+    |> fields.day(fields.Numeric)
+    |> fields.month_name(fields.Short)
+    |> fields.year(fields.Numeric)
+    |> date_time.fields_formatter(en_gb.locale(), _)
 
-  date_time.date_time_formatter(
-    en_gb.locale(),
-    date: date_time.Long,
-    time: date_time.Short,
-  )
-  |> date_time.format(now, zone:)
-  // -> "25 October 2026 at 23:40"
-
-  date_time.date_formatter(fr.locale(), style: date_time.Full)
-  |> date_time.format(now, zone:)
-  // -> "dimanche 25 octobre 2026"
+  date_time.format(formatter, timestamp.system_time(), zone: time_zone.utc)
+  // -> "25 Oct 2026"
 }
 ```
 
-Creating a formatter is slightly expensive, so it's always best to make it once and reuse it when possible.
+Make a formatter once and reuse it, because making one is the slow part. There are also formatters for Intl's `dateStyle` and `timeStyle`, like `date_time.date_formatter(locale, style: date_time.Long)`.
 
 Each locale is a separate Gleam module, like `glintl/locale/fr`. If you don't know the locale until your app runs, you can look it up with the helpers in `glintl/locales`. You can use these helpers to read an `Accept-Language` header, for example.
 

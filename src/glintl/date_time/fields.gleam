@@ -9,7 +9,7 @@
 //// import glintl/locale/en_gb
 //// import glintl/time_zone
 ////
-//// let assert Ok(formatter) =
+//// let formatter =
 ////   fields.new()
 ////   |> fields.weekday(fields.Long)
 ////   |> fields.day(fields.Numeric)
@@ -20,7 +20,8 @@
 //// // -> "Sunday 25 October"
 //// ```
 ////
-//// Setting a field again replaces it.
+//// Setting a field again replaces it. Like Intl, with no date or time part,
+//// a formatter shows a numeric year, month and day.
 
 import glintl/internal/matcher
 
@@ -91,7 +92,7 @@ pub fn weekday(fields: Fields, width: Width) -> Fields {
   Fields(matcher.Request(..fields.request, weekday: width_option(width)))
 }
 
-/// Show the era, like "AD". An era on its own isn't enough for a formatter.
+/// Show the era, like "AD".
 pub fn era(fields: Fields, width: Width) -> Fields {
   Fields(matcher.Request(..fields.request, era: width_option(width)))
 }
@@ -148,7 +149,7 @@ pub fn fraction(fields: Fields, fraction: Fraction) -> Fields {
   Fields(matcher.Request(..fields.request, fractional_second_digits: digits))
 }
 
-/// Show the time zone. A time zone on its own isn't enough for a formatter.
+/// Show the time zone.
 pub fn time_zone(fields: Fields, time_zone: TimeZone) -> Fields {
   let name = case time_zone {
     ShortName -> "short"

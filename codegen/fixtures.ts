@@ -430,7 +430,7 @@ export const FIELD_CHOICES = [
 const FIELD_SHARE = 0.4;
 
 // An era or a time zone isn't enough on its own.
-export const NOT_ENOUGH = ["era", "timeZoneName"];
+const NOT_ENOUGH = ["era", "timeZoneName"];
 
 export type Field = [string, string | number];
 
