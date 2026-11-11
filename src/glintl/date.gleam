@@ -6,7 +6,7 @@
 //// import glintl/date
 //// import glintl/locale/en_gb
 ////
-//// let formatter = date.formatter(en_gb.locale(), style: date.Long)
+//// let formatter = date.date_formatter(en_gb.locale(), style: date.Long)
 ////
 //// date.format(formatter, calendar.Date(2026, calendar.October, 26))
 //// // -> "26 October 2026"
@@ -73,7 +73,7 @@ pub opaque type Fields {
 }
 
 /// Format the date in a style.
-pub fn formatter(locale: Locale, style style: Style) -> Formatter {
+pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
   let style = case style {
     Full -> data.Full
     Long -> data.Long

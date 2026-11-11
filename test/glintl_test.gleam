@@ -141,7 +141,7 @@ pub fn hour_cycle_test() {
 pub fn date_test() {
   let birthday = calendar.Date(2026, calendar.October, 26)
   let styled = fn(style) {
-    date.formatter(en_gb.locale(), style:) |> date.format(birthday)
+    date.date_formatter(en_gb.locale(), style:) |> date.format(birthday)
   }
   assert styled(date.Full) == "Monday, 26 October 2026"
   assert styled(date.Long) == "26 October 2026"
@@ -166,7 +166,7 @@ pub fn date_test() {
 
   assert en_gb.locale()
     |> glintl.with_calendar(glintl.Hebrew)
-    |> date.formatter(style: date.Long)
+    |> date.date_formatter(style: date.Long)
     |> date.format(birthday)
     == "15 Heshvan 5787"
 }
