@@ -18,7 +18,6 @@ import gleam/time/duration
 import gleam/time/timestamp
 import glintl
 import glintl/date_time.{type Formatter}
-import glintl/date_time/fields.{type Fields}
 import glintl/locales
 import glintl/time_zone
 
@@ -93,58 +92,58 @@ fn new(
   }
 }
 
-fn parse_fields(text: String) -> Fields {
+fn parse_fields(text: String) -> date_time.Fields {
   case text {
     "" -> []
     _ -> string.split(text, ",")
   }
-  |> list.fold(fields.new(), fn(f, option) {
+  |> list.fold(date_time.new(), fn(f, option) {
     let assert [name, value] = string.split(option, "=")
     case name {
-      "weekday" -> fields.weekday(f, width(value))
-      "era" -> fields.era(f, width(value))
-      "year" -> fields.year(f, digits(value))
+      "weekday" -> date_time.weekday(f, width(value))
+      "era" -> date_time.era(f, width(value))
+      "year" -> date_time.year(f, digits(value))
       "month" ->
         case value {
-          "numeric" | "2-digit" -> fields.month(f, digits(value))
-          _ -> fields.month_name(f, width(value))
+          "numeric" | "2-digit" -> date_time.month(f, digits(value))
+          _ -> date_time.month_name(f, width(value))
         }
-      "day" -> fields.day(f, digits(value))
-      "dayPeriod" -> fields.day_period(f, width(value))
-      "hour" -> fields.hour(f, digits(value))
-      "minute" -> fields.minute(f, digits(value))
-      "second" -> fields.second(f, digits(value))
+      "day" -> date_time.day(f, digits(value))
+      "dayPeriod" -> date_time.day_period(f, width(value))
+      "hour" -> date_time.hour(f, digits(value))
+      "minute" -> date_time.minute(f, digits(value))
+      "second" -> date_time.second(f, digits(value))
       "fractionalSecondDigits" ->
-        fields.fraction(f, case value {
-          "1" -> fields.Tenths
-          "2" -> fields.Hundredths
-          _ -> fields.Thousandths
+        date_time.fraction(f, case value {
+          "1" -> date_time.Tenths
+          "2" -> date_time.Hundredths
+          _ -> date_time.Thousandths
         })
       "timeZoneName" ->
-        fields.time_zone(f, case value {
-          "short" -> fields.ShortName
-          "long" -> fields.LongName
-          "shortOffset" -> fields.ShortOffset
-          _ -> fields.LongOffset
+        date_time.time_zone_name(f, case value {
+          "short" -> date_time.ShortName
+          "long" -> date_time.LongName
+          "shortOffset" -> date_time.ShortOffset
+          _ -> date_time.LongOffset
         })
       _ -> panic as { "unknown field: " <> name }
     }
   })
 }
 
-fn width(value: String) -> fields.Width {
+fn width(value: String) -> glintl.Width {
   case value {
-    "narrow" -> fields.Narrow
-    "short" -> fields.Short
-    "long" -> fields.Long
+    "narrow" -> glintl.Narrow
+    "short" -> glintl.Short
+    "long" -> glintl.Long
     _ -> panic as { "unknown width: " <> value }
   }
 }
 
-fn digits(value: String) -> fields.Digits {
+fn digits(value: String) -> glintl.Digits {
   case value {
-    "numeric" -> fields.Numeric
-    "2-digit" -> fields.TwoDigit
+    "numeric" -> glintl.Numeric
+    "2-digit" -> glintl.TwoDigit
     _ -> panic as { "unknown digits: " <> value }
   }
 }

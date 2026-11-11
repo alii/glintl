@@ -57,6 +57,23 @@ pub fn locale_tag(locale: Locale) -> String {
   locale.tag
 }
 
+/// How wide a name is, like Intl's `"narrow"`, `"short"` and `"long"`. In
+/// British English, a weekday is `Narrow` "S", `Short` "Sun" or `Long`
+/// "Sunday".
+pub type Width {
+  Narrow
+  Short
+  Long
+}
+
+/// How a number is written, like Intl's `"numeric"` and `"2-digit"`.
+/// `Numeric` has as many digits as it needs, and `TwoDigit` always has two,
+/// like "05", or a year's last two, like "26".
+pub type Digits {
+  Numeric
+  TwoDigit
+}
+
 /// The calendars glintl can format dates in.
 ///
 /// Each locale has a default: most use `Gregorian`, Thai uses `Buddhist`,

@@ -1,5 +1,5 @@
-//// Time zones, which say where to show a moment. For now a time zone is a
-//// fixed offset from UTC.
+//// A time zone says where to show a moment. For now, glintl only knows fixed
+//// offsets from UTC.
 ////
 //// ```gleam
 //// import gleam/time/calendar
@@ -38,7 +38,7 @@ pub type OffsetError {
   OffsetTooLarge
 }
 
-/// A time zone `hours` and `minutes` ahead of UTC, like
+/// Makes a time zone `hours` and `minutes` ahead of UTC, like
 /// `offset(hours: 5, minutes: 30)` for India. Behind UTC both are negative,
 /// like `offset(hours: -3, minutes: -30)` for Newfoundland.
 pub fn offset(
@@ -54,8 +54,8 @@ pub fn offset(
   }
 }
 
-/// A time zone a `gleam_time` duration ahead of UTC, like
-/// `calendar.local_offset()`, rounded down to whole minutes.
+/// Makes a time zone a `gleam_time` duration ahead of UTC, like
+/// `calendar.local_offset()`. It rounds down to whole minutes.
 pub fn from_duration(duration: Duration) -> Result(TimeZone, OffsetError) {
   let #(seconds, _) = duration.to_seconds_and_nanoseconds(duration)
   let remainder =

@@ -14,27 +14,30 @@ gleam add glintl gleam_time
 
 ```gleam
 import gleam/time/timestamp
+import glintl
 import glintl/date_time
-import glintl/date_time/fields
 import glintl/locale/en_gb
 import glintl/time_zone
 
 pub fn main() {
-  // Like Intl's { day: "numeric", month: "short", year: "numeric" }
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
+
+  // Like Intl's { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }
   let options =
-    fields.new()
-    |> fields.day(fields.Numeric)
-    |> fields.month_name(fields.Short)
-    |> fields.year(fields.Numeric)
+    date_time.new()
+    |> date_time.day(glintl.Numeric)
+    |> date_time.month_name(glintl.Short)
+    |> date_time.hour(glintl.TwoDigit)
+    |> date_time.minute(glintl.TwoDigit)
 
   let formatter = date_time.fields_formatter(en_gb.locale(), options)
 
-  date_time.format(formatter, timestamp.system_time(), zone: time_zone.utc)
-  // -> "25 Oct 2026"
+  date_time.format(formatter, timestamp.system_time(), zone:)
+  // -> "25 Oct, 23:40"
 }
 ```
 
-Make a formatter once and reuse it, because making one is the slow part. There are also formatters for Intl's `dateStyle` and `timeStyle`, like `date_time.date_formatter(locale, style: date_time.Long)`.
+Creating a formatter is slightly expensive, so it's always best to make it once and reuse it when possible. There are also formatters for Intl's `dateStyle` and `timeStyle`, like `date_time.date_formatter(locale, style: date_time.Long)`. For dates with no time or time zone, like birthdays, use `glintl/date`.
 
 Each locale is a separate Gleam module, like `glintl/locale/fr`. If you don't know the locale until your app runs, you can look it up with the helpers in `glintl/locales`. You can use these helpers to read an `Accept-Language` header, for example.
 

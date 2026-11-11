@@ -8,8 +8,8 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/time/timestamp.{type Timestamp}
+import glintl
 import glintl/date_time
-import glintl/date_time/fields
 import glintl/locale/en_gb
 import glintl/time_zone
 
@@ -104,12 +104,12 @@ fn formatter() -> date_time.Formatter {
 /// Shows the same fields as `formatter`, so the two timings compare like with
 /// like.
 fn fields_formatter() -> date_time.Formatter {
-  fields.new()
-  |> fields.day(fields.Numeric)
-  |> fields.month_name(fields.Long)
-  |> fields.year(fields.Numeric)
-  |> fields.hour(fields.TwoDigit)
-  |> fields.minute(fields.TwoDigit)
+  date_time.new()
+  |> date_time.day(glintl.Numeric)
+  |> date_time.month_name(glintl.Long)
+  |> date_time.year(glintl.Numeric)
+  |> date_time.hour(glintl.TwoDigit)
+  |> date_time.minute(glintl.TwoDigit)
   |> date_time.fields_formatter(en_gb.locale(), _)
 }
 

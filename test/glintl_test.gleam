@@ -9,10 +9,12 @@ import gleeunit
 import glintl
 @target(erlang)
 import glintl/calendar_fixtures
+import glintl/date
 import glintl/date_time
-import glintl/date_time/fields.{type Fields}
 import glintl/field_fixtures
 import glintl/fixtures
+@target(erlang)
+import glintl/internal/engine
 @target(erlang)
 import glintl/internal/render
 import glintl/locale/en
@@ -44,10 +46,10 @@ pub fn example_test() {
 
 pub fn fields_example_test() {
   let formatter =
-    fields.new()
-    |> fields.weekday(fields.Long)
-    |> fields.day(fields.Numeric)
-    |> fields.month_name(fields.Long)
+    date_time.new()
+    |> date_time.weekday(glintl.Long)
+    |> date_time.day(glintl.Numeric)
+    |> date_time.month_name(glintl.Long)
     |> date_time.fields_formatter(en_gb.locale(), _)
   let sunday = timestamp.from_unix_seconds(1_792_929_600)
   assert date_time.format(formatter, sunday, zone: time_zone.utc)
@@ -61,16 +63,16 @@ pub fn default_fields_test() {
     date_time.fields_formatter(en_gb.locale(), fields)
     |> date_time.format(midday, zone: time_zone.utc)
   }
-  assert format(fields.new()) == "25/10/2026"
-  assert format(fields.new() |> fields.era(fields.Long))
+  assert format(date_time.new()) == "25/10/2026"
+  assert format(date_time.new() |> date_time.era(glintl.Long))
     == "25/10/2026 Anno Domini"
 }
 
 pub fn fraction_test() {
   let formatter =
-    fields.new()
-    |> fields.second(fields.Numeric)
-    |> fields.fraction(fields.Hundredths)
+    date_time.new()
+    |> date_time.second(glintl.Numeric)
+    |> date_time.fraction(date_time.Hundredths)
     |> date_time.fields_formatter(en_gb.locale(), _)
   let moment =
     timestamp.from_unix_seconds(1_792_929_604)
@@ -136,25 +138,37 @@ pub fn hour_cycle_test() {
     == "2026/10/26 午後10:40"
 }
 
-/// A date with no time zone, like a birthday, is formatted as a moment at
-/// UTC, shown in UTC.
-pub fn plain_date_test() {
-  let birthday =
-    timestamp.from_calendar(
-      date: calendar.Date(2026, calendar.October, 26),
-      time: calendar.TimeOfDay(9, 5, 0, 0),
-      offset: calendar.utc_offset,
-    )
-  assert date_time.date_formatter(en_gb.locale(), style: date_time.Long)
-    |> date_time.format(birthday, zone: time_zone.utc)
-    == "26 October 2026"
-  assert date_time.date_time_formatter(
+pub fn date_test() {
+  let birthday = calendar.Date(2026, calendar.October, 26)
+  let styled = fn(style) {
+    date.formatter(en_gb.locale(), style:) |> date.format(birthday)
+  }
+  assert styled(date.Full) == "Monday, 26 October 2026"
+  assert styled(date.Long) == "26 October 2026"
+  assert styled(date.Medium) == "26 Oct 2026"
+  assert styled(date.Short) == "26/10/2026"
+
+  let options =
+    date.new()
+    |> date.weekday(glintl.Long)
+    |> date.day(glintl.Numeric)
+    |> date.month_name(glintl.Long)
+  assert date.fields_formatter(en_gb.locale(), options) |> date.format(birthday)
+    == "Monday 26 October"
+
+  // Like Intl, an era on its own gets a numeric date.
+  assert date.fields_formatter(
       en_gb.locale(),
-      date: date_time.Short,
-      time: date_time.Short,
+      date.new() |> date.era(glintl.Long),
     )
-    |> date_time.format(birthday, zone: time_zone.utc)
-    == "26/10/2026, 09:05"
+    |> date.format(birthday)
+    == "26/10/2026 Anno Domini"
+
+  assert en_gb.locale()
+    |> glintl.with_calendar(glintl.Hebrew)
+    |> date.formatter(style: date.Long)
+    |> date.format(birthday)
+    == "15 Heshvan 5787"
 }
 
 /// Offsets must be under 24 hours either way, because that's all JavaScript's
@@ -328,46 +342,51 @@ pub fn field_fixtures_test() {
 }
 
 /// Reads fields from a fixture, like `day=numeric,month=short`.
-fn parse_fields(text: String) -> Fields {
+fn parse_fields(text: String) -> date_time.Fields {
   text
   |> string.split(",")
-  |> list.fold(fields.new(), fn(f, option) {
+  |> list.fold(date_time.new(), fn(f, option) {
     let assert [name, value] = string.split(option, "=")
     case name, value {
-      "weekday", _ -> fields.weekday(f, width(value))
-      "era", _ -> fields.era(f, width(value))
-      "year", _ -> fields.year(f, digits(value))
-      "month", "numeric" | "month", "2-digit" -> fields.month(f, digits(value))
-      "month", _ -> fields.month_name(f, width(value))
-      "day", _ -> fields.day(f, digits(value))
-      "dayPeriod", _ -> fields.day_period(f, width(value))
-      "hour", _ -> fields.hour(f, digits(value))
-      "minute", _ -> fields.minute(f, digits(value))
-      "second", _ -> fields.second(f, digits(value))
-      "fractionalSecondDigits", "1" -> fields.fraction(f, fields.Tenths)
-      "fractionalSecondDigits", "2" -> fields.fraction(f, fields.Hundredths)
-      "fractionalSecondDigits", _ -> fields.fraction(f, fields.Thousandths)
-      "timeZoneName", "short" -> fields.time_zone(f, fields.ShortName)
-      "timeZoneName", "long" -> fields.time_zone(f, fields.LongName)
-      "timeZoneName", "shortOffset" -> fields.time_zone(f, fields.ShortOffset)
-      "timeZoneName", _ -> fields.time_zone(f, fields.LongOffset)
+      "weekday", _ -> date_time.weekday(f, width(value))
+      "era", _ -> date_time.era(f, width(value))
+      "year", _ -> date_time.year(f, digits(value))
+      "month", "numeric" | "month", "2-digit" ->
+        date_time.month(f, digits(value))
+      "month", _ -> date_time.month_name(f, width(value))
+      "day", _ -> date_time.day(f, digits(value))
+      "dayPeriod", _ -> date_time.day_period(f, width(value))
+      "hour", _ -> date_time.hour(f, digits(value))
+      "minute", _ -> date_time.minute(f, digits(value))
+      "second", _ -> date_time.second(f, digits(value))
+      "fractionalSecondDigits", "1" -> date_time.fraction(f, date_time.Tenths)
+      "fractionalSecondDigits", "2" ->
+        date_time.fraction(f, date_time.Hundredths)
+      "fractionalSecondDigits", _ ->
+        date_time.fraction(f, date_time.Thousandths)
+      "timeZoneName", "short" ->
+        date_time.time_zone_name(f, date_time.ShortName)
+      "timeZoneName", "long" -> date_time.time_zone_name(f, date_time.LongName)
+      "timeZoneName", "shortOffset" ->
+        date_time.time_zone_name(f, date_time.ShortOffset)
+      "timeZoneName", _ -> date_time.time_zone_name(f, date_time.LongOffset)
       _, _ -> panic as { "unknown field in the fixtures: " <> name }
     }
   })
 }
 
-fn width(value: String) -> fields.Width {
+fn width(value: String) -> glintl.Width {
   case value {
-    "narrow" -> fields.Narrow
-    "short" -> fields.Short
-    _ -> fields.Long
+    "narrow" -> glintl.Narrow
+    "short" -> glintl.Short
+    _ -> glintl.Long
   }
 }
 
-fn digits(value: String) -> fields.Digits {
+fn digits(value: String) -> glintl.Digits {
   case value {
-    "numeric" -> fields.Numeric
-    _ -> fields.TwoDigit
+    "numeric" -> glintl.Numeric
+    _ -> glintl.TwoDigit
   }
 }
 
@@ -380,7 +399,7 @@ pub fn calendar_fields_test() {
     |> list.filter(fn(case_) {
       let #(calendar, day, expected) = case_
       render.calendar_fields(
-        date_time.calendar_math(calendar_from_id(calendar)),
+        engine.calendar_math(calendar_from_id(calendar)),
         day,
       )
       != expected
