@@ -214,8 +214,8 @@ pub fn time_zone_name(options: Fields, name: TimeZoneName) -> Fields {
 ///
 /// For a date with no time or time zone, like a birthday, use `glintl/date`.
 ///
-/// Time zones are written as a GMT offset, like `GMT+1`, because glintl knows
-/// the offset but not the zone's name.
+/// On Erlang, glintl can't show time zone names like "British Summer Time"
+/// yet, so it shows the offset instead, like "GMT+1".
 pub fn format(
   formatter: Formatter,
   timestamp: Timestamp,
@@ -223,12 +223,7 @@ pub fn format(
 ) -> String {
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
-  engine.format(
-    formatter.compiled,
-    seconds,
-    nanoseconds,
-    time_zone.offset_minutes(zone),
-  )
+  engine.format(formatter.compiled, seconds, nanoseconds, zone)
 }
 
 fn internal_style(style: Style) -> data.Style {

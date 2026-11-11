@@ -40,6 +40,7 @@ import { LOCALES } from "./locales.ts";
 import { HOUR_CYCLES } from "./patterns.ts";
 import { random } from "./random.ts";
 import { requirePinnedBun } from "./runtime.ts";
+import { zoneData } from "./zones.ts";
 import {
   HOURS_PER_DAY,
   HOURS_PER_HALF_DAY,
@@ -52,7 +53,7 @@ import {
 
 const ROOT = join(import.meta.dir, "..");
 
-const MODES = ["--save", "--check", "--every"];
+const MODES = ["--save", "--check", "--every", "--zones"];
 
 const [mode, argument] = MODES.includes(process.argv[2]!)
   ? [process.argv[2]!, process.argv[3]!]
@@ -398,6 +399,119 @@ function every(): IteratorObject<Case[]> {
   return from(part - 1);
 }
 
+// --- Time zones ------------------------------------------------------------------
+
+// Formats that show a time and an offset, but not a zone's name, which glintl
+// doesn't have yet.
+const ZONE_FORMATS: [number, number, string][] = [
+  [STYLES.indexOf("short"), STYLES.indexOf("medium"), ""],
+  [0, 0, "hour=2-digit,minute=2-digit,second=2-digit,timeZoneName=longOffset"],
+  [0, 0, "day=numeric,month=short,hour=numeric,timeZoneName=shortOffset"],
+];
+
+// Years after the data's last change where zones follow a yearly rule.
+const RULE_YEARS = [2030, 2037, 2038, 2050, 2099, 2100, 2400, 3999];
+
+const DAYS_PER_YEAR = 366;
+
+const intlOffsets = new Map<string, Intl.DateTimeFormat>();
+
+// The zone's offset at a moment as Intl writes it, like "GMT+01:00".
+function intlOffset(zone: string, seconds: number): string {
+  const f =
+    intlOffsets.get(zone) ??
+    new Intl.DateTimeFormat("en", {
+      timeZone: zone,
+      timeZoneName: "longOffset",
+    });
+
+  intlOffsets.set(zone, f);
+
+  return f
+    .formatToParts(seconds * MS_PER_SECOND)
+    .find((p) => p.type === "timeZoneName")!.value;
+}
+
+// The second the offset changes between `from`, which has one offset, and
+// `to`, which has another.
+function change(zone: string, from: number, to: number): number {
+  if (to - from <= 1) {
+    return to;
+  }
+
+  const middle = Math.floor((from + to) / 2);
+
+  return intlOffset(zone, middle) === intlOffset(zone, from)
+    ? change(zone, middle, to)
+    : change(zone, from, middle);
+}
+
+// Moments where a zone's offset changes in a year, found by asking Intl.
+function changesIn(zone: string, year: number): number[] {
+  const start = Date.UTC(year, 0, 1) / MS_PER_SECOND;
+
+  return Array.from(
+    { length: DAYS_PER_YEAR },
+    (_, d) => start + d * SECONDS_PER_DAY,
+  ).flatMap((day, d, days) => {
+    const next = days[d + 1];
+
+    return next !== undefined &&
+      intlOffset(zone, day) !== intlOffset(zone, next)
+      ? [change(zone, day, next)]
+      : [];
+  });
+}
+
+function zoneCases(zone: string, moments: number[]): Case[] {
+  return ZONE_FORMATS.flatMap(([date, time, fields]) => {
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+      ...(fields === ""
+        ? { dateStyle: STYLES[date], timeStyle: STYLES[time] }
+        : Object.fromEntries(fields.split(",").map((f) => f.split("=")))),
+      timeZone: zone,
+    });
+
+    return moments.map((seconds) => ({
+      line: ["en-GB", "", date, time, "", fields, seconds, 0, zone].join("\t"),
+      expected: formatter.format(seconds * MS_PER_SECOND),
+    }));
+  });
+}
+
+// Every zone Intl accepts, a second before and at each change in glintl's
+// data, and at each yearly change in some later years.
+function zoneBatches(): IteratorObject<Case[]> {
+  const data = zoneData();
+  const seen = new Set<number>();
+
+  const samples = [
+    Date.UTC(1800, 5, 1),
+    Date.UTC(1950, 5, 1),
+    Date.UTC(2026, 0, 15),
+    Date.UTC(2026, 6, 15),
+  ].map((ms) => ms / MS_PER_SECOND);
+
+  return data.names.values().map(([name, zone]) => {
+    // A zone's other names only get the sample moments.
+    const first = !seen.has(zone);
+    seen.add(zone);
+
+    const rules = data.zones[zone]!;
+
+    const ruled =
+      first && rules.final !== undefined
+        ? RULE_YEARS.flatMap((year) => changesIn(name, year))
+        : [];
+
+    const moments = [...(first ? rules.transitions : []), ...ruled].flatMap(
+      (t) => [t - 1, t],
+    );
+
+    return zoneCases(name, [...moments, ...samples]);
+  });
+}
+
 // --- Checking -----------------------------------------------------------------
 
 // Cases are made here, or read from a saved file whose first line names the
@@ -438,7 +552,11 @@ function batches(): IteratorObject<Case[]> {
       .map((n) => saved.slice(n, n + BATCH).map(parse));
   }
 
-  return mode === "--every" ? every() : made(0);
+  return mode === "--every"
+    ? every()
+    : mode === "--zones"
+      ? zoneBatches()
+      : made(0);
 }
 
 if (mode === "--save") {

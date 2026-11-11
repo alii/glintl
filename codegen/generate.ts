@@ -34,6 +34,11 @@ import {
   formats,
   localDigits,
 } from "./patterns.ts";
+import {
+  DESCRIPTION as ZONES_DESCRIPTION,
+  PATH as ZONES_PATH,
+  zonesModule,
+} from "./zones.ts";
 
 requirePinnedBun("codegen/generate.ts");
 
@@ -308,6 +313,8 @@ await Promise.all(
     );
   }),
 );
+
+await write(ZONES_PATH, zonesModule(header(ZONES_DESCRIPTION)));
 
 // --- Gleam --------------------------------------------------------------------
 

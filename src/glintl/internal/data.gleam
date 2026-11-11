@@ -128,7 +128,7 @@ pub type Local {
     hour: Int,
     minute: Int,
     second: Int,
-    offset_minutes: Int,
+    offset_seconds: Int,
     unix_seconds: Int,
     era: Int,
     year: Int,
@@ -193,7 +193,7 @@ pub fn table_local(
   hour hour: Int,
   minute minute: Int,
   second second: Int,
-  offset_minutes offset_minutes: Int,
+  offset_seconds offset_seconds: Int,
   unix_seconds unix_seconds: Int,
 ) -> Result(Local, Nil) {
   // `starts` ends with the day after the last year.
@@ -226,7 +226,7 @@ pub fn table_local(
         hour:,
         minute:,
         second:,
-        offset_minutes:,
+        offset_seconds:,
         unix_seconds:,
         era:,
         year: year + year_step * n,
@@ -325,7 +325,7 @@ pub fn week_year(
 
 @target(erlang)
 /// A day's weekday, from 1 for Monday to 7 for Sunday.
-fn weekday(epoch_day: Int) -> Int {
+pub fn weekday(epoch_day: Int) -> Int {
   modulo(epoch_day + thursday_from_monday - 1, days_per_week) + 1
 }
 
@@ -333,7 +333,7 @@ fn weekday(epoch_day: Int) -> Int {
 /// A proleptic Gregorian date to days since 1970-01-01. From Howard
 /// Hinnant's `days_from_civil`, whose other numbers are part of the published
 /// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
-fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
+pub fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
   let year = case month <= 2 {
     True -> year - 1
     False -> year
@@ -347,6 +347,30 @@ fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
   let doy = { 153 * mp + 2 } / 5 + day - 1
   let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
   era * days_per_400_years + doe - days_from_march_of_year_zero
+}
+
+@target(erlang)
+/// Days since 1970-01-01 to a proleptic Gregorian date. From Howard Hinnant's
+/// `civil_from_days`, whose other numbers are part of the published
+/// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
+pub fn civil_from_days(days: Int) -> #(Int, Int, Int) {
+  let z = days + days_from_march_of_year_zero
+  let era = floor_divide(z, days_per_400_years)
+  let doe = z - era * days_per_400_years
+  let yoe = { doe - doe / 1460 + doe / 36_524 - doe / 146_096 } / 365
+  let doy = doe - { 365 * yoe + yoe / 4 - yoe / 100 }
+  let mp = { 5 * doy + 2 } / 153
+  let day = doy - { 153 * mp + 2 } / 5 + 1
+  let month = case mp < 10 {
+    True -> mp + 3
+    False -> mp - 9
+  }
+  let year = yoe + era * 400
+  let year = case month <= 2 {
+    True -> year + 1
+    False -> year
+  }
+  #(year, month, day)
 }
 
 @target(erlang)
@@ -398,7 +422,7 @@ fn modulo(n: Int, by: Int) -> Int {
 }
 
 @target(erlang)
-fn floor_divide(n: Int, by: Int) -> Int {
+pub fn floor_divide(n: Int, by: Int) -> Int {
   case int.floor_divide(n, by) {
     Ok(result) -> result
     Error(Nil) -> 0

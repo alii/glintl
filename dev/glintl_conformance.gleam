@@ -3,7 +3,8 @@
 //// calendar name (empty for the locale's own), a date style and a time style
 //// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
 //// the locale's own), fields as Intl options like `day=numeric,month=short`
-//// (empty for styles), Unix seconds, milliseconds and an offset in minutes,
+//// (empty for styles), Unix seconds, milliseconds and a time zone, as an offset
+//// in minutes or a name like `Europe/London`,
 //// separated by tabs. Cases that share a formatter come one after another,
 //// so it only keeps the last formatter.
 ////
@@ -13,6 +14,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
@@ -46,8 +48,7 @@ fn loop(last: Option(#(String, Formatter))) -> Nil {
         Some(#(last_key, formatter)) if last_key == key -> formatter
         _ -> new(tag, calendar, hour_cycle, number(date), number(time), fields)
       }
-      let assert Ok(zone) =
-        time_zone.from_duration(duration.minutes(number(offset)))
+      let zone = parse_zone(offset)
       let moment =
         timestamp.from_unix_seconds(number(seconds))
         |> timestamp.add(duration.milliseconds(number(milliseconds)))
@@ -146,6 +147,17 @@ fn digits(value: String) -> glintl.Digits {
     "2-digit" -> glintl.TwoDigit
     _ -> panic as { "unknown digits: " <> value }
   }
+}
+
+fn parse_zone(text: String) -> time_zone.TimeZone {
+  let zone = case int.parse(text) {
+    Ok(minutes) -> time_zone.from_duration(duration.minutes(minutes))
+    Error(Nil) ->
+      time_zone.from_name(text)
+      |> result.replace_error(time_zone.OffsetTooLarge)
+  }
+  let assert Ok(zone) = zone
+  zone
 }
 
 fn number(text: String) -> Int {

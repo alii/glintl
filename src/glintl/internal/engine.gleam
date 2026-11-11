@@ -5,13 +5,14 @@ import glintl.{type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
+import glintl/time_zone.{type TimeZone}
 
 @target(erlang)
 pub type Compiled =
   render.Compiled
 
 @target(javascript)
-/// An `Intl.DateTimeFormat` for each offset.
+/// An `Intl.DateTimeFormat` for each time zone.
 pub type Compiled
 
 /// No fields picked yet.
@@ -95,14 +96,14 @@ fn any_set(options: List(String)) -> Bool {
   }
 }
 
-/// Formats a moment, shown `offset_minutes` ahead of UTC.
+/// Formats a moment as the clocks in `zone` show it.
 pub fn format(
   compiled: Compiled,
   seconds: Int,
   nanoseconds: Int,
-  offset_minutes: Int,
+  zone: TimeZone,
 ) -> String {
-  do_format(compiled, seconds, nanoseconds, offset_minutes)
+  do_format(compiled, seconds, nanoseconds, zone)
 }
 
 @target(erlang)
@@ -283,21 +284,31 @@ fn do_format(
   compiled: Compiled,
   seconds: Int,
   nanoseconds: Int,
-  offset_minutes: Int,
+  zone: TimeZone,
 ) -> String {
   render.render(
     compiled,
     seconds,
     nanoseconds / nanoseconds_per_millisecond,
-    offset_minutes,
+    time_zone.offset_seconds(zone, seconds),
   )
 }
 
 @target(javascript)
-@external(javascript, "../../glintl_ffi.mjs", "format")
 fn do_format(
   compiled: Compiled,
   seconds: Int,
   nanoseconds: Int,
-  offset_minutes: Int,
+  zone: TimeZone,
+) -> String {
+  intl_format(compiled, seconds, nanoseconds, time_zone.intl_time_zone(zone))
+}
+
+@target(javascript)
+@external(javascript, "../../glintl_ffi.mjs", "format")
+fn intl_format(
+  compiled: Compiled,
+  seconds: Int,
+  nanoseconds: Int,
+  time_zone: String,
 ) -> String

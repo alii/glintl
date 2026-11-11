@@ -171,6 +171,38 @@ pub fn date_test() {
     == "15 Heshvan 5787"
 }
 
+pub fn from_name_test() {
+  assert time_zone.from_name("Europe/London") |> result.is_ok
+  assert time_zone.from_name("europe/london")
+    == time_zone.from_name("Europe/London")
+  assert time_zone.from_name("GB") |> result.is_ok
+  assert time_zone.from_name("UTC") |> result.is_ok
+  assert time_zone.from_name("Nowhere/Special") == Error(Nil)
+  assert time_zone.from_name("+01:00") == Error(Nil)
+  assert time_zone.from_name("") == Error(Nil)
+}
+
+/// A named zone's offset follows summer time, and old local mean time,
+/// which can be off by seconds.
+pub fn named_zone_test() {
+  let time = fn(zone_name, rfc3339) {
+    let assert Ok(zone) = time_zone.from_name(zone_name)
+    let assert Ok(moment) = timestamp.parse_rfc3339(rfc3339)
+    date_time.time_formatter(en_gb.locale(), style: date_time.Medium)
+    |> date_time.format(moment, zone:)
+  }
+  assert time("Europe/London", "2026-01-15T12:00:00Z") == "12:00:00"
+  assert time("Europe/London", "2026-07-15T12:00:00Z") == "13:00:00"
+  // The clocks go forward at 01:00 UTC on the last Sunday of March.
+  assert time("Europe/London", "2026-03-29T00:59:59Z") == "00:59:59"
+  assert time("Europe/London", "2026-03-29T01:00:00Z") == "02:00:00"
+  assert time("Europe/London", "2100-07-15T12:00:00Z") == "13:00:00"
+  assert time("Europe/London", "1800-06-01T12:00:00Z") == "11:58:45"
+  assert time("Australia/Sydney", "2026-01-15T00:00:00Z") == "11:00:00"
+  assert time("Australia/Sydney", "2026-07-15T00:00:00Z") == "10:00:00"
+  assert time("Asia/Kolkata", "2026-07-15T00:00:00Z") == "05:30:00"
+}
+
 /// Offsets must be under 24 hours either way, because that's all JavaScript's
 /// `Intl` allows.
 pub fn offset_test() {

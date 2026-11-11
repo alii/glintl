@@ -38,6 +38,7 @@ import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
 import glintl/internal/render
+import glintl/time_zone
 
 /// How much detail to show, from most to least.
 ///
@@ -98,7 +99,7 @@ pub fn format(formatter: Formatter, date: calendar.Date) -> String {
       offset: calendar.utc_offset,
     )
     |> timestamp.to_unix_seconds_and_nanoseconds
-  engine.format(formatter.compiled, seconds, 0, 0)
+  engine.format(formatter.compiled, seconds, 0, time_zone.utc)
 }
 
 /// Start picking the fields to show.

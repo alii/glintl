@@ -1,25 +1,69 @@
-//// A time zone says where to show a moment. For now, glintl only knows fixed
-//// offsets from UTC.
+//// A time zone says where to show a moment. It's either a place like London,
+//// whose offset changes with summer time, or a fixed offset from UTC.
 ////
 //// ```gleam
 //// import gleam/time/calendar
 //// import glintl/time_zone
 ////
+//// let london = time_zone.from_name("Europe/London")
 //// let india = time_zone.offset(hours: 5, minutes: 30)
 //// let here = time_zone.from_duration(calendar.local_offset())
 //// ```
 
 import gleam/int
+import gleam/string
 import gleam/time/duration.{type Duration}
+@target(erlang)
+import glintl/internal/zones
 
-/// Where to show times. It's a whole number of minutes ahead of UTC, under
-/// 24 hours either way.
+/// Where to show times.
 pub opaque type TimeZone {
-  TimeZone(minutes: Int)
+  /// A whole number of minutes ahead of UTC, under 24 hours either way.
+  Offset(minutes: Int)
+  /// A zone from the IANA time zone database. On Erlang, `zone` is its number
+  /// in glintl's data.
+  Named(name: String, zone: Int)
 }
 
 /// UTC itself, with no offset.
-pub const utc = TimeZone(minutes: 0)
+pub const utc = Offset(minutes: 0)
+
+/// A place's time zone by its IANA name, like `"Europe/London"` or
+/// `"America/New_York"`. Like Intl, it takes old names like `"GB"` too, and
+/// case doesn't matter. Summer time is worked out for each moment you format.
+///
+/// It returns `Error(Nil)` for a name glintl doesn't know.
+///
+/// On Erlang, glintl can't show time zone names like "British Summer Time"
+/// yet, so it shows the offset instead, like "GMT+1".
+pub fn from_name(name: String) -> Result(TimeZone, Nil) {
+  find(name)
+}
+
+@target(erlang)
+fn find(name: String) -> Result(TimeZone, Nil) {
+  case zones.find(string.lowercase(name)) {
+    Ok(#(name, zone)) -> Ok(Named(name:, zone:))
+    Error(Nil) -> Error(Nil)
+  }
+}
+
+@target(javascript)
+fn find(name: String) -> Result(TimeZone, Nil) {
+  // Intl also takes offsets as names, which `offset` is for.
+  case string.starts_with(name, "+") || string.starts_with(name, "-") {
+    True -> Error(Nil)
+    False ->
+      case intl_name(name) {
+        Ok(name) -> Ok(Named(name:, zone: 0))
+        Error(Nil) -> Error(Nil)
+      }
+  }
+}
+
+@target(javascript)
+@external(javascript, "../glintl_ffi.mjs", "timeZoneName")
+fn intl_name(name: String) -> Result(String, Nil)
 
 const seconds_per_minute = 60
 
@@ -65,13 +109,41 @@ pub fn from_duration(duration: Duration) -> Result(TimeZone, OffsetError) {
 
 fn from_minutes(minutes: Int) -> Result(TimeZone, OffsetError) {
   case int.absolute_value(minutes) < hours_per_day * minutes_per_hour {
-    True -> Ok(TimeZone(minutes:))
+    True -> Ok(Offset(minutes:))
     False -> Error(OffsetTooLarge)
   }
 }
 
-/// How many minutes the time zone is ahead of UTC.
+@target(erlang)
+/// How many seconds the time zone is ahead of UTC at a moment.
 @internal
-pub fn offset_minutes(zone: TimeZone) -> Int {
-  zone.minutes
+pub fn offset_seconds(zone: TimeZone, unix_seconds: Int) -> Int {
+  case zone {
+    Offset(minutes:) -> minutes * seconds_per_minute
+    Named(zone:, ..) -> zones.offset_seconds(zone, unix_seconds)
+  }
+}
+
+/// The time zone as Intl's `timeZone` option, like `"Europe/London"` or
+/// `"+05:30"`.
+@internal
+pub fn intl_time_zone(zone: TimeZone) -> String {
+  case zone {
+    Named(name:, ..) -> name
+    Offset(minutes:) -> {
+      let sign = case minutes < 0 {
+        True -> "-"
+        False -> "+"
+      }
+      let minutes = int.absolute_value(minutes)
+      sign
+      <> pad(minutes / minutes_per_hour)
+      <> ":"
+      <> pad(minutes % minutes_per_hour)
+    }
+  }
+}
+
+fn pad(n: Int) -> String {
+  string.pad_start(int.to_string(n), to: 2, with: "0")
 }

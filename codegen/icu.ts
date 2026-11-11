@@ -171,6 +171,8 @@ export type Resource =
   | { t: "int"; value: number }
   | { t: "table"; entries: [string, Resource][] }
   | { t: "array"; items: Resource[] }
+  | { t: "ints"; values: number[] }
+  | { t: "binary"; bytes: Uint8Array }
   | { t: "other" };
 
 // Resource types, from ICU's `uresdata.h`.
@@ -348,9 +350,27 @@ function read(b: Bundle, res: number): Resource {
       return { t: "alias", path: string(b, offset) };
     case INT:
       return { t: "int", value: (offset << INT_SIGN_SHIFT) >> INT_SIGN_SHIFT };
-    case BINARY:
     case INT_VECTOR:
-      return { t: "other" };
+      return {
+        t: "ints",
+        values:
+          offset === 0
+            ? []
+            : Array.from({ length: view.getInt32(at, true) }, (_, i) =>
+                view.getInt32(at + (1 + i) * BYTES_PER_WORD, true),
+              ),
+      };
+    case BINARY:
+      return {
+        t: "binary",
+        bytes:
+          offset === 0
+            ? new Uint8Array()
+            : buffer.subarray(
+                at + BYTES_PER_WORD,
+                at + BYTES_PER_WORD + view.getInt32(at, true),
+              ),
+      };
     case TABLE: {
       if (offset === 0) {
         return { t: "table", entries: [] };
@@ -424,9 +444,38 @@ function read(b: Bundle, res: number): Resource {
   }
 }
 
-const POOL = `${PACKAGE}/pool.res`;
-const pool = toc.has(POOL) ? openBundle(toc.get(POOL)!, undefined) : undefined;
+// Each folder of bundles, like `zone/`, shares strings through its own pool.
+const pools = new Map<string, Bundle | undefined>();
+
+function poolFor(name: string): Bundle | undefined {
+  const folder = name.slice(0, name.lastIndexOf("/") + 1);
+
+  if (pools.has(folder)) {
+    return pools.get(folder);
+  }
+
+  const at = toc.get(`${PACKAGE}/${folder}pool.res`);
+  const pool = at === undefined ? undefined : openBundle(at, undefined);
+  pools.set(folder, pool);
+
+  return pool;
+}
+
 const bundles = new Map<string, Resource | undefined>();
+
+// The names of the bundles in a folder, like `zone/en_GB` in `zone/`.
+export const bundlesIn = (folder: string): string[] =>
+  [...toc.keys()].flatMap((key) => {
+    const name = key.slice(PACKAGE.length + 1, -".res".length);
+    const rest = name.slice(folder.length);
+
+    return key.startsWith(`${PACKAGE}/${folder}`) &&
+      key.endsWith(".res") &&
+      rest !== "pool" &&
+      !rest.includes("/")
+      ? [name]
+      : [];
+  });
 
 // A locale's bundle, like `en_GB`, or undefined if ICU has none.
 function bundle(name: string): Resource | undefined {
@@ -435,7 +484,7 @@ function bundle(name: string): Resource | undefined {
   }
 
   const at = toc.get(`${PACKAGE}/${name}.res`);
-  const opened = at === undefined ? undefined : openBundle(at, pool);
+  const opened = at === undefined ? undefined : openBundle(at, poolFor(name));
   const resource = opened === undefined ? undefined : read(opened, opened.root);
   bundles.set(name, resource);
 

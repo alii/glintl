@@ -1,4 +1,43 @@
+// @ts-check
+
+import { Error as GleamError, Ok } from "./gleam.mjs";
+
+/**
+ * A `matcher.Request`. Each field is an Intl option, or "" or 0 when not shown.
+ * @typedef {object} Request
+ * @property {string} weekday
+ * @property {string} era
+ * @property {string} year
+ * @property {string} month
+ * @property {string} day
+ * @property {string} day_period
+ * @property {string} hour
+ * @property {string} minute
+ * @property {string} second
+ * @property {number} fractional_second_digits
+ * @property {string} time_zone_name
+ * @property {string} hour_cycle
+ */
+
+/**
+ * An `engine.Compiled`, which keeps one `Intl.DateTimeFormat` per time zone.
+ * @typedef {object} Compiled
+ * @property {string} tag
+ * @property {Record<string, string | number>} options Built from Gleam strings, so
+ *   TypeScript can't see they're valid Intl options.
+ * @property {Map<string, Intl.DateTimeFormat>} byZone
+ */
+
+/**
+ * @param {string} tag
+ * @param {string} calendar
+ * @param {string} dateStyle
+ * @param {string} timeStyle
+ * @param {string} hourCycle
+ * @returns {Compiled}
+ */
 export function formatter(tag, calendar, dateStyle, timeStyle, hourCycle) {
+  /** @type {Compiled["options"]} */
   const options = { calendar };
   if (dateStyle !== "") {
     options.dateStyle = dateStyle;
@@ -9,53 +48,71 @@ export function formatter(tag, calendar, dateStyle, timeStyle, hourCycle) {
   if (hourCycle !== "") {
     options.hourCycle = hourCycle;
   }
-  return { tag, options, byOffset: new Map() };
+  return { tag, options, byZone: new Map() };
 }
 
-// `request` is a `matcher.Request`, whose fields are Intl's options, or "" or
-// 0 when not shown.
+/**
+ * @param {string} tag
+ * @param {string} calendar
+ * @param {Request} request
+ * @returns {Compiled}
+ */
 export function fieldsFormatter(tag, calendar, request) {
+  /** @type {Compiled["options"]} */
   const options = { calendar };
-  const set = (name, value) => {
-    if (value !== "" && value !== 0) {
-      options[name] = value;
-    }
-  };
-  set("weekday", request.weekday);
-  set("era", request.era);
-  set("year", request.year);
-  set("month", request.month);
-  set("day", request.day);
-  set("dayPeriod", request.day_period);
-  set("hour", request.hour);
-  set("minute", request.minute);
-  set("second", request.second);
-  set("fractionalSecondDigits", request.fractional_second_digits);
-  set("timeZoneName", request.time_zone_name);
-  set("hourCycle", request.hour_cycle);
-  return { tag, options, byOffset: new Map() };
+  if (request.weekday !== "") options.weekday = request.weekday;
+  if (request.era !== "") options.era = request.era;
+  if (request.year !== "") options.year = request.year;
+  if (request.month !== "") options.month = request.month;
+  if (request.day !== "") options.day = request.day;
+  if (request.day_period !== "") options.dayPeriod = request.day_period;
+  if (request.hour !== "") options.hour = request.hour;
+  if (request.minute !== "") options.minute = request.minute;
+  if (request.second !== "") options.second = request.second;
+  if (request.fractional_second_digits !== 0)
+    options.fractionalSecondDigits = request.fractional_second_digits;
+  if (request.time_zone_name !== "")
+    options.timeZoneName = request.time_zone_name;
+  if (request.hour_cycle !== "") options.hourCycle = request.hour_cycle;
+  return { tag, options, byZone: new Map() };
 }
 
-// The locale's own hour cycle, which Intl only gives when showing a time.
+/**
+ * The locale's own hour cycle, which Intl only gives when showing a time.
+ * @param {string} tag
+ * @param {string} calendar
+ * @returns {string}
+ */
 export function hourCycle(tag, calendar) {
-  return new Intl.DateTimeFormat(tag, {
-    calendar,
-    timeStyle: "short",
-  }).resolvedOptions().hourCycle;
+  return /** @type {string} */ (
+    new Intl.DateTimeFormat(tag, {
+      calendar,
+      timeStyle: "short",
+    }).resolvedOptions().hourCycle
+  );
 }
 
 const MILLISECONDS_PER_SECOND = 1000;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000;
-const MINUTES_PER_HOUR = 60;
 
-export function format(compiled, seconds, nanoseconds, offsetMinutes) {
-  let formatter = compiled.byOffset.get(offsetMinutes);
+/**
+ * @param {Compiled} compiled
+ * @param {number} seconds
+ * @param {number} nanoseconds
+ * @param {string} timeZone Intl's `timeZone` option, like "Europe/London" or "+05:30".
+ * @returns {string}
+ */
+export function format(compiled, seconds, nanoseconds, timeZone) {
+  let formatter = compiled.byZone.get(timeZone);
   if (formatter === undefined) {
-    formatter = new Intl.DateTimeFormat(compiled.tag, {
-      ...compiled.options,
-      timeZone: offsetString(offsetMinutes),
-    });
-    compiled.byOffset.set(offsetMinutes, formatter);
+    formatter = new Intl.DateTimeFormat(
+      compiled.tag,
+      /** @type {Intl.DateTimeFormatOptions} */ ({
+        ...compiled.options,
+        timeZone,
+      }),
+    );
+    compiled.byZone.set(timeZone, formatter);
   }
   return formatter.format(
     seconds * MILLISECONDS_PER_SECOND +
@@ -63,10 +120,18 @@ export function format(compiled, seconds, nanoseconds, offsetMinutes) {
   );
 }
 
-// Writes an offset in minutes as a time zone Intl takes, like "+05:30".
-function offsetString(minutes) {
-  const sign = minutes < 0 ? "-" : "+";
-  const abs = Math.abs(minutes);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${sign}${pad(Math.floor(abs / MINUTES_PER_HOUR))}:${pad(abs % MINUTES_PER_HOUR)}`;
+/**
+ * Intl's own spelling of a time zone name, or an error if Intl doesn't know it.
+ * @param {string} name
+ * @returns {Ok | GleamError}
+ */
+export function timeZoneName(name) {
+  try {
+    return new Ok(
+      new Intl.DateTimeFormat("en", { timeZone: name }).resolvedOptions()
+        .timeZone,
+    );
+  } catch {
+    return new GleamError(undefined);
+  }
 }
