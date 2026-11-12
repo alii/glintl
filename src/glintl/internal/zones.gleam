@@ -421,24 +421,36 @@ pub fn name_chain(tag: String) -> List(Int)
 fn metazones() -> Metazones
 
 @target(erlang)
-@external(erlang, "glintl_generated_time_zones", "name_bundles")
-fn name_bundles() -> Bundles
+@external(erlang, "glintl_generated_time_zones", "long_names")
+fn long_names() -> Bundles
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "short_names")
+fn short_names() -> Bundles
 
 @target(erlang)
 @external(erlang, "glintl_generated_time_zones", "words")
 fn words() -> BitArray
 
 @target(erlang)
-@external(erlang, "glintl_generated_time_zones", "word_starts")
-fn word_starts() -> BitArray
+@external(erlang, "glintl_generated_time_zones", "word_lengths")
+fn word_lengths() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "word_checkpoints")
+fn word_checkpoints() -> BitArray
 
 @target(erlang)
 @external(erlang, "glintl_generated_time_zones", "name_words")
 fn name_words() -> BitArray
 
 @target(erlang)
-@external(erlang, "glintl_generated_time_zones", "name_starts")
-fn name_starts() -> BitArray
+@external(erlang, "glintl_generated_time_zones", "name_lengths")
+fn name_lengths() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "name_checkpoints")
+fn name_checkpoints() -> BitArray
 
 @target(erlang)
 @external(erlang, "erlang", "element")
@@ -462,9 +474,14 @@ const start_bits = 24
 const time_bits = 64
 
 @target(erlang)
-/// Each entry in a bundle is a key, then name numbers for long standard, long
-/// daylight, short standard and short daylight.
-const entry_bits = 80
+/// Each entry in a bundle is a key, then name numbers for standard and
+/// daylight saving time.
+const entry_bits = 48
+
+@target(erlang)
+/// The data stores where every 16th word or name starts, and each one's
+/// length.
+const checkpoint_every = 16
 
 @target(erlang)
 /// Name number 1 stops a locale using its parent's name. Real names start at
@@ -485,19 +502,17 @@ pub fn name(
   daylight: Bool,
   long: Bool,
 ) -> Result(String, Nil) {
-  let column = case long, daylight {
-    True, False -> 0
-    True, True -> 1
-    False, False -> 2
-    False, True -> 3
+  let table = case long {
+    True -> long_names()
+    False -> short_names()
   }
   let all = metazones()
-  case find_name(chain, key, column) {
+  case find_name(table, chain, key, daylight) {
     Ok(n) -> Ok(name_text(n))
     Error(Nil) ->
       case metazone_at(periods_of(key + 1, all), unix_seconds) {
         Ok(metazone) ->
-          case find_name(chain, key_count(all) + metazone, column) {
+          case find_name(table, chain, key_count(all) + metazone, daylight) {
             Ok(n) -> Ok(name_text(n))
             Error(Nil) -> Error(Nil)
           }
@@ -509,46 +524,44 @@ pub fn name(
 @target(erlang)
 /// The name number for a key in the first bundle that has one, like ICU's
 /// `ZNamesLoader`.
-fn find_name(chain: List(Int), key: Int, column: Int) -> Result(Int, Nil) {
+fn find_name(
+  table: Bundles,
+  chain: List(Int),
+  key: Int,
+  daylight: Bool,
+) -> Result(Int, Nil) {
   case chain {
     [] -> Error(Nil)
     [first, ..rest] -> {
-      let entries = bundle(first + 1, name_bundles())
-      case
-        entry(
-          entries,
-          key,
-          0,
-          bit_array_bytes(entries) * bits_per_byte / entry_bits,
-        )
-      {
-        Ok(entry) -> {
-          let assert <<
-            _:bits-size(column * number_bits),
-            n:size(number_bits),
-            _:bits,
-          >> = entry
+      let entries = bundle(first + 1, table)
+      let count = bit_array_bytes(entries) * bits_per_byte / entry_bits
+      case entry(entries, key, 0, count) {
+        Ok(#(standard, summer)) -> {
+          let n = case daylight {
+            True -> summer
+            False -> standard
+          }
           case n {
-            0 -> find_name(rest, key, column)
+            0 -> find_name(table, rest, key, daylight)
             _ if n == blocked -> Error(Nil)
             _ -> Ok(n)
           }
         }
-        Error(Nil) -> find_name(rest, key, column)
+        Error(Nil) -> find_name(table, rest, key, daylight)
       }
     }
   }
 }
 
 @target(erlang)
-/// The names after `key` in a bundle's sorted entries, found by binary search
-/// between `low` and `high`.
+/// The standard and daylight saving names for `key` in a bundle's sorted
+/// entries, found by binary search between `low` and `high`.
 fn entry(
   entries: BitArray,
   key: Int,
   low: Int,
   high: Int,
-) -> Result(BitArray, Nil) {
+) -> Result(#(Int, Int), Nil) {
   case low >= high {
     True -> Error(Nil)
     False -> {
@@ -556,11 +569,12 @@ fn entry(
       let assert <<
         _:bits-size(middle * entry_bits),
         found:size(number_bits),
-        names:bits-size(entry_bits - number_bits),
+        standard:size(number_bits),
+        daylight:size(number_bits),
         _:bits,
       >> = entries
       case found == key, found < key {
-        True, _ -> Ok(names)
+        True, _ -> Ok(#(standard, daylight))
         False, True -> entry(entries, key, middle + 1, high)
         False, False -> entry(entries, key, low, middle)
       }
@@ -587,35 +601,48 @@ fn metazone_at(periods: BitArray, unix_seconds: Int) -> Result(Int, Nil) {
 }
 
 @target(erlang)
-/// A name's text, joined from its words.
-fn name_text(n: Int) -> String {
-  let i = n - first_name
+/// Where item `i` starts: the last checkpoint, plus the lengths after it.
+fn start(lengths: BitArray, checkpoints: BitArray, i: Int) -> Int {
+  let checkpoint = i / checkpoint_every
   let assert <<
-    _:bits-size(i * start_bits),
-    from:size(start_bits),
-    to:size(start_bits),
+    _:bits-size(checkpoint * start_bits),
+    base:size(start_bits),
     _:bits,
-  >> = name_starts()
-  join_words(name_words(), from, to, <<>>)
+  >> = checkpoints
+  sum_bytes(lengths, checkpoint * checkpoint_every, i, base)
 }
 
 @target(erlang)
-fn join_words(numbers: BitArray, i: Int, end: Int, text: BitArray) -> String {
+fn sum_bytes(bits: BitArray, from: Int, to: Int, total: Int) -> Int {
+  case from >= to {
+    True -> total
+    False -> sum_bytes(bits, from + 1, to, total + byte(bits, from))
+  }
+}
+
+@target(erlang)
+/// A name's text, joined from its words.
+fn name_text(n: Int) -> String {
+  let i = n - first_name
+  let lengths = name_lengths()
+  let from = start(lengths, name_checkpoints(), i)
+  let assert Ok(text) =
+    join_words(name_words(), from, from + byte(lengths, i), <<>>)
+    |> bit_array.to_string
+  text
+}
+
+@target(erlang)
+fn join_words(numbers: BitArray, i: Int, end: Int, text: BitArray) -> BitArray {
   case i >= end {
-    True -> {
-      let assert Ok(text) = bit_array.to_string(text)
-      text
-    }
+    True -> text
     False -> {
       let assert <<_:bits-size(i * number_bits), w:size(number_bits), _:bits>> =
         numbers
-      let assert <<
-        _:bits-size(w * start_bits),
-        from:size(start_bits),
-        to:size(start_bits),
-        _:bits,
-      >> = word_starts()
-      let assert <<_:bytes-size(from), word:bytes-size(to - from), _:bits>> =
+      let lengths = word_lengths()
+      let from = start(lengths, word_checkpoints(), w)
+      let length = byte(lengths, w)
+      let assert <<_:bytes-size(from), word:bytes-size(length), _:bits>> =
         words()
       join_words(numbers, i + 1, end, <<text:bits, word:bits>>)
     }

@@ -21,10 +21,9 @@ import {
 } from "./calendars.ts";
 import * as erlang from "./erlang.ts";
 import { type FieldsData, fieldsData } from "./fields.ts";
-import { packer } from "./pack.ts";
 import { calendarFixtures, fieldFixtures, fixtures } from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
-import { requirePinnedBun } from "./runtime.ts";
+import { packer } from "./pack.ts";
 import {
   type Formats,
   HOUR_CYCLES,
@@ -34,11 +33,8 @@ import {
   formats,
   localDigits,
 } from "./patterns.ts";
-import {
-  DESCRIPTION as ZONES_DESCRIPTION,
-  PATH as ZONES_PATH,
-  zonesModule,
-} from "./zones.ts";
+import { requirePinnedBun } from "./runtime.ts";
+import { PATH as ZONES_PATH, zonesModule } from "./zones.ts";
 
 requirePinnedBun("codegen/generate.ts");
 
@@ -280,7 +276,7 @@ await write(
   `${ERLANG}/glintl_generated_data.erl`,
   erlang.module(
     "glintl_generated_data",
-    erlang.header("Every locale's data, packed by codegen/pack.ts."),
+    erlang.header(),
     [...DATA_TABLES, ...ORDERS.map(([name]) => name)].map(
       (name) => `${name}/0`,
     ),
@@ -303,7 +299,7 @@ await Promise.all(
       `${ERLANG}/${name}.erl`,
       erlang.module(
         name,
-        erlang.header(`How the ${id} calendar maps days to dates.`),
+        erlang.header(),
         ["math/0"],
         [[`math() ->\n${erlang.math(mathFor(id))}`]],
       ),
@@ -311,7 +307,7 @@ await Promise.all(
   }),
 );
 
-await write(ZONES_PATH, zonesModule(erlang.header(ZONES_DESCRIPTION)));
+await write(ZONES_PATH, zonesModule(erlang.header()));
 
 // --- Gleam --------------------------------------------------------------------
 

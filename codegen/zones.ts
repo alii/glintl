@@ -15,9 +15,6 @@ const ROOT = join(import.meta.dir, "..");
 const MODULE = "glintl_generated_time_zones";
 export const PATH = `src/glintl/internal/generated/erlang/${MODULE}.erl`;
 
-export const DESCRIPTION =
-  "Every time zone's name, when its offset changes, and what each locale calls it.";
-
 const BITS_PER_BYTE = 8;
 const BYTE = 0xff;
 
@@ -328,6 +325,11 @@ const START_BYTES = 3;
 const TIME_BYTES = 8;
 const LARGEST_NUMBER = 0xffff;
 
+// Lengths are stored a byte each, with where every 16th item starts, so
+// finding an item adds up at most 15 lengths.
+const CHECKPOINT_EVERY = 16;
+const LARGEST_LENGTH = 0xff;
+
 // Where each item starts, then where the last one ends.
 const starts = (lengths: number[]): number[] =>
   lengths.reduce(
@@ -338,6 +340,42 @@ const starts = (lengths: number[]): number[] =>
     },
     [0],
   );
+
+// An index of items by their lengths: the lengths, and every 16th start.
+function lengthIndex(name: string, lengths: number[]): string[][] {
+  if (lengths.some((n) => n > LARGEST_LENGTH)) {
+    throw new Error(`Some of ${name} are too long for a byte`);
+  }
+
+  return [
+    [`${name}_lengths() ->\n    ${erlang.bytes(lengths)}`],
+    [
+      `${name}_checkpoints() ->\n    ${packed(
+        starts(lengths).filter((_, i) => i % CHECKPOINT_EVERY === 0),
+        START_BYTES,
+      )}`,
+    ],
+  ];
+}
+
+// Each bundle's entries for one length of name: [key, standard, daylight].
+const entries = (bundles: number[][][], columns: [number, number]) =>
+  bundles.map((bundle) =>
+    packed(
+      bundle.flatMap((entry) => {
+        const [standard, daylight] = columns.map((c) => entry[c]!);
+
+        return standard === NO_NAME && daylight === NO_NAME
+          ? []
+          : [entry[0]!, standard!, daylight!];
+      }),
+      NUMBER_BYTES,
+    ),
+  );
+
+// Columns of `Names.bundles` entries, after the key.
+const LONG_COLUMNS: [number, number] = [1, 2];
+const SHORT_COLUMNS: [number, number] = [3, 4];
 
 const packed = (numbers: number[], bytes: number) =>
   erlang.bytes(numbers.flatMap((n) => signed(n, bytes)));
@@ -363,11 +401,14 @@ export function zonesModule(header: string): string {
       "rules/0",
       "name_chain/1",
       "metazones/0",
-      "name_bundles/0",
+      "long_names/0",
+      "short_names/0",
       "words/0",
-      "word_starts/0",
+      "word_lengths/0",
+      "word_checkpoints/0",
       "name_words/0",
-      "name_starts/0",
+      "name_lengths/0",
+      "name_checkpoints/0",
     ],
     [
       [
@@ -399,30 +440,27 @@ export function zonesModule(header: string): string {
         )}`,
       ],
       [
-        `name_bundles() ->\n    ${erlang.tuple(
-          names.bundles.map((entries) => packed(entries.flat(), NUMBER_BYTES)),
-        )}`,
+        `long_names() ->\n    ${erlang.tuple(entries(names.bundles, LONG_COLUMNS))}`,
+      ],
+      [
+        `short_names() ->\n    ${erlang.tuple(entries(names.bundles, SHORT_COLUMNS))}`,
       ],
       [`words() ->\n    ${erlang.string(names.words.join(""))}`],
-      [
-        `word_starts() ->\n    ${packed(
-          starts(names.words.map((w) => encoder.encode(w).length)),
-          START_BYTES,
-        )}`,
-      ],
+      ...lengthIndex(
+        "word",
+        names.words.map((w) => encoder.encode(w).length),
+      ),
       [`name_words() ->\n    ${packed(names.names.flat(), NUMBER_BYTES)}`],
-      [
-        `name_starts() ->\n    ${packed(
-          starts(names.names.map((n) => n.length)),
-          START_BYTES,
-        )}`,
-      ],
+      ...lengthIndex(
+        "name",
+        names.names.map((n) => n.length),
+      ),
     ],
   );
 }
 
 if (import.meta.main) {
   requirePinnedBun("codegen/zones.ts");
-  await Bun.write(join(ROOT, PATH), zonesModule(erlang.header(DESCRIPTION)));
+  await Bun.write(join(ROOT, PATH), zonesModule(erlang.header()));
   console.log(`Wrote ${PATH}.`);
 }
