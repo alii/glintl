@@ -124,6 +124,7 @@ function token(t: Token): string {
       return `{day_period,${tuple(t.byHour.map(string))},${string(t.midnight)},${string(t.noon)}}`;
     case "zone":
       return `{zone,${[
+        t.names,
         string(t.zero),
         string(t.positive),
         string(t.positiveSuffix),

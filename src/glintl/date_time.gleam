@@ -115,16 +115,17 @@ pub type Fraction {
   Thousandths
 }
 
-/// How the time zone's name is written, like Intl's `timeZoneName`. glintl
-/// only knows offsets, so these all show the offset. In British English, an
-/// hour ahead of UTC is:
+/// How the time zone is written, like Intl's `timeZoneName`. In British
+/// English, in summer:
 ///
-/// | Name          | Ahead of UTC | At UTC              |
-/// | ------------- | ------------ | ------------------- |
-/// | `ShortName`   | GMT+1        | GMT                 |
-/// | `LongName`    | GMT+01:00    | Greenwich Mean Time |
-/// | `ShortOffset` | GMT+1        | GMT+0               |
-/// | `LongOffset`  | GMT+01:00    | GMT+00:00           |
+/// | Name          | London              | An offset of +1 |
+/// | ------------- | ------------------- | --------------- |
+/// | `ShortName`   | BST                 | GMT+1           |
+/// | `LongName`    | British Summer Time | GMT+01:00       |
+/// | `ShortOffset` | GMT+1               | GMT+1           |
+/// | `LongOffset`  | GMT+01:00           | GMT+01:00       |
+///
+/// Where a locale has no name for a zone, the names show the offset too.
 pub type TimeZoneName {
   ShortName
   LongName
@@ -213,9 +214,6 @@ pub fn time_zone_name(options: Fields, name: TimeZoneName) -> Fields {
 /// Format a moment as the clocks in `zone` show it.
 ///
 /// For a date with no time or time zone, like a birthday, use `glintl/date`.
-///
-/// On Erlang, glintl can't show time zone names like "British Summer Time"
-/// yet, so it shows the offset instead, like "GMT+1".
 pub fn format(
   formatter: Formatter,
   timestamp: Timestamp,

@@ -5,11 +5,15 @@ import glintl.{type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
+@target(erlang)
+import glintl/internal/zones
 import glintl/time_zone.{type TimeZone}
 
 @target(erlang)
-pub type Compiled =
-  render.Compiled
+/// A compiled formatter, and the locale's bundles of zone names.
+pub type Compiled {
+  Compiled(rendered: render.Compiled, names: List(Int))
+}
 
 @target(javascript)
 /// An `Intl.DateTimeFormat` for each time zone.
@@ -111,7 +115,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
   let calendar = glintl.locale_calendar(locale)
   let data = glintl.locale_data(locale)
   let cycle = glintl.hour_cycle_number(locale)
-  case calendar {
+  let rendered = case calendar {
     glintl.Gregorian -> render.compile(data, cycle, shown)
     _ ->
       render.compile_other(
@@ -122,17 +126,21 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
         shown,
       )
   }
+  Compiled(rendered:, names: zones.name_chain(glintl.locale_tag(locale)))
 }
 
 @target(erlang)
 fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
   let calendar = glintl.locale_calendar(locale)
-  render.compile_fields(
-    glintl.locale_data(locale),
-    glintl.calendar_position(calendar),
-    request,
-    glintl.icu_calendar(calendar),
-    fn() { calendar_math(calendar) },
+  Compiled(
+    rendered: render.compile_fields(
+      glintl.locale_data(locale),
+      glintl.calendar_position(calendar),
+      request,
+      glintl.icu_calendar(calendar),
+      fn() { calendar_math(calendar) },
+    ),
+    names: zones.name_chain(glintl.locale_tag(locale)),
   )
 }
 
@@ -286,11 +294,17 @@ fn do_format(
   nanoseconds: Int,
   zone: TimeZone,
 ) -> String {
+  let #(offset, key, daylight) = time_zone.at(zone, seconds)
+  let names = case key < 0 {
+    True -> data.Unnamed
+    False -> data.Named(key:, daylight:, chain: compiled.names)
+  }
   render.render(
-    compiled,
+    compiled.rendered,
     seconds,
     nanoseconds / nanoseconds_per_millisecond,
-    time_zone.offset_seconds(zone, seconds),
+    offset,
+    names,
   )
 }
 

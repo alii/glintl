@@ -59,7 +59,6 @@ If you're coming from Elixir, [Localize](https://github.com/elixir-localize/loca
 
 ## Limits
 
-- On Erlang, glintl can't show time zone names like "British Summer Time" yet, so it shows the offset instead, like "GMT+1". Zone names on Erlang are planned!
 - On Erlang, calendars with their own months only work from year 1 to 4000. Other years fall back to the Gregorian calendar.
 - glintl on Erlang uses the ICU bundled at Glintl's own build time, but JavaScript uses ICU built into the runtime. Differences in ICU versions mean the two targets can disagree on small things, often in spaces and commas.
 - ICU 78.3 puts Chinese New Year 2027 and 2030 a day off. JavaScript gets this wrong too, so we intentionally match it in the name of behaviour parity.

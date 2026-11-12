@@ -2,6 +2,8 @@
 //// ICU's `OlsonTimeZone`. `codegen/zones.ts` writes the data.
 
 @target(erlang)
+import gleam/bit_array
+@target(erlang)
 import glintl/internal/data
 
 @target(erlang)
@@ -35,9 +37,10 @@ pub type Rule =
 type Table
 
 @target(erlang)
-/// The zone's name as ICU writes it, and its number, from a lowercase name.
+/// From a lowercase name: the name as ICU writes it, its zone's number, and
+/// its key in the names data.
 @external(erlang, "glintl_generated_time_zones", "zone")
-pub fn find(lowercase_name: String) -> Result(#(String, Int), Nil)
+pub fn find(lowercase_name: String) -> Result(#(String, Int, Int), Nil)
 
 @target(erlang)
 @external(erlang, "glintl_generated_time_zones", "rules")
@@ -66,8 +69,9 @@ const seconds_per_day = 86_400
 const days_per_week = 7
 
 @target(erlang)
-/// How many seconds the zone is ahead of UTC at a moment.
-pub fn offset_seconds(zone: Int, unix_seconds: Int) -> Int {
+/// How many seconds the zone is ahead of UTC at a moment, and whether it's on
+/// summer time.
+pub fn offset(zone: Int, unix_seconds: Int) -> #(Int, Bool) {
   let Rules(transitions:, types:, type_map:, final:) =
     element(zone + 1, table())
   case final {
@@ -88,7 +92,7 @@ fn historical(
   types: BitArray,
   type_map: BitArray,
   unix_seconds: Int,
-) -> Int {
+) -> #(Int, Bool) {
   let count = bit_array_bytes(transitions) * bits_per_byte / transition_bits
   let type_ = case last_at_or_before(transitions, unix_seconds, 0, count) {
     -1 -> 0
@@ -100,7 +104,7 @@ fn historical(
     dst:signed-size(offset_bits),
     _:bits,
   >> = types
-  raw + dst
+  #(raw + dst, dst != 0)
 }
 
 @target(erlang)
@@ -168,7 +172,7 @@ const wall_time = 0
 const seconds_per_hour = 3600
 
 @target(erlang)
-fn final_offset(raw: Int, rule: Rule, unix_seconds: Int) -> Int {
+fn final_offset(raw: Int, rule: Rule, unix_seconds: Int) -> #(Int, Bool) {
   let #(
     start_month,
     start_day,
@@ -183,7 +187,7 @@ fn final_offset(raw: Int, rule: Rule, unix_seconds: Int) -> Int {
     savings,
   ) = rule
   case start_day != 0 && end_day != 0 {
-    False -> raw
+    False -> #(raw, False)
     True -> {
       let savings = case savings {
         0 -> seconds_per_hour
@@ -242,8 +246,8 @@ fn final_offset(raw: Int, rule: Rule, unix_seconds: Int) -> Int {
         { !southern && start_compare >= 0 && end_compare < 0 }
         || { southern && { start_compare >= 0 || end_compare < 0 } }
       {
-        True -> raw + savings
-        False -> raw
+        True -> #(raw + savings, True)
+        False -> #(raw, False)
       }
     }
   }
@@ -396,5 +400,224 @@ fn int_min(a: Int, b: Int) -> Int {
   case a < b {
     True -> a
     False -> b
+  }
+}
+
+// --- Names -------------------------------------------------------------------
+
+@target(erlang)
+type Metazones
+
+@target(erlang)
+type Bundles
+
+@target(erlang)
+/// A locale's bundles of zone names, most specific first, by its tag.
+@external(erlang, "glintl_generated_time_zones", "name_chain")
+pub fn name_chain(tag: String) -> List(Int)
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "metazones")
+fn metazones() -> Metazones
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "name_bundles")
+fn name_bundles() -> Bundles
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "words")
+fn words() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "word_starts")
+fn word_starts() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "name_words")
+fn name_words() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "name_starts")
+fn name_starts() -> BitArray
+
+@target(erlang)
+@external(erlang, "erlang", "element")
+fn periods_of(position: Int, metazones: Metazones) -> BitArray
+
+@target(erlang)
+@external(erlang, "erlang", "element")
+fn bundle(position: Int, bundles: Bundles) -> BitArray
+
+@target(erlang)
+@external(erlang, "erlang", "tuple_size")
+fn key_count(metazones: Metazones) -> Int
+
+@target(erlang)
+const number_bits = 16
+
+@target(erlang)
+const start_bits = 24
+
+@target(erlang)
+const time_bits = 64
+
+@target(erlang)
+/// Each entry in a bundle is a key, then name numbers for long standard, long
+/// daylight, short standard and short daylight.
+const entry_bits = 80
+
+@target(erlang)
+/// Name number 1 stops a locale using its parent's name. Real names start at
+/// 2.
+const blocked = 1
+
+@target(erlang)
+const first_name = 2
+
+@target(erlang)
+/// A zone's name at a moment in a locale, like ICU's
+/// `TimeZoneNames::getDisplayName`: its own name if the locale has one, or
+/// else its metazone's. `Error(Nil)` means ICU would show the offset.
+pub fn name(
+  chain: List(Int),
+  key: Int,
+  unix_seconds: Int,
+  daylight: Bool,
+  long: Bool,
+) -> Result(String, Nil) {
+  let column = case long, daylight {
+    True, False -> 0
+    True, True -> 1
+    False, False -> 2
+    False, True -> 3
+  }
+  let all = metazones()
+  case find_name(chain, key, column) {
+    Ok(n) -> Ok(name_text(n))
+    Error(Nil) ->
+      case metazone_at(periods_of(key + 1, all), unix_seconds) {
+        Ok(metazone) ->
+          case find_name(chain, key_count(all) + metazone, column) {
+            Ok(n) -> Ok(name_text(n))
+            Error(Nil) -> Error(Nil)
+          }
+        Error(Nil) -> Error(Nil)
+      }
+  }
+}
+
+@target(erlang)
+/// The name number for a key in the first bundle that has one, like ICU's
+/// `ZNamesLoader`.
+fn find_name(chain: List(Int), key: Int, column: Int) -> Result(Int, Nil) {
+  case chain {
+    [] -> Error(Nil)
+    [first, ..rest] -> {
+      let entries = bundle(first + 1, name_bundles())
+      case
+        entry(
+          entries,
+          key,
+          0,
+          bit_array_bytes(entries) * bits_per_byte / entry_bits,
+        )
+      {
+        Ok(entry) -> {
+          let assert <<
+            _:bits-size(column * number_bits),
+            n:size(number_bits),
+            _:bits,
+          >> = entry
+          case n {
+            0 -> find_name(rest, key, column)
+            _ if n == blocked -> Error(Nil)
+            _ -> Ok(n)
+          }
+        }
+        Error(Nil) -> find_name(rest, key, column)
+      }
+    }
+  }
+}
+
+@target(erlang)
+/// The names after `key` in a bundle's sorted entries, found by binary search
+/// between `low` and `high`.
+fn entry(
+  entries: BitArray,
+  key: Int,
+  low: Int,
+  high: Int,
+) -> Result(BitArray, Nil) {
+  case low >= high {
+    True -> Error(Nil)
+    False -> {
+      let middle = { low + high } / 2
+      let assert <<
+        _:bits-size(middle * entry_bits),
+        found:size(number_bits),
+        names:bits-size(entry_bits - number_bits),
+        _:bits,
+      >> = entries
+      case found == key, found < key {
+        True, _ -> Ok(names)
+        False, True -> entry(entries, key, middle + 1, high)
+        False, False -> entry(entries, key, low, middle)
+      }
+    }
+  }
+}
+
+@target(erlang)
+/// The metazone a key is in at a moment, like ICU's `getMetaZoneID`.
+fn metazone_at(periods: BitArray, unix_seconds: Int) -> Result(Int, Nil) {
+  case periods {
+    <<
+      metazone:size(number_bits),
+      from:signed-size(time_bits),
+      to:signed-size(time_bits),
+      rest:bits,
+    >> ->
+      case from <= unix_seconds && unix_seconds < to {
+        True -> Ok(metazone)
+        False -> metazone_at(rest, unix_seconds)
+      }
+    _ -> Error(Nil)
+  }
+}
+
+@target(erlang)
+/// A name's text, joined from its words.
+fn name_text(n: Int) -> String {
+  let i = n - first_name
+  let assert <<
+    _:bits-size(i * start_bits),
+    from:size(start_bits),
+    to:size(start_bits),
+    _:bits,
+  >> = name_starts()
+  join_words(name_words(), from, to, <<>>)
+}
+
+@target(erlang)
+fn join_words(numbers: BitArray, i: Int, end: Int, text: BitArray) -> String {
+  case i >= end {
+    True -> {
+      let assert Ok(text) = bit_array.to_string(text)
+      text
+    }
+    False -> {
+      let assert <<_:bits-size(i * number_bits), w:size(number_bits), _:bits>> =
+        numbers
+      let assert <<
+        _:bits-size(w * start_bits),
+        from:size(start_bits),
+        to:size(start_bits),
+        _:bits,
+      >> = word_starts()
+      let assert <<_:bytes-size(from), word:bytes-size(to - from), _:bits>> =
+        words()
+      join_words(numbers, i + 1, end, <<text:bits, word:bits>>)
+    }
   }
 }

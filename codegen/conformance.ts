@@ -401,13 +401,67 @@ function every(): IteratorObject<Case[]> {
 
 // --- Time zones ------------------------------------------------------------------
 
-// Formats that show a time and an offset, but not a zone's name, which glintl
-// doesn't have yet.
+// Formats that show a time and an offset, never a zone's name.
 const ZONE_FORMATS: [number, number, string][] = [
   [STYLES.indexOf("short"), STYLES.indexOf("medium"), ""],
   [0, 0, "hour=2-digit,minute=2-digit,second=2-digit,timeZoneName=longOffset"],
   [0, 0, "day=numeric,month=short,hour=numeric,timeZoneName=shortOffset"],
 ];
+
+// Formats that show a zone's name where the locale has one: the full time
+// style's long name, the long one's short name, and the same as fields.
+const NAME_FORMATS: [number, number, string][] = [
+  [0, STYLES.indexOf("full"), ""],
+  [STYLES.indexOf("short"), STYLES.indexOf("long"), ""],
+  [0, 0, "hour=numeric,minute=2-digit,timeZoneName=short"],
+  [0, 0, "day=numeric,month=short,hour=numeric,timeZoneName=long"],
+];
+
+// Locales with names in different shapes, for every zone.
+const NAME_LOCALES = [
+  "en-GB",
+  "en",
+  "en-AU",
+  "fr",
+  "de",
+  "es-MX",
+  "pt-BR",
+  "ru",
+  "ja",
+  "zh",
+  "zh-Hant",
+  "ko",
+  "ar",
+  "he",
+  "hi",
+  "sw",
+  "fil",
+];
+
+// Zones to check in every locale.
+const COMMON_ZONES = [
+  "Europe/London",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Asia/Tokyo",
+  "Asia/Kolkata",
+  "Europe/Paris",
+  "Australia/Sydney",
+  "America/Sao_Paulo",
+  "UTC",
+  "Africa/Accra",
+  "Asia/Shanghai",
+  "Pacific/Auckland",
+];
+
+const NAME_MOMENTS = [
+  Date.UTC(1950, 5, 1),
+  Date.UTC(1975, 0, 15),
+  Date.UTC(1999, 6, 15),
+  Date.UTC(2026, 0, 15),
+  Date.UTC(2026, 6, 15),
+  Date.UTC(2040, 6, 15),
+].map((ms) => ms / MS_PER_SECOND);
 
 // Years after the data's last change where zones follow a yearly rule.
 const RULE_YEARS = [2030, 2037, 2038, 2050, 2099, 2100, 2400, 3999];
@@ -463,9 +517,14 @@ function changesIn(zone: string, year: number): number[] {
   });
 }
 
-function zoneCases(zone: string, moments: number[]): Case[] {
-  return ZONE_FORMATS.flatMap(([date, time, fields]) => {
-    const formatter = new Intl.DateTimeFormat("en-GB", {
+function zoneCases(
+  zone: string,
+  moments: number[],
+  tag = "en-GB",
+  formats = ZONE_FORMATS,
+): Case[] {
+  return formats.flatMap(([date, time, fields]) => {
+    const formatter = new Intl.DateTimeFormat(tag, {
       ...(fields === ""
         ? { dateStyle: STYLES[date], timeStyle: STYLES[time] }
         : Object.fromEntries(fields.split(",").map((f) => f.split("=")))),
@@ -473,7 +532,7 @@ function zoneCases(zone: string, moments: number[]): Case[] {
     });
 
     return moments.map((seconds) => ({
-      line: ["en-GB", "", date, time, "", fields, seconds, 0, zone].join("\t"),
+      line: [tag, "", date, time, "", fields, seconds, 0, zone].join("\t"),
       expected: formatter.format(seconds * MS_PER_SECOND),
     }));
   });
@@ -508,9 +567,37 @@ function zoneBatches(): IteratorObject<Case[]> {
       (t) => [t - 1, t],
     );
 
-    return zoneCases(name, [...moments, ...samples]);
+    // Names change with summer time, so also check the changes near now.
+    const recent = rules.transitions.filter(
+      (t) => t > NAME_MOMENTS[1]! && t < NAME_MOMENTS.at(-1)!,
+    );
+
+    return [
+      ...zoneCases(name, [...moments, ...samples]),
+      ...NAME_LOCALES.flatMap((tag) =>
+        zoneCases(
+          name,
+          [...NAME_MOMENTS, ...recent.flatMap((t) => [t - 1, t])],
+          tag,
+          NAME_FORMATS,
+        ),
+      ),
+    ];
   });
 }
+
+function* allZoneBatches(): Generator<Case[]> {
+  yield* zoneBatches();
+  yield* everyLocaleZones();
+}
+
+// Common zones in every locale, with names where the locale has them.
+const everyLocaleZones = (): IteratorObject<Case[]> =>
+  LOCALES.values().map(([, tag]) =>
+    COMMON_ZONES.flatMap((zone) =>
+      zoneCases(zone, NAME_MOMENTS, tag, NAME_FORMATS),
+    ),
+  );
 
 // --- Checking -----------------------------------------------------------------
 
@@ -555,7 +642,7 @@ function batches(): IteratorObject<Case[]> {
   return mode === "--every"
     ? every()
     : mode === "--zones"
-      ? zoneBatches()
+      ? allZoneBatches()
       : made(0);
 }
 

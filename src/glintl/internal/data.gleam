@@ -117,6 +117,15 @@ pub type YearRule {
 pub type HomogenousUnknownLengthTuple(a)
 
 @target(erlang)
+/// What the zone of a moment can be called. A fixed offset is `Unnamed`.
+pub type ZoneNames {
+  Unnamed
+  /// `key` is the zone's key in the names data, and `chain` the locale's
+  /// bundles of names, most specific first.
+  Named(key: Int, daylight: Bool, chain: List(Int))
+}
+
+@target(erlang)
 /// A timestamp's local date and time in a calendar. Each format call makes
 /// one record to keep allocation down. `month` is an index into the
 /// calendar's month names.
@@ -130,6 +139,7 @@ pub type Local {
     second: Int,
     offset_seconds: Int,
     unix_seconds: Int,
+    names: ZoneNames,
     era: Int,
     year: Int,
     extended: Int,
@@ -195,6 +205,7 @@ pub fn table_local(
   second second: Int,
   offset_seconds offset_seconds: Int,
   unix_seconds unix_seconds: Int,
+  names names: ZoneNames,
 ) -> Result(Local, Nil) {
   // `starts` ends with the day after the last year.
   let last_year = count - 2
@@ -228,6 +239,7 @@ pub fn table_local(
         second:,
         offset_seconds:,
         unix_seconds:,
+        names:,
         era:,
         year: year + year_step * n,
         extended: extended + n,

@@ -17,6 +17,14 @@ const ZIP_SHA256 =
 
 const DAT = `icudt${MAJOR}l.dat`;
 
+// ICU's tables for falling back from a locale that has no bundle. They're
+// compiled into ICU's code, not its data file.
+const FALLBACK = "localefallback_data.h";
+const FALLBACK_URL = `https://raw.githubusercontent.com/unicode-org/icu/release-${ICU_VERSION}/icu4c/source/common/${FALLBACK}`;
+
+const FALLBACK_SHA256 =
+  "9c20bf78d96a616c6a914082ec3f3dd9528d196e252187d2950997acd3bb9728";
+
 // Kept out of `.cache`, which each run empties.
 const DIR = join(import.meta.dir, ".icu");
 
@@ -132,7 +140,51 @@ if (process.versions.icu !== ICU_VERSION) {
   );
 }
 
+async function downloadFallback(): Promise<string> {
+  const path = join(DIR, FALLBACK);
+
+  if (existsSync(path)) {
+    return readFileSync(path, "utf8");
+  }
+
+  const response = await fetch(FALLBACK_URL);
+
+  if (!response.ok) {
+    throw new Error(`Can't download ${FALLBACK_URL}: ${response.status}`);
+  }
+
+  const text = await response.text();
+  const sha = createHash("sha256").update(text).digest("hex");
+
+  if (sha !== FALLBACK_SHA256) {
+    throw new Error(
+      `${FALLBACK_URL} has SHA-256 ${sha}, not ${FALLBACK_SHA256}`,
+    );
+  }
+
+  mkdirSync(DIR, { recursive: true });
+  writeFileSync(path, text);
+
+  return text;
+}
+
 const buffer = await download();
+const fallback = await downloadFallback();
+
+// Each table's entries end with a comment like `// sr -> Cyrl`.
+const fallbackTable = (name: string): Map<string, string> => {
+  const start = fallback.indexOf(`${name}[] = {`);
+  const end = fallback.indexOf("};", start);
+
+  return new Map(
+    [...fallback.slice(start, end).matchAll(/\/\/ (\S+) -> (\S+)/g)].map(
+      (m): [string, string] => [m[1]!, m[2]!],
+    ),
+  );
+};
+
+const defaultScripts = fallbackTable("defaultScriptTable");
+const parentLocales = fallbackTable("parentLocaleTable");
 const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
 // --- The data file's table of contents ------------------------------------------
@@ -504,26 +556,86 @@ const stringChild = (r: Resource | undefined, key: string) => {
 
 const ROOT = "root";
 
-// The bundles ICU looks in for a locale, most specific first: it follows
-// `%%ALIAS` and `%%Parent`, or else drops the last part, and ends with root.
-export function chain(name: string): string[] {
-  const b = bundle(name);
+// The bundles ICU looks in for a locale, most specific first, ending with
+// root. It follows `%%ALIAS` and `%%Parent`. Otherwise, in the main folder a
+// missing locale drops its last part, which is how Intl picks a locale ICU
+// has. In other folders, like `zone/`, ICU's own rules pick the parent.
+export function chain(name: string, folder = "", original = name): string[] {
+  const b = bundle(folder + name);
   const alias = stringChild(b, "%%ALIAS");
 
   if (b !== undefined && alias !== undefined) {
-    return chain(alias);
+    return chain(alias, folder, original);
   }
 
   if (name === ROOT) {
-    return [ROOT];
+    return [folder + ROOT];
   }
 
   const cut = name.lastIndexOf("_");
 
   const parent =
-    stringChild(b, "%%Parent") ?? (cut < 0 ? ROOT : name.slice(0, cut));
+    stringChild(b, "%%Parent") ??
+    (b === undefined && folder !== ""
+      ? icuParent(name, original)
+      : undefined) ??
+    (cut < 0 ? ROOT : name.slice(0, cut));
 
-  return b === undefined ? chain(parent) : [name, ...chain(parent)];
+  return b === undefined
+    ? chain(parent, folder, original)
+    : [folder + name, ...chain(parent, folder, original)];
+}
+
+const LATIN = "Latn";
+
+// A language's default script in a region, like ICU's `getDefaultScript`.
+const defaultScript = (language: string, region: string | undefined) =>
+  (region === undefined
+    ? undefined
+    : defaultScripts.get(`${language}_${region}`)) ??
+  defaultScripts.get(language) ??
+  LATIN;
+
+const SCRIPT = /^[A-Z][a-z]{3}$/;
+
+// ICU's `getParentLocaleID`: the parent of a locale with no bundle. It
+// keeps whichever of the script and the region says more, so `sr_Cyrl_ME`,
+// whose script is Serbian's default, falls back to `sr_ME`. `original` is the
+// locale first asked for.
+function icuParent(name: string, original: string): string | undefined {
+  const explicit = parentLocales.get(name);
+
+  if (explicit !== undefined) {
+    return explicit;
+  }
+
+  const [language, ...rest] = name.split("_");
+  const script = rest.find((part) => SCRIPT.test(part));
+  const region = rest.find((part) => !SCRIPT.test(part));
+
+  if (language === undefined || rest.length > (script === undefined ? 1 : 2)) {
+    return undefined;
+  }
+
+  if (script !== undefined && region !== undefined) {
+    return defaultScript(language, region) === script
+      ? `${language}_${region}`
+      : `${language}_${script}`;
+  }
+
+  if (region !== undefined) {
+    const originalScript = original
+      .split("_")
+      .find((part) => SCRIPT.test(part));
+
+    return `${language}_${originalScript ?? defaultScript(language, region)}`;
+  }
+
+  if (script !== undefined) {
+    return defaultScript(language, undefined) === script ? language : undefined;
+  }
+
+  return undefined;
 }
 
 // Where ICU found a resource: the bundles from the one holding it, and its

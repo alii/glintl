@@ -12,6 +12,8 @@ import gleam/list
 import glintl/internal/data
 @target(erlang)
 import glintl/internal/matcher
+@target(erlang)
+import glintl/internal/zones
 
 /// What a formatter shows.
 pub type Shown {
@@ -114,6 +116,7 @@ type Token {
   Hour(pad: Bool, cycle: HourCycle)
   DayPeriod(by_hour: Names, midnight: String, noon: String)
   Zone(
+    names: ZoneNameStyle,
     zero: String,
     positive: String,
     positive_suffix: String,
@@ -127,6 +130,15 @@ type Token {
   )
   GlueDate
   GlueTime
+}
+
+@target(erlang)
+/// Whether a zone token shows a named zone's name, like ICU's `z` and `zzzz`.
+/// Fixed offsets, and zones with no name in the locale, show the offset.
+type ZoneNameStyle {
+  OnlyOffset
+  ShortNames
+  LongNames
 }
 
 @target(erlang)
@@ -680,19 +692,20 @@ pub fn render(
   unix_seconds: Int,
   milliseconds: Int,
   offset_seconds: Int,
+  names: data.ZoneNames,
 ) -> String {
   case compiled.days {
     GregorianDays ->
       write(
         compiled,
-        gregorian_local(unix_seconds, offset_seconds),
+        gregorian_local(unix_seconds, offset_seconds, names),
         milliseconds,
       )
     OtherDays(math:, gregorian:) ->
-      case local(math(), unix_seconds, offset_seconds) {
+      case local(math(), unix_seconds, offset_seconds, names) {
         Ok(local) -> write(compiled, local, milliseconds)
         Error(Nil) ->
-          render(gregorian(), unix_seconds, milliseconds, offset_seconds)
+          render(gregorian(), unix_seconds, milliseconds, offset_seconds, names)
       }
   }
 }
@@ -914,6 +927,7 @@ fn text(
       }
     }
     Zone(
+      names:,
       zero:,
       positive:,
       positive_suffix:,
@@ -925,39 +939,59 @@ fn text(
       separator:,
       optional_minutes:,
     ) ->
-      // ICU only names the zero offset from 1970. Before then it writes it
-      // like any other offset, such as `GMT+0`.
-      case m.offset_seconds, m.unix_seconds >= 0 {
-        0, True -> zero
-        offset, _ -> {
-          let #(sign, suffix, whole_suffix) = case offset < 0 {
-            True -> #(negative, negative_suffix, negative_whole_suffix)
-            False -> #(positive, positive_suffix, positive_whole_suffix)
+      case zone_name(names, m) {
+        Ok(name) -> name
+        // A fixed zero offset is ICU's GMT zone, which is named from 1970.
+        // Before then, and for named zones with no name, ICU writes it like
+        // any other offset, such as `GMT+0`.
+        Error(Nil) ->
+          case
+            m.offset_seconds,
+            m.unix_seconds >= 0 && m.names == data.Unnamed
+          {
+            0, True -> zero
+            offset, _ -> {
+              let #(sign, suffix, whole_suffix) = case offset < 0 {
+                True -> #(negative, negative_suffix, negative_whole_suffix)
+                False -> #(positive, positive_suffix, positive_whole_suffix)
+              }
+              let offset = int.absolute_value(offset)
+              let hours = number(offset / seconds_per_hour, pad_hours, digits)
+              let minutes = offset % seconds_per_hour / seconds_per_minute
+              // Old local mean times can be off by seconds, which ICU adds on.
+              case minutes, offset % seconds_per_minute, optional_minutes {
+                0, 0, True -> sign <> hours <> whole_suffix
+                _, 0, _ ->
+                  sign
+                  <> hours
+                  <> separator
+                  <> number(minutes, True, digits)
+                  <> suffix
+                _, seconds, _ ->
+                  sign
+                  <> hours
+                  <> separator
+                  <> number(minutes, True, digits)
+                  <> separator
+                  <> number(seconds, True, digits)
+                  <> suffix
+              }
+            }
           }
-          let offset = int.absolute_value(offset)
-          let hours = number(offset / seconds_per_hour, pad_hours, digits)
-          let minutes = offset % seconds_per_hour / seconds_per_minute
-          // Old local mean times can be off by seconds, which ICU adds on.
-          case minutes, offset % seconds_per_minute, optional_minutes {
-            0, 0, True -> sign <> hours <> whole_suffix
-            _, 0, _ ->
-              sign
-              <> hours
-              <> separator
-              <> number(minutes, True, digits)
-              <> suffix
-            _, seconds, _ ->
-              sign
-              <> hours
-              <> separator
-              <> number(minutes, True, digits)
-              <> separator
-              <> number(seconds, True, digits)
-              <> suffix
-          }
-        }
       }
     GlueDate | GlueTime -> ""
+  }
+}
+
+@target(erlang)
+/// A named zone's name in the locale, like "BST" or "British Summer Time".
+fn zone_name(style: ZoneNameStyle, m: data.Local) -> Result(String, Nil) {
+  case style, m.names {
+    OnlyOffset, _ | _, data.Unnamed -> Error(Nil)
+    ShortNames, data.Named(key:, daylight:, chain:) ->
+      zones.name(chain, key, m.unix_seconds, daylight, False)
+    LongNames, data.Named(key:, daylight:, chain:) ->
+      zones.name(chain, key, m.unix_seconds, daylight, True)
   }
 }
 
@@ -1061,7 +1095,7 @@ fn modulo(n: Int, by: Int) -> Int {
 /// in a calendar, or `[]` if the calendar doesn't cover it. Used by the tests.
 @internal
 pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
-  case local(math, epoch_day * seconds_per_day, 0) {
+  case local(math, epoch_day * seconds_per_day, 0, data.Unnamed) {
     Ok(m) -> [m.era, m.year, m.extended, m.related, m.cycle, m.month, m.day]
     Error(Nil) -> []
   }
@@ -1069,13 +1103,18 @@ pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
 
 @target(erlang)
 /// The local date and time in the Gregorian calendar, which covers every day.
-fn gregorian_local(unix_seconds: Int, offset_seconds: Int) -> data.Local {
+fn gregorian_local(
+  unix_seconds: Int,
+  offset_seconds: Int,
+  names: data.ZoneNames,
+) -> data.Local {
   proleptic_local(
     data.gregorian_newest_era,
     data.gregorian_older_eras,
     data.start_of_time,
     unix_seconds,
     offset_seconds,
+    names,
   )
 }
 
@@ -1086,6 +1125,7 @@ fn local(
   math: data.Math,
   unix_seconds: Int,
   offset_seconds: Int,
+  names: data.ZoneNames,
 ) -> Result(data.Local, Nil) {
   case math {
     data.Proleptic(eras: [newest, ..older], julian_before:) ->
@@ -1095,6 +1135,7 @@ fn local(
         julian_before,
         unix_seconds,
         offset_seconds,
+        names,
       ))
     data.Table(
       cyclic:,
@@ -1125,6 +1166,7 @@ fn local(
         second:,
         offset_seconds:,
         unix_seconds:,
+        names:,
       )
     }
     data.Proleptic(eras: [], ..) -> Error(Nil)
@@ -1156,6 +1198,7 @@ fn proleptic_local(
   julian_before: Int,
   unix_seconds: Int,
   offset_seconds: Int,
+  names: data.ZoneNames,
 ) -> data.Local {
   let #(epoch_day, hour, minute, second) =
     day_and_time(unix_seconds, offset_seconds)
@@ -1180,6 +1223,7 @@ fn proleptic_local(
     second:,
     offset_seconds:,
     unix_seconds:,
+    names:,
     era:,
     year: base + sign * y,
     extended: y,

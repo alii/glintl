@@ -21,9 +21,9 @@ import glintl/internal/zones
 pub opaque type TimeZone {
   /// A whole number of minutes ahead of UTC, under 24 hours either way.
   Offset(minutes: Int)
-  /// A zone from the IANA time zone database. On Erlang, `zone` is its number
-  /// in glintl's data.
-  Named(name: String, zone: Int)
+  /// A zone from the IANA time zone database. On Erlang, `zone` is its rules'
+  /// number in glintl's data, and `key` its names'.
+  Named(name: String, zone: Int, key: Int)
 }
 
 /// UTC itself, with no offset.
@@ -34,9 +34,6 @@ pub const utc = Offset(minutes: 0)
 /// case doesn't matter. Summer time is worked out for each moment you format.
 ///
 /// It returns `Error(Nil)` for a name glintl doesn't know.
-///
-/// On Erlang, glintl can't show time zone names like "British Summer Time"
-/// yet, so it shows the offset instead, like "GMT+1".
 pub fn from_name(name: String) -> Result(TimeZone, Nil) {
   find(name)
 }
@@ -61,7 +58,7 @@ fn local_name() -> Result(String, Nil)
 @target(erlang)
 fn find(name: String) -> Result(TimeZone, Nil) {
   case zones.find(string.lowercase(name)) {
-    Ok(#(name, zone)) -> Ok(Named(name:, zone:))
+    Ok(#(name, zone, key)) -> Ok(Named(name:, zone:, key:))
     Error(Nil) -> Error(Nil)
   }
 }
@@ -73,7 +70,7 @@ fn find(name: String) -> Result(TimeZone, Nil) {
     True -> Error(Nil)
     False ->
       case intl_name(name) {
-        Ok(name) -> Ok(Named(name:, zone: 0))
+        Ok(name) -> Ok(Named(name:, zone: 0, key: 0))
         Error(Nil) -> Error(Nil)
       }
   }
@@ -133,12 +130,16 @@ fn from_minutes(minutes: Int) -> Result(TimeZone, OffsetError) {
 }
 
 @target(erlang)
-/// How many seconds the time zone is ahead of UTC at a moment.
+/// At a moment: how many seconds the time zone is ahead of UTC, its key in the
+/// names data or -1 for a fixed offset, and whether it's on summer time.
 @internal
-pub fn offset_seconds(zone: TimeZone, unix_seconds: Int) -> Int {
+pub fn at(zone: TimeZone, unix_seconds: Int) -> #(Int, Int, Bool) {
   case zone {
-    Offset(minutes:) -> minutes * seconds_per_minute
-    Named(zone:, ..) -> zones.offset_seconds(zone, unix_seconds)
+    Offset(minutes:) -> #(minutes * seconds_per_minute, -1, False)
+    Named(zone:, key:, ..) -> {
+      let #(offset, daylight) = zones.offset(zone, unix_seconds)
+      #(offset, key, daylight)
+    }
   }
 }
 

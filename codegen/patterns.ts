@@ -71,6 +71,10 @@ export type Token =
   | { t: "day_period"; byHour: string[]; midnight: string; noon: string }
   | {
       t: "zone";
+      // Whether a named zone shows its name, like "BST" or "British Summer
+      // Time", where the locale has one. Otherwise, and for fixed offsets,
+      // it shows the offset like this.
+      names: ZoneNames;
       zero: string;
       positive: string;
       positiveSuffix: string;
@@ -82,6 +86,22 @@ export type Token =
       separator: string;
       optionalMinutes: boolean;
     };
+
+// ICU's `z` shows short names and `zzzz` long ones. The full time style uses
+// `zzzz` and the long one `z`, in every locale.
+export type ZoneNames = "only_offset" | "short_names" | "long_names";
+
+function zoneNames(options: Options): ZoneNames {
+  if (options.timeStyle === "full" || options.timeZoneName === "long") {
+    return "long_names";
+  }
+
+  if (options.timeStyle === "long" || options.timeZoneName === "short") {
+    return "short_names";
+  }
+
+  return "only_offset";
+}
 
 // How a date and a time are joined, like "{date} at {time}". A glue can hold
 // a date's tokens itself, where ICU writes the date differently next to a
@@ -758,6 +778,7 @@ function deriveZone(
 
   return {
     t: "zone",
+    names: zoneNames(options),
     zero,
     positive,
     positiveSuffix: suffix,

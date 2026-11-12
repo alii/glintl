@@ -221,6 +221,35 @@ pub fn named_zone_test() {
   assert time("Asia/Kolkata", "2026-07-15T00:00:00Z") == "05:30:00"
 }
 
+/// Named zones show their names in the locale. Fixed offsets, and zones the
+/// locale has no name for, show the offset.
+pub fn zone_names_test() {
+  let assert Ok(summer) = timestamp.parse_rfc3339("2026-07-15T12:00:00Z")
+  let assert Ok(winter) = timestamp.parse_rfc3339("2026-01-15T12:00:00Z")
+  let time = fn(locale, style, moment, name) {
+    let assert Ok(zone) = time_zone.from_name(name)
+    date_time.time_formatter(locale, style:)
+    |> date_time.format(moment, zone:)
+  }
+  assert time(en_gb.locale(), date_time.Full, summer, "Europe/London")
+    == "13:00:00 British Summer Time"
+  assert time(en_gb.locale(), date_time.Long, summer, "Europe/London")
+    == "13:00:00 BST"
+  assert time(en_gb.locale(), date_time.Full, winter, "Europe/London")
+    == "12:00:00 Greenwich Mean Time"
+  assert time(en.locale(), date_time.Long, summer, "America/New_York")
+    == "8:00:00 AM EDT"
+  // English has no short name for Western European Time.
+  assert time(en.locale(), date_time.Long, winter, "Europe/Lisbon")
+    == "12:00:00 PM GMT+0"
+  assert time(en_gb.locale(), date_time.Full, summer, "Etc/GMT-5")
+    == "17:00:00 GMT+05:00"
+  let assert Ok(plus_one) = time_zone.offset(hours: 1, minutes: 0)
+  assert date_time.time_formatter(en_gb.locale(), style: date_time.Full)
+    |> date_time.format(summer, zone: plus_one)
+    == "13:00:00 GMT+01:00"
+}
+
 /// Offsets must be under 24 hours either way, because that's all JavaScript's
 /// `Intl` allows.
 pub fn offset_test() {
