@@ -22,10 +22,15 @@ jobs:
           rebar3-version: "3"
 
       # The generated data and the JavaScript tests come from this Bun's ICU,
-      # so it must be the same version that generated them.
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
+      # so it must be the same build that generated them. `.bun-image` pins it
+      # by digest, which also works for canaries.
+      - name: Use the pinned Bun
+        run: |
+          id=$(docker create "$(head -n1 .bun-image)")
+          mkdir -p "$HOME/.bun/bin"
+          docker cp "$id:/usr/local/bin/bun" "$HOME/.bun/bin/bun"
+          docker rm "$id"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
 
       - name: Check the generator
         run: |

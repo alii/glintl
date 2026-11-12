@@ -16,6 +16,11 @@
 //
 //   bun codegen/conformance.ts --every ja@japanese [part/parts]
 //
+// To check every time zone at each change of offset, with zone names in many
+// locales, run this:
+//
+//   bun codegen/conformance.ts --zones
+//
 // Cases come in groups that share a formatter, because making an
 // Intl.DateTimeFormat is slow. Moments lean towards midnight, noon and
 // whole hours, where day periods change.

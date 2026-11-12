@@ -7,23 +7,25 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 
-const ICU_VERSION = "78.3";
+const ICU_VERSION = "79.1";
 const MAJOR = ICU_VERSION.split(".")[0];
 const ZIP = `icu4c-${ICU_VERSION}-data-bin-l.zip`;
 const URL = `https://github.com/unicode-org/icu/releases/download/release-${ICU_VERSION}/${ZIP}`;
 
 const ZIP_SHA256 =
-  "982619632b78887f1895b063e96e8c3cc7f99283337c8abbd05aa71635de613c";
+  "72489fb316a60ae1c1da205866edd01b17e8fbf8354ad0615e6cc60f74e08811";
 
 const DAT = `icudt${MAJOR}l.dat`;
 
 // ICU's tables for falling back from a locale that has no bundle. They're
 // compiled into ICU's code, not its data file.
-const FALLBACK = "localefallback_data.h";
-const FALLBACK_URL = `https://raw.githubusercontent.com/unicode-org/icu/release-${ICU_VERSION}/icu4c/source/common/${FALLBACK}`;
+const FALLBACK_URL = `https://raw.githubusercontent.com/unicode-org/icu/release-${ICU_VERSION}/icu4c/source/common/localefallback_data.h`;
+
+// Cached by ICU version, because the file's name doesn't change between them.
+const FALLBACK = `localefallback_data-${ICU_VERSION}.h`;
 
 const FALLBACK_SHA256 =
-  "9c20bf78d96a616c6a914082ec3f3dd9528d196e252187d2950997acd3bb9728";
+  "f022a3e22e21c88061228e6d8f9ff4b8ce87e8b66995e0490c9f7c11067490d0";
 
 // Kept out of `.cache`, which each run empties.
 const DIR = join(import.meta.dir, ".icu");
