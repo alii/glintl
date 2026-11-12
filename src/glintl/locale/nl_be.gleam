@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Flemish, whose tag is `nl-BE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nl-BE", glintl.Gregorian, 248)
+  glintl.new_locale("nl-BE", glintl.Gregorian, 251)
 }

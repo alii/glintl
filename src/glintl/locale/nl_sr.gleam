@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Dutch (Suriname), whose tag is `nl-SR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nl-SR", glintl.Gregorian, 247)
+  glintl.new_locale("nl-SR", glintl.Gregorian, 250)
 }

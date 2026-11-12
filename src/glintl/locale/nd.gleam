@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for North Ndebele, whose tag is `nd`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nd", glintl.Gregorian, 243)
+  glintl.new_locale("nd", glintl.Gregorian, 246)
 }

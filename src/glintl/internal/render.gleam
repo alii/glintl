@@ -88,11 +88,20 @@ type Token {
   /// A part written with ASCII digits, whatever the locale's digits are.
   AsciiDigits(Token)
   /// `first` and `minus_first` are names for years 1 and -1, like 元, or "".
-  Year(two_digit: Bool, minus: String, first: String, minus_first: String)
+  /// `min_digits` is the fewest digits a year shows, like ICU's `yyyy`
+  /// showing year 1 as "0001".
+  Year(
+    two_digit: Bool,
+    min_digits: Int,
+    minus: String,
+    first: String,
+    minus_first: String,
+  )
   /// ICU's week-based year.
   WeekYear(
     minus: String,
     two_digit: Bool,
+    min_digits: Int,
     first_day: Int,
     minimal_days: Int,
     exceptions: List(#(Int, Int)),
@@ -867,22 +876,31 @@ fn text(
       }
       sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
-    Year(two_digit: False, minus:, first:, minus_first:) -> {
+    Year(two_digit: False, min_digits:, minus:, first:, minus_first:) -> {
       // Year 1 and -1 can have a name, like 元.
       let named = case m.year {
         1 -> first
         -1 -> minus_first
         _ -> ""
       }
-      case named {
-        "" -> signed(m.year, minus, digits)
-        named -> named
+      case named, m.year < 0 {
+        "", False -> padded(m.year, min_digits, digits)
+        "", True -> minus <> padded(-m.year, min_digits, digits)
+        named, _ -> named
       }
     }
-    WeekYear(minus:, two_digit:, first_day:, minimal_days:, exceptions:) -> {
+    WeekYear(
+      minus:,
+      two_digit:,
+      min_digits:,
+      first_day:,
+      minimal_days:,
+      exceptions:,
+    ) -> {
       let year = data.week_year(m, first_day, minimal_days, exceptions)
       case two_digit, year < 0 {
-        False, _ -> signed(year, minus, digits)
+        False, False -> padded(year, min_digits, digits)
+        False, True -> minus <> padded(-year, min_digits, digits)
         True, True ->
           minus
           <> number(int.absolute_value(year) % two_digit_years, True, digits)
@@ -1057,6 +1075,28 @@ fn signed(n: Int, minus: String, digits: Int) -> String {
   case n < 0 {
     True -> minus <> number(-n, False, digits)
     False -> number(n, False, digits)
+  }
+}
+
+@target(erlang)
+/// `n` with zeros in front to make at least `count` digits.
+fn padded(n: Int, count: Int, digits: Int) -> String {
+  zeros(count - digit_count(n, 1), digits) <> number(n, False, digits)
+}
+
+@target(erlang)
+fn digit_count(n: Int, count: Int) -> Int {
+  case n < ten {
+    True -> count
+    False -> digit_count(n / ten, count + 1)
+  }
+}
+
+@target(erlang)
+fn zeros(count: Int, digits: Int) -> String {
+  case count > 0 {
+    True -> number(0, False, digits) <> zeros(count - 1, digits)
+    False -> ""
   }
 }
 

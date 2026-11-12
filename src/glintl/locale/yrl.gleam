@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Nheengatu, whose tag is `yrl`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yrl", glintl.Gregorian, 368)
+  glintl.new_locale("yrl", glintl.Gregorian, 371)
 }

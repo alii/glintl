@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sardinian, whose tag is `sc`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sc", glintl.Gregorian, 289)
+  glintl.new_locale("sc", glintl.Gregorian, 292)
 }

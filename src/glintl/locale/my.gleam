@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Burmese, whose tag is `my`.
 pub fn locale() -> Locale {
-  glintl.new_locale("my", glintl.Gregorian, 239)
+  glintl.new_locale("my", glintl.Gregorian, 242)
 }

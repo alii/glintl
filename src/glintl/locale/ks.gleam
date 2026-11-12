@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kashmiri, whose tag is `ks`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ks", glintl.Gregorian, 193)
+  glintl.new_locale("ks", glintl.Gregorian, 196)
 }

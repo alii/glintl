@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Tonga), whose tag is `en-TO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-TO", glintl.Gregorian, 70)
+  glintl.new_locale("en-TO", glintl.Gregorian, 71)
 }

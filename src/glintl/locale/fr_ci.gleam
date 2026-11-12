@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for French (Côte d’Ivoire), whose tag is `fr-CI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-CI", glintl.Gregorian, 132)
+  glintl.new_locale("fr-CI", glintl.Gregorian, 134)
 }

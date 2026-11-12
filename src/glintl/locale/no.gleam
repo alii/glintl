@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Norwegian, whose tag is `no`.
 pub fn locale() -> Locale {
-  glintl.new_locale("no", glintl.Gregorian, 242)
+  glintl.new_locale("no", glintl.Gregorian, 245)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ngomba, whose tag is `jgo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("jgo", glintl.Gregorian, 171)
+  glintl.new_locale("jgo", glintl.Gregorian, 174)
 }

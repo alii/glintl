@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Oromo, whose tag is `om`.
 pub fn locale() -> Locale {
-  glintl.new_locale("om", glintl.Gregorian, 258)
+  glintl.new_locale("om", glintl.Gregorian, 261)
 }

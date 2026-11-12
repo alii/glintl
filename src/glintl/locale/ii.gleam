@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sichuan Yi, whose tag is `ii`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ii", glintl.Gregorian, 166)
+  glintl.new_locale("ii", glintl.Gregorian, 169)
 }

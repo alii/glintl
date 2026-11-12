@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (US Outlying Islands), whose tag is `en-UM`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-UM", glintl.Gregorian, 69)
+  glintl.new_locale("en-UM", glintl.Gregorian, 70)
 }

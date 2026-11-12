@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Belize), whose tag is `en-BZ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-BZ", glintl.Gregorian, 78)
+  glintl.new_locale("en-BZ", glintl.Gregorian, 79)
 }

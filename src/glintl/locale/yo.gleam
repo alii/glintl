@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Yoruba, whose tag is `yo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yo", glintl.Gregorian, 366)
+  glintl.new_locale("yo", glintl.Gregorian, 369)
 }

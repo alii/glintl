@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Teso, whose tag is `teo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("teo", glintl.Gregorian, 332)
+  glintl.new_locale("teo", glintl.Gregorian, 335)
 }

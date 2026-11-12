@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Rombo, whose tag is `rof`.
 pub fn locale() -> Locale {
-  glintl.new_locale("rof", glintl.Gregorian, 280)
+  glintl.new_locale("rof", glintl.Gregorian, 283)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Morisyen, whose tag is `mfe`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mfe", glintl.Gregorian, 224)
+  glintl.new_locale("mfe", glintl.Gregorian, 227)
 }

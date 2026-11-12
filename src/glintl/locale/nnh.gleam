@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ngiemboon, whose tag is `nnh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nnh", glintl.Gregorian, 251)
+  glintl.new_locale("nnh", glintl.Gregorian, 254)
 }

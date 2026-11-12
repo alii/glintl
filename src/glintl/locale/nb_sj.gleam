@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Norwegian Bokmål (Svalbard & Jan Mayen), whose tag is `nb-SJ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nb-SJ", glintl.Gregorian, 242)
+  glintl.new_locale("nb-SJ", glintl.Gregorian, 245)
 }

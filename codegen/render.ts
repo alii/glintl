@@ -96,7 +96,12 @@ export function renderParts(
           return token.minusFirst;
         }
 
-        return number(year, false, token.minus);
+        const shown = String(Math.abs(year)).padStart(token.minDigits, "0");
+
+        return (
+          (year < 0 ? token.minus : "") +
+          [...shown].map((c) => digits[+c]).join("")
+        );
       }
 
       case "week_year": {
@@ -108,10 +113,19 @@ export function renderParts(
           token.exceptions,
         );
 
-        return token.twoDigit
-          ? (year < 0 ? token.minus : "") +
-              number(Math.abs(year) % TWO_DIGIT_YEARS, true)
-          : number(year, false, token.minus);
+        if (token.twoDigit) {
+          return (
+            (year < 0 ? token.minus : "") +
+            number(Math.abs(year) % TWO_DIGIT_YEARS, true)
+          );
+        }
+
+        const shown = String(Math.abs(year)).padStart(token.minDigits, "0");
+
+        return (
+          (year < 0 ? token.minus : "") +
+          [...shown].map((c) => digits[+c]).join("")
+        );
       }
 
       case "extended_year":

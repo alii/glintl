@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Kiribati), whose tag is `en-KI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-KI", glintl.Gregorian, 70)
+  glintl.new_locale("en-KI", glintl.Gregorian, 71)
 }

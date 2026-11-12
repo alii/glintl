@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tatar, whose tag is `tt`.
 pub fn locale() -> Locale {
-  glintl.new_locale("tt", glintl.Gregorian, 343)
+  glintl.new_locale("tt", glintl.Gregorian, 346)
 }

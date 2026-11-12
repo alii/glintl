@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Javanese, whose tag is `jv`.
 pub fn locale() -> Locale {
-  glintl.new_locale("jv", glintl.Gregorian, 173)
+  glintl.new_locale("jv", glintl.Gregorian, 176)
 }

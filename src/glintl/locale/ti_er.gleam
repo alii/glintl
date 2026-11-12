@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tigrinya (Eritrea), whose tag is `ti-ER`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ti-ER", glintl.Gregorian, 336)
+  glintl.new_locale("ti-ER", glintl.Gregorian, 339)
 }

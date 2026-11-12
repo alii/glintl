@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Serbian (Cyrillic, Bosnia & Herzegovina), whose tag is `sr-Cyrl-BA`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sr-Cyrl-BA", glintl.Gregorian, 311)
+  glintl.new_locale("sr-Cyrl-BA", glintl.Gregorian, 314)
 }

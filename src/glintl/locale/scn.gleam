@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sicilian, whose tag is `scn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("scn", glintl.Gregorian, 290)
+  glintl.new_locale("scn", glintl.Gregorian, 293)
 }

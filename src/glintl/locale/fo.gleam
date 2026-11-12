@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Faroese, whose tag is `fo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fo", glintl.Gregorian, 131)
+  glintl.new_locale("fo", glintl.Gregorian, 133)
 }

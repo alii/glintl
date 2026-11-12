@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Standard Moroccan Tamazight, whose tag is `zgh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zgh", glintl.Gregorian, 374)
+  glintl.new_locale("zgh", glintl.Gregorian, 377)
 }

@@ -96,9 +96,9 @@ function token(t: Token): string {
     case "ascii":
       return `{ascii_digits,${token(t.token)}}`;
     case "year":
-      return `{year,${bool(t.twoDigit)},${string(t.minus)},${string(t.first)},${string(t.minusFirst)}}`;
+      return `{year,${bool(t.twoDigit)},${t.minDigits},${string(t.minus)},${string(t.first)},${string(t.minusFirst)}}`;
     case "week_year":
-      return `{week_year,${string(t.minus)},${bool(t.twoDigit)},${t.firstDay},${t.minimalDays},[${t.exceptions.map(([year, day]) => `{${year},${day}}`).join(",")}]}`;
+      return `{week_year,${string(t.minus)},${bool(t.twoDigit)},${t.minDigits},${t.firstDay},${t.minimalDays},[${t.exceptions.map(([year, day]) => `{${year},${day}}`).join(",")}]}`;
     case "extended_year":
       return `{extended_year,${string(t.minus)},${bool(t.twoDigit)}}`;
     case "related_year":

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Cornish, whose tag is `kw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kw", glintl.Gregorian, 200)
+  glintl.new_locale("kw", glintl.Gregorian, 203)
 }

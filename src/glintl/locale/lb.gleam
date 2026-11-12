@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Luxembourgish, whose tag is `lb`.
 pub fn locale() -> Locale {
-  glintl.new_locale("lb", glintl.Gregorian, 207)
+  glintl.new_locale("lb", glintl.Gregorian, 210)
 }

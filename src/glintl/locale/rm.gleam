@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Romansh, whose tag is `rm`.
 pub fn locale() -> Locale {
-  glintl.new_locale("rm", glintl.Gregorian, 276)
+  glintl.new_locale("rm", glintl.Gregorian, 279)
 }

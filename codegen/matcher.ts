@@ -571,13 +571,24 @@ export function matcher(data: MatcherData): Matcher {
 
 type Best = { entry: Entry; missing: number; extra: number };
 
+// A two-digit year, like `yy`.
+const TWO_DIGITS = 2;
+
+// ICU's `yearLengthIsCompatible`: a pattern stored for a two-digit numeric
+// year, like "MMM d, ’yy", only suits a request for a two-digit year.
+const yearLengthFits = (want: Skeleton, trial: Skeleton) =>
+  want.type[YEAR]! <= NONE ||
+  trial.type[YEAR]! <= NONE ||
+  trial.original.lengths[YEAR] !== TWO_DIGITS ||
+  want.original.lengths[YEAR] === TWO_DIGITS;
+
 // Like ICU's `getBestRaw`, finds the closest pattern. On a tie it prefers the
 // pattern whose missing fields are less significant.
 function best(m: Matcher, want: Skeleton, mask: number): Best {
   type Search = Best & { distance: number };
 
   const found = m.entries.reduce<Search | undefined>((so, entry) => {
-    if (so?.distance === 0) {
+    if (so?.distance === 0 || !yearLengthFits(want, entry.skeleton)) {
       return so;
     }
 

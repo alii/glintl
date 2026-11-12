@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kikuyu, whose tag is `ki`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ki", glintl.Gregorian, 181)
+  glintl.new_locale("ki", glintl.Gregorian, 184)
 }

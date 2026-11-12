@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Manipuri (Bangla), whose tag is `mni-Beng`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mni-Beng", glintl.Gregorian, 232)
+  glintl.new_locale("mni-Beng", glintl.Gregorian, 235)
 }

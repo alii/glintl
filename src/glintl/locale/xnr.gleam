@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kangri, whose tag is `xnr`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xnr", glintl.Gregorian, 362)
+  glintl.new_locale("xnr", glintl.Gregorian, 365)
 }

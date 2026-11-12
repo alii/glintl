@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Paraguay), whose tag is `es-PY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-PY", glintl.Gregorian, 116)
+  glintl.new_locale("es-PY", glintl.Gregorian, 117)
 }

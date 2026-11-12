@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Prussian, whose tag is `prg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("prg", glintl.Gregorian, 267)
+  glintl.new_locale("prg", glintl.Gregorian, 270)
 }

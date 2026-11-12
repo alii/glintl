@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Cantonese (Traditional), whose tag is `yue-Hant`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yue-Hant", glintl.Gregorian, 370)
+  glintl.new_locale("yue-Hant", glintl.Gregorian, 373)
 }

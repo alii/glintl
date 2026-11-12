@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Vunjo, whose tag is `vun`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vun", glintl.Gregorian, 172)
+  glintl.new_locale("vun", glintl.Gregorian, 175)
 }

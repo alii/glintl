@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sena, whose tag is `seh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("seh", glintl.Gregorian, 295)
+  glintl.new_locale("seh", glintl.Gregorian, 298)
 }

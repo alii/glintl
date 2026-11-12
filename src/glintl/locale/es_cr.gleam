@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Costa Rica), whose tag is `es-CR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-CR", glintl.Gregorian, 106)
+  glintl.new_locale("es-CR", glintl.Gregorian, 107)
 }

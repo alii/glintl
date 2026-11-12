@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kamba, whose tag is `kam`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kam", glintl.Gregorian, 176)
+  glintl.new_locale("kam", glintl.Gregorian, 179)
 }

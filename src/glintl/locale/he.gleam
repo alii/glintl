@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Hebrew, whose tag is `he`.
 pub fn locale() -> Locale {
-  glintl.new_locale("he", glintl.Gregorian, 154)
+  glintl.new_locale("he", glintl.Gregorian, 157)
 }

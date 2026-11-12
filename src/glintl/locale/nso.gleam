@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Northern Sotho, whose tag is `nso`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nso", glintl.Gregorian, 253)
+  glintl.new_locale("nso", glintl.Gregorian, 256)
 }

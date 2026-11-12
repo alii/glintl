@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Norwegian Nynorsk, whose tag is `nn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nn", glintl.Gregorian, 250)
+  glintl.new_locale("nn", glintl.Gregorian, 253)
 }

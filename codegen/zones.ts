@@ -120,6 +120,15 @@ function nameKey(name: string): string | undefined {
   return alias?.t === "string" ? alias.value.replaceAll("/", ":") : undefined;
 }
 
+// tz 2026d made these names zones again, but Intl keeps them as links to the
+// zones below. See https://github.com/tc39/ecma402/issues/1103.
+const POSIX_STYLE = new Map([
+  ["EST5EDT", "America/New_York"],
+  ["CST6CDT", "America/Chicago"],
+  ["MST7MDT", "America/Denver"],
+  ["PST8PDT", "America/Los_Angeles"],
+]);
+
 export function zoneData(): ZoneData {
   const names = items(lookup(["zoneinfo64"], ["Names"])).map(text);
   const zones = items(lookup(["zoneinfo64"], ["Zones"]));
@@ -139,7 +148,10 @@ export function zoneData(): ZoneData {
     try {
       new Intl.DateTimeFormat("en", { timeZone: name });
 
-      return [[name, number.get(target(i))!]];
+      const primary = POSIX_STYLE.get(name);
+      const zone = primary === undefined ? i : names.indexOf(primary);
+
+      return [[name, number.get(target(zone))!]];
     } catch {
       return [];
     }
@@ -147,7 +159,8 @@ export function zoneData(): ZoneData {
 
   // A name missing from ICU's name data uses the key of its zone's own name.
   const nameKeys = accepted.map(([name, n]) => {
-    const key = nameKey(name) ?? nameKey(names[real[n]!]!);
+    const key =
+      nameKey(POSIX_STYLE.get(name) ?? name) ?? nameKey(names[real[n]!]!);
 
     if (key === undefined) {
       throw new Error(`${name} has no key in ICU's name data`);

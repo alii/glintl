@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Shavian), whose tag is `en-Shaw`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-Shaw", glintl.Gregorian, 69)
+  glintl.new_locale("en-Shaw", glintl.Gregorian, 70)
 }

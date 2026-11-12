@@ -235,8 +235,11 @@ pub fn zone_names_test() {
     == "13:00:00 British Summer Time"
   assert time(en_gb.locale(), date_time.Long, summer, "Europe/London")
     == "13:00:00 BST"
-  assert time(en_gb.locale(), date_time.Full, winter, "Europe/London")
+  assert time(en_gb.locale(), date_time.Full, winter, "Africa/Abidjan")
     == "12:00:00 Greenwich Mean Time"
+  // ICU 79.1 has no British English name for London in winter.
+  assert time(en_gb.locale(), date_time.Full, winter, "Europe/London")
+    == "12:00:00 GMT+00:00"
   assert time(en.locale(), date_time.Long, summer, "America/New_York")
     == "8:00:00 AM EDT"
   // English has no short name for Western European Time.

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Fulah (Latin, Gambia), whose tag is `ff-Latn-GM`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Latn-GM", glintl.Gregorian, 128)
+  glintl.new_locale("ff-Latn-GM", glintl.Gregorian, 130)
 }

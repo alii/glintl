@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Basque, whose tag is `eu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("eu", glintl.Gregorian, 121)
+  glintl.new_locale("eu", glintl.Gregorian, 123)
 }

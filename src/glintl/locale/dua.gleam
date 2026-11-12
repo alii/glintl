@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Duala, whose tag is `dua`.
 pub fn locale() -> Locale {
-  glintl.new_locale("dua", glintl.Gregorian, 62)
+  glintl.new_locale("dua", glintl.Gregorian, 63)
 }

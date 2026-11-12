@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Metaʼ, whose tag is `mgo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mgo", glintl.Gregorian, 227)
+  glintl.new_locale("mgo", glintl.Gregorian, 230)
 }

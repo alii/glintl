@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Zulu, whose tag is `zu`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zu", glintl.Gregorian, 383)
+  glintl.new_locale("zu", glintl.Gregorian, 386)
 }

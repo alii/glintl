@@ -46,6 +46,9 @@ export type Token =
   | {
       t: "year";
       twoDigit: boolean;
+      // The fewest digits a year shows, like ICU's `yyyy` showing year 1 as
+      // "0001". Two digit years use `twoDigit` instead.
+      minDigits: number;
       minus: string;
       first: string;
       minusFirst: string;
@@ -54,6 +57,8 @@ export type Token =
       t: "week_year";
       minus: string;
       twoDigit: boolean;
+      // Like `minDigits` for years.
+      minDigits: number;
       firstDay: number;
       minimalDays: number;
       exceptions: [number, number][];
@@ -433,9 +438,13 @@ export function derive(
           const firstValue =
             one === undefined || twoDigit ? "" : valueAt(at(one), i);
 
-          const first = firstValue === local(1, false) ? "" : firstValue;
+          const minDigits = minDigitsOf(firstValue, local);
+
+          const first =
+            firstValue === number(1, "", local, minDigits) ? "" : firstValue;
+
           const yearMinus = minus(i, year, twoDigit);
-          // ICU 78.3's Japanese writes year -1 as 元 too. Year -1 may only be in
+          // ICU's Japanese writes year -1 as 元 too. Year -1 may only be in
           // another era, like the Japanese era before Taika.
           const minusOnes = days().filter((d) => year(d) === -1);
           const minusOne = minusOnes.find(sameEra) ?? minusOnes[0];
@@ -444,11 +453,18 @@ export function derive(
             minusOne === undefined || twoDigit ? "" : valueAt(at(minusOne), i);
 
           const minusFirst =
-            minusFirstValue === yearMinus + local(1, false)
+            minusFirstValue === number(-1, yearMinus, local, minDigits)
               ? ""
               : minusFirstValue;
 
-          return { t: "year", twoDigit, minus: yearMinus, first, minusFirst };
+          return {
+            t: "year",
+            twoDigit,
+            minDigits,
+            minus: yearMinus,
+            first,
+            minusFirst,
+          };
         }
 
         case "unknown": {
@@ -461,10 +477,19 @@ export function derive(
             Math.abs(date.extended) >= TWO_DIGIT_YEARS &&
             value === local(Math.abs(date.extended) % TWO_DIGIT_YEARS, true);
 
+          const yearOne = days().find(
+            (d) => calendarDate(math, d)?.extended === 1,
+          );
+
+          const minDigits =
+            yearOne === undefined || twoDigit
+              ? 1
+              : minDigitsOf(valueAt(at(yearOne), i), local);
+
           const written = (n: number) =>
             twoDigit
               ? (n < 0 ? "-" : "") + local(Math.abs(n) % TWO_DIGIT_YEARS, true)
-              : number(n, "-", local);
+              : number(n, "-", local, minDigits);
 
           const yearStarts =
             math.kind === "table"
@@ -522,6 +547,7 @@ export function derive(
             t: "week_year",
             minus: minus(i, extended, twoDigit),
             twoDigit,
+            minDigits,
             firstDay,
             minimalDays,
             exceptions,
@@ -711,8 +737,25 @@ export function derive(
   });
 }
 
-function number(n: number, minus: string, local: Local): string {
-  return n < 0 ? minus + local(-n, false) : local(n, false);
+function number(n: number, minus: string, local: Local, minDigits = 1): string {
+  const shown = local(Math.abs(n), false);
+
+  const zeros = local(0, false).repeat(
+    Math.max(minDigits - [...shown].length, 0),
+  );
+
+  return (n < 0 ? minus : "") + zeros + shown;
+}
+
+// The fewest digits a year shows, read from how it writes year 1, like ICU's
+// `yyyy` writing "0001". A year written as a word, like 元, has no padding.
+function minDigitsOf(yearOne: string, local: Local): number {
+  const zeros = [...yearOne].slice(0, -1);
+
+  return yearOne.endsWith(local(1, false)) &&
+    zeros.join("") === local(0, false).repeat(zeros.length)
+    ? zeros.length + 1
+    : 1;
 }
 
 function deriveZone(

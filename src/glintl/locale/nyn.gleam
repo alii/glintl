@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Nyankole, whose tag is `nyn`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nyn", glintl.Gregorian, 255)
+  glintl.new_locale("nyn", glintl.Gregorian, 258)
 }

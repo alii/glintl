@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Wolof, whose tag is `wo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("wo", glintl.Gregorian, 360)
+  glintl.new_locale("wo", glintl.Gregorian, 363)
 }

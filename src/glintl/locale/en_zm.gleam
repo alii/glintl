@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Zambia), whose tag is `en-ZM`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-ZM", glintl.Gregorian, 70)
+  glintl.new_locale("en-ZM", glintl.Gregorian, 72)
 }

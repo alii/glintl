@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tamil (Malaysia), whose tag is `ta-MY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ta-MY", glintl.Gregorian, 329)
+  glintl.new_locale("ta-MY", glintl.Gregorian, 332)
 }

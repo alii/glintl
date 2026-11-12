@@ -1341,9 +1341,9 @@ pub fn all() -> List(Locale) {
   ]
 }
 
-/// Find a locale by its BCP 47 tag. Case and `_` or `-` don't matter.
+/// Finds a locale by its BCP 47 tag, ignoring case and treating `_` as `-`.
 ///
-/// If there is no exact match, the last part of the tag is dropped and it
+/// If there is no exact match, `from_tag` drops the last part of the tag and
 /// tries again, so `"fr-CA-x-mine"` gives Canadian French and `"en-XX"`
 /// gives English.
 ///

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Luyia, whose tag is `luy`.
 pub fn locale() -> Locale {
-  glintl.new_locale("luy", glintl.Gregorian, 219)
+  glintl.new_locale("luy", glintl.Gregorian, 222)
 }

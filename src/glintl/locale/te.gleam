@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Telugu, whose tag is `te`.
 pub fn locale() -> Locale {
-  glintl.new_locale("te", glintl.Gregorian, 331)
+  glintl.new_locale("te", glintl.Gregorian, 334)
 }

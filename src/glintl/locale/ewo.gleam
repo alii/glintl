@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ewondo, whose tag is `ewo`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ewo", glintl.Gregorian, 122)
+  glintl.new_locale("ewo", glintl.Gregorian, 124)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tachelhit, whose tag is `shi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("shi", glintl.Gregorian, 298)
+  glintl.new_locale("shi", glintl.Gregorian, 301)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Maltese, whose tag is `mt`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mt", glintl.Gregorian, 237)
+  glintl.new_locale("mt", glintl.Gregorian, 240)
 }

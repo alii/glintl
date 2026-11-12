@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Malay (Indonesia), whose tag is `ms-ID`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ms-ID", glintl.Gregorian, 236)
+  glintl.new_locale("ms-ID", glintl.Gregorian, 239)
 }

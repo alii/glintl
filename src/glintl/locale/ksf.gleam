@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Bafia, whose tag is `ksf`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksf", glintl.Gregorian, 196)
+  glintl.new_locale("ksf", glintl.Gregorian, 199)
 }

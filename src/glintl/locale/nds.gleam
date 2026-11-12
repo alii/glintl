@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Low German, whose tag is `nds`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nds", glintl.Gregorian, 244)
+  glintl.new_locale("nds", glintl.Gregorian, 247)
 }

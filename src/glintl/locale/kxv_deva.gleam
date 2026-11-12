@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kuvi (Devanagari), whose tag is `kxv-Deva`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kxv-Deva", glintl.Gregorian, 202)
+  glintl.new_locale("kxv-Deva", glintl.Gregorian, 205)
 }

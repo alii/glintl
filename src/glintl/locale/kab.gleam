@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kabyle, whose tag is `kab`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kab", glintl.Gregorian, 175)
+  glintl.new_locale("kab", glintl.Gregorian, 178)
 }

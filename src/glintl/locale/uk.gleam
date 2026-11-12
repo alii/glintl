@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Ukrainian, whose tag is `uk`.
 pub fn locale() -> Locale {
-  glintl.new_locale("uk", glintl.Gregorian, 348)
+  glintl.new_locale("uk", glintl.Gregorian, 351)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Dzongkha, whose tag is `dz`.
 pub fn locale() -> Locale {
-  glintl.new_locale("dz", glintl.Gregorian, 64)
+  glintl.new_locale("dz", glintl.Gregorian, 65)
 }

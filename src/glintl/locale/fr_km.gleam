@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for French (Comoros), whose tag is `fr-KM`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-KM", glintl.Gregorian, 132)
+  glintl.new_locale("fr-KM", glintl.Gregorian, 134)
 }

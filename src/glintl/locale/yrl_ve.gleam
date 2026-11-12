@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Nheengatu (Venezuela), whose tag is `yrl-VE`.
 pub fn locale() -> Locale {
-  glintl.new_locale("yrl-VE", glintl.Gregorian, 369)
+  glintl.new_locale("yrl-VE", glintl.Gregorian, 372)
 }

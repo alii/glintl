@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Hindi, whose tag is `hi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("hi", glintl.Gregorian, 155)
+  glintl.new_locale("hi", glintl.Gregorian, 158)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Vietnamese, whose tag is `vi`.
 pub fn locale() -> Locale {
-  glintl.new_locale("vi", glintl.Gregorian, 357)
+  glintl.new_locale("vi", glintl.Gregorian, 360)
 }

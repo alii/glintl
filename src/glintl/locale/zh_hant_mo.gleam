@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Chinese (Traditional, Macao SAR China), whose tag is `zh-Hant-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zh-Hant-MO", glintl.Gregorian, 381)
+  glintl.new_locale("zh-Hant-MO", glintl.Gregorian, 384)
 }

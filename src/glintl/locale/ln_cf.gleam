@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Lingala (Central African Republic), whose tag is `ln-CF`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ln-CF", glintl.Gregorian, 212)
+  glintl.new_locale("ln-CF", glintl.Gregorian, 215)
 }

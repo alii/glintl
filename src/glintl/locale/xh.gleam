@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Xhosa, whose tag is `xh`.
 pub fn locale() -> Locale {
-  glintl.new_locale("xh", glintl.Gregorian, 361)
+  glintl.new_locale("xh", glintl.Gregorian, 364)
 }

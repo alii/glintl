@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Malayalam, whose tag is `ml`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ml", glintl.Gregorian, 230)
+  glintl.new_locale("ml", glintl.Gregorian, 233)
 }

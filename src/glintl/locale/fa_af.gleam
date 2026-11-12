@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Dari, whose tag is `fa-AF`.
 pub fn locale() -> Locale {
-  glintl.new_locale("fa-AF", glintl.Persian, 124)
+  glintl.new_locale("fa-AF", glintl.Persian, 126)
 }

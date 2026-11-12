@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Pashto (Pakistan), whose tag is `ps-PK`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ps-PK", glintl.Gregorian, 269)
+  glintl.new_locale("ps-PK", glintl.Gregorian, 272)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Dominican Republic), whose tag is `es-DO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-DO", glintl.Gregorian, 107)
+  glintl.new_locale("es-DO", glintl.Gregorian, 108)
 }

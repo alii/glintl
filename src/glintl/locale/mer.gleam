@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Meru, whose tag is `mer`.
 pub fn locale() -> Locale {
-  glintl.new_locale("mer", glintl.Gregorian, 223)
+  glintl.new_locale("mer", glintl.Gregorian, 226)
 }

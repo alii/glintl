@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Fulah (Adlam, Liberia), whose tag is `ff-Adlm-LR`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Adlm-LR", glintl.Gregorian, 127)
+  glintl.new_locale("ff-Adlm-LR", glintl.Gregorian, 129)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Macao SAR China), whose tag is `en-MO`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-MO", glintl.Gregorian, 70)
+  glintl.new_locale("en-MO", glintl.Gregorian, 71)
 }

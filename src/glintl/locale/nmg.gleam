@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kwasio, whose tag is `nmg`.
 pub fn locale() -> Locale {
-  glintl.new_locale("nmg", glintl.Gregorian, 249)
+  glintl.new_locale("nmg", glintl.Gregorian, 252)
 }

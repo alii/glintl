@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Sangu, whose tag is `sbp`.
 pub fn locale() -> Locale {
-  glintl.new_locale("sbp", glintl.Gregorian, 288)
+  glintl.new_locale("sbp", glintl.Gregorian, 291)
 }

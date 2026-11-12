@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (US Virgin Islands), whose tag is `en-VI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-VI", glintl.Gregorian, 69)
+  glintl.new_locale("en-VI", glintl.Gregorian, 70)
 }

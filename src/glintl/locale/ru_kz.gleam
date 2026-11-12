@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Russian (Kazakhstan), whose tag is `ru-KZ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("ru-KZ", glintl.Gregorian, 281)
+  glintl.new_locale("ru-KZ", glintl.Gregorian, 284)
 }

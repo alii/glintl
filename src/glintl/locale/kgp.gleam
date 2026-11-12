@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Kaingang, whose tag is `kgp`.
 pub fn locale() -> Locale {
-  glintl.new_locale("kgp", glintl.Gregorian, 179)
+  glintl.new_locale("kgp", glintl.Gregorian, 182)
 }

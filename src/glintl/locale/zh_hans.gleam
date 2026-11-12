@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Simplified Chinese, whose tag is `zh-Hans`.
 pub fn locale() -> Locale {
-  glintl.new_locale("zh-Hans", glintl.Gregorian, 375)
+  glintl.new_locale("zh-Hans", glintl.Gregorian, 378)
 }

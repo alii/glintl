@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (South Georgia & South Sandwich Islands), whose tag is `en-GS`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-GS", glintl.Gregorian, 71)
+  glintl.new_locale("en-GS", glintl.Gregorian, 72)
 }

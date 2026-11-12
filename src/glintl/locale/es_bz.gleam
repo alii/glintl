@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Spanish (Belize), whose tag is `es-BZ`.
 pub fn locale() -> Locale {
-  glintl.new_locale("es-BZ", glintl.Gregorian, 103)
+  glintl.new_locale("es-BZ", glintl.Gregorian, 104)
 }

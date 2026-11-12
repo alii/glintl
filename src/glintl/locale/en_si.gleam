@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Slovenia), whose tag is `en-SI`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-SI", glintl.Gregorian, 73)
+  glintl.new_locale("en-SI", glintl.Gregorian, 74)
 }

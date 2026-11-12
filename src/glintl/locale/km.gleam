@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Khmer, whose tag is `km`.
 pub fn locale() -> Locale {
-  glintl.new_locale("km", glintl.Gregorian, 187)
+  glintl.new_locale("km", glintl.Gregorian, 190)
 }

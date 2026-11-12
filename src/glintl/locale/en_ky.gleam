@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for English (Cayman Islands), whose tag is `en-KY`.
 pub fn locale() -> Locale {
-  glintl.new_locale("en-KY", glintl.Gregorian, 70)
+  glintl.new_locale("en-KY", glintl.Gregorian, 71)
 }

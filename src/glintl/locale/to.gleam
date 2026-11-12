@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Returns the locale for Tongan, whose tag is `to`.
 pub fn locale() -> Locale {
-  glintl.new_locale("to", glintl.Gregorian, 339)
+  glintl.new_locale("to", glintl.Gregorian, 342)
 }

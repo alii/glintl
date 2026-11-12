@@ -629,6 +629,21 @@ type Best {
 }
 
 @target(erlang)
+/// A two-digit year, like `yy`.
+const two_digits = 2
+
+@target(erlang)
+/// ICU's `yearLengthIsCompatible`: a pattern stored for a two-digit numeric
+/// year, like "MMM d, ’yy", only suits a request for a two-digit year.
+fn year_length_fits(want: Skeleton, trial: Skeleton) -> Bool {
+  case get(want, year), get(trial, year) {
+    Ok(w), Ok(t) if w.kind > none && t.kind > none ->
+      t.length != two_digits || w.length == two_digits
+    _, _ -> True
+  }
+}
+
+@target(erlang)
 /// Like ICU's `getBestRaw`: the closest pattern, preferring ones missing less
 /// significant fields.
 fn best(m: Matcher, want: Skeleton, mask: Int) -> Result(Best, Nil) {
@@ -647,25 +662,34 @@ fn closest(
     _, Ok(_) if found_distance == 0 -> found
     [], _ -> found
     [entry, ..rest], _ -> {
-      let d = distance(want, entry.skeleton, mask)
-      let better = case found {
-        Error(Nil) -> True
-        Ok(b) ->
-          d.distance < found_distance
-          || { d.distance == found_distance && b.missing < d.missing }
-      }
-      case better {
-        True ->
-          closest(
-            rest,
-            want,
-            mask,
-            Ok(Best(entry, d.missing, d.extra)),
-            d.distance,
-          )
+      case year_length_fits(want, entry.skeleton) {
         False -> closest(rest, want, mask, found, found_distance)
+        True -> closer(entry, rest, want, mask, found, found_distance)
       }
     }
+  }
+}
+
+@target(erlang)
+fn closer(
+  entry: Entry,
+  rest: List(Entry),
+  want: Skeleton,
+  mask: Int,
+  found: Result(Best, Nil),
+  found_distance: Int,
+) -> Result(Best, Nil) {
+  let d = distance(want, entry.skeleton, mask)
+  let better = case found {
+    Error(Nil) -> True
+    Ok(b) ->
+      d.distance < found_distance
+      || { d.distance == found_distance && b.missing < d.missing }
+  }
+  case better {
+    True ->
+      closest(rest, want, mask, Ok(Best(entry, d.missing, d.extra)), d.distance)
+    False -> closest(rest, want, mask, found, found_distance)
   }
 }
 
