@@ -9,8 +9,8 @@ import gleam/string
 /// The highest weight, given to tags without a `q`.
 const highest = 1.0
 
-/// The header's language tags, most wanted first. Tags with a weight of 0,
-/// a weight that isn't a number, or `*` are left out.
+/// The header's language tags, most wanted first. It leaves out `*` and any
+/// tag whose weight is 0 or less or isn't a number.
 pub fn tags(header: String) -> List(String) {
   header
   |> string.split(",")

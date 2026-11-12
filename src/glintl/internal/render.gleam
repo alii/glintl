@@ -1,9 +1,9 @@
 //// Formats timestamps on Erlang with the tables that `codegen/pack.ts` writes
-//// to `glintl_generated_data`. JavaScript only uses `Shown`.
+//// to `glintl_generated_data`. The JavaScript target uses only `Shown`.
 ////
-//// Each distinct token is stored once, and a pattern is a list of its tokens'
-//// numbers.
-//// A formatter only points at these literals, so nothing is copied.
+//// The tables store each distinct token once, and a pattern is a list of its
+//// tokens' numbers. A formatter points at these literals instead of copying
+//// them.
 
 @target(erlang)
 import gleam/int
@@ -111,7 +111,8 @@ type Token {
   Day(pad: Bool)
   Minute(pad: Bool)
   Second(pad: Bool)
-  /// The first digits of the fraction of a second, cut off, not rounded.
+  /// The first `digits` digits of the fraction of a second, cut off without
+  /// rounding.
   Fraction(digits: Int)
   Hour(pad: Bool, cycle: HourCycle)
   DayPeriod(by_hour: Names, midnight: String, noon: String)
@@ -164,7 +165,7 @@ type Days {
   /// The Gregorian calendar, which covers every day.
   GregorianDays
   /// Another calendar, which falls back to Gregorian for days outside its
-  /// years. Both are built when needed, so a copied formatter stays small.
+  /// years. glintl builds both when needed, so a copied formatter stays small.
   OtherDays(math: fn() -> data.Math, gregorian: fn() -> Compiled)
 }
 
@@ -178,8 +179,8 @@ type Prepared {
     date: BitArray,
     time: BitArray,
   )
-  /// A pattern for fields, made with the formatter. Each piece has its run's
-  /// letter, or `""` for text.
+  /// A pattern for fields, worked out when the formatter is compiled. Each
+  /// piece has its run's letter, or `""` for text.
   Listed(
     has_minute: Bool,
     has_second: Bool,
@@ -194,7 +195,7 @@ type Workaround {
   NoWorkaround
   /// Replace the last era and year before `before_ms`.
   ReplaceEra(before_ms: Int, text: String, two_digit_year: Bool)
-  /// Write no era, and add `text` to the end, before `before_ms`.
+  /// Before `before_ms`, leave out the era and add `text` to the end.
   AppendEra(before_ms: Int, text: String)
 }
 
@@ -411,8 +412,8 @@ fn compile_fields_at(
   }
   case main {
     Ok(main) -> Compiled(main:, eras: [], digits:, days:)
-    // The generator checks every request each locale can get, so this can't
-    // happen unless glintl has a bug.
+    // The generator checks every request each locale can get, so only a bug
+    // in glintl reaches this.
     Error(Nil) -> panic as "glintl found no pattern for these fields"
   }
 }
@@ -625,7 +626,7 @@ fn eras_of(
 
 @target(erlang)
 /// `combined` has a pattern for each pair of date and time styles. It's empty
-/// when ICU just glues the date and time together.
+/// when ICU joins the date and time with a glue pattern.
 fn prepare(
   dates: BitArray,
   times: BitArray,
@@ -958,7 +959,7 @@ fn text(
               let offset = int.absolute_value(offset)
               let hours = number(offset / seconds_per_hour, pad_hours, digits)
               let minutes = offset % seconds_per_hour / seconds_per_minute
-              // Old local mean times can be off by seconds, which ICU adds on.
+              // ICU also writes the extra seconds of old local mean times.
               case minutes, offset % seconds_per_minute, optional_minutes {
                 0, 0, True -> sign <> hours <> whole_suffix
                 _, 0, _ ->
@@ -1092,7 +1093,7 @@ fn modulo(n: Int, by: Int) -> Int {
 
 @target(erlang)
 /// A day's era, year, extended year, related year, cycle year, month and day
-/// in a calendar, or `[]` if the calendar doesn't cover it. Used by the tests.
+/// in a calendar, or `[]` if the calendar doesn't cover it. The tests use it.
 @internal
 pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
   case local(math, epoch_day * seconds_per_day, 0, data.Unnamed) {
@@ -1207,8 +1208,8 @@ fn proleptic_local(
     False -> data.civil_from_days(epoch_day)
   }
   // Near the Julian switch a year can start in one calendar and end in
-  // the other, so its bounds are worked out here. Elsewhere `week_year`
-  // works them out only if needed.
+  // the other, so work out its bounds here. Elsewhere `week_year` works
+  // them out only when it needs them.
   let #(year_start, next_year_start) = case
     epoch_day < julian_before + days_in_longest_year
   {

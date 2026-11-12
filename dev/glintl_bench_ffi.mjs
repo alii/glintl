@@ -1,6 +1,6 @@
 /**
- * JavaScript has no way to count one function's allocations, so this only
- * measures time.
+ * JavaScript has no way to count one function's allocations, so `measure`
+ * only measures time.
  * @param {() => undefined} f
  * @returns {[number, number]} Bytes allocated, always 0, and microseconds.
  */

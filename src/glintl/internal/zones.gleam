@@ -1,5 +1,6 @@
-//// Finds a named time zone's offset at a moment on Erlang, the same way as
-//// ICU's `OlsonTimeZone`. `codegen/zones.ts` writes the data.
+//// Finds a named time zone's offset and name at a moment on Erlang, the same
+//// way as ICU's `OlsonTimeZone` and `TimeZoneNames`. `codegen/zones.ts` writes
+//// the data.
 
 @target(erlang)
 import gleam/bit_array
@@ -109,7 +110,7 @@ fn historical(
 
 @target(erlang)
 /// The last transition at or before `seconds`, or -1 if there's none. It
-/// searches `low` up to, but not including, `high`.
+/// searches from `low` up to `high`, leaving out `high`.
 fn last_at_or_before(
   transitions: BitArray,
   seconds: Int,
@@ -150,8 +151,8 @@ fn bit_array_bytes(bits: BitArray) -> Int
 
 // --- The final rule ----------------------------------------------------------
 //
-// This follows ICU's `TimeZone::getOffset` and `SimpleTimeZone::getOffset`
-// and `compareToRule`, in seconds rather than milliseconds.
+// The final rule copies ICU's `TimeZone::getOffset`, `compareToRule` and
+// `SimpleTimeZone::getOffset`, in seconds rather than milliseconds.
 
 @target(erlang)
 type Mode {
@@ -484,8 +485,8 @@ const entry_bits = 48
 const checkpoint_every = 16
 
 @target(erlang)
-/// Name number 1 stops a locale using its parent's name. Real names start at
-/// 2.
+/// Name number 1 stops a locale from using its parent's name. Real names
+/// start at 2.
 const blocked = 1
 
 @target(erlang)

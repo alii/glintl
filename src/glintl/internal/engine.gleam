@@ -59,8 +59,8 @@ pub fn styles(locale: Locale, shown: render.Shown) -> Compiled {
   compile(locale, shown)
 }
 
-/// A formatter for fields. Like Intl, with no date or time part, it shows a
-/// numeric year, month and day.
+/// A formatter for fields. Like Intl, it shows a numeric year, month and day
+/// when no date or time field is picked.
 pub fn fields(locale: Locale, request: matcher.Request) -> Compiled {
   let request =
     matcher.Request(
@@ -178,7 +178,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
 }
 
 @target(javascript)
-/// `""` means no style.
+/// An empty style, `""`, leaves that part out.
 @external(javascript, "../../glintl_ffi.mjs", "formatter")
 fn intl_formatter(
   tag: String,

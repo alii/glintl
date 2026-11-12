@@ -77,7 +77,7 @@ pub fn fraction_test() {
   let moment =
     timestamp.from_unix_seconds(1_792_929_604)
     |> timestamp.add(duration.milliseconds(987))
-  // Fractions are cut off, not rounded.
+  // glintl cuts fractions off instead of rounding them.
   assert date_time.format(formatter, moment, zone: time_zone.utc) == "4.98"
 }
 
@@ -200,8 +200,8 @@ pub fn local_from_tz_test() {
 @external(erlang, "glintl_test_ffi", "with_tz")
 fn with_tz(value: String, run: fn() -> a) -> a
 
-/// A named zone's offset follows summer time, and old local mean time,
-/// which can be off by seconds.
+/// A named zone's offset follows summer time and old local mean time. Local
+/// mean time offsets can include seconds.
 pub fn named_zone_test() {
   let time = fn(zone_name, rfc3339) {
     let assert Ok(zone) = time_zone.from_name(zone_name)
@@ -309,7 +309,7 @@ pub fn calendar_test() {
 }
 
 /// On Erlang, calendars with their own months cover the years 1 to 4000.
-/// Other days are written in the Gregorian calendar.
+/// glintl writes other days in the Gregorian calendar.
 pub fn outside_calendar_tables_test() {
   let assert Ok(year_5000) = timestamp.parse_rfc3339("5000-01-01T12:00:00Z")
   let hebrew =
@@ -326,7 +326,7 @@ pub fn outside_calendar_tables_test() {
 
 // --- Generated fixtures --------------------------------------------------------
 //
-// Only the first failures are shown, because a broken pattern can fail
+// The tests show only the first failures, because a broken pattern can fail
 // thousands of cases at once.
 
 /// Checks every locale, style and calendar against `Intl.DateTimeFormat`.
@@ -471,7 +471,7 @@ fn digits(value: String) -> glintl.Digits {
 
 @target(erlang)
 /// Checks the Erlang calendar maths field by field. JavaScript uses `Intl`
-/// for this, so there's nothing to check there.
+/// for this, so only Erlang needs the check.
 pub fn calendar_fields_test() {
   let failures =
     calendar_fixtures.cases()

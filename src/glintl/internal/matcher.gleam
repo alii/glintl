@@ -1,6 +1,7 @@
-//// This copies ICU's DateTimePatternGenerator, which picks a pattern for some
-//// fields, and the way JavaScriptCore calls it. `codegen/matcher.ts` does the same, and the
-//// generator checks both against Intl. JavaScript only uses `Request`.
+//// This module copies ICU's DateTimePatternGenerator, which picks a pattern
+//// for some fields. It also copies the way JavaScriptCore calls it.
+//// `codegen/matcher.ts` does the same, and the generator checks both against
+//// Intl. The JavaScript target uses only `Request`.
 
 @target(erlang)
 import gleam/bit_array
@@ -262,7 +263,7 @@ fn ascii(c: Int) -> String {
 }
 
 @target(erlang)
-/// Counts the bytes in a row that are `c`, and adds `n`.
+/// Counts how many bytes at the start are `c`, and adds `n`.
 fn same_bytes(bits: BitArray, c: Int, n: Int) -> Int {
   case bits {
     <<d, rest:bits>> if d == c -> same_bytes(rest, c, n + 1)
@@ -300,7 +301,7 @@ fn items(pattern: String) -> List(String) {
 }
 
 @target(erlang)
-/// Like `runs`, but faster. It only works on ASCII text, like skeletons.
+/// Like `runs`, but faster. It works only on ASCII text, like skeletons.
 fn ascii_runs(bits: BitArray, out: List(String)) -> Result(List(String), Nil) {
   case bits {
     <<c, _:bits>> if c < ascii_end -> {
@@ -537,7 +538,7 @@ type Distance {
 
 @target(erlang)
 fn distance(want: Skeleton, other: Skeleton, mask: Int) -> Distance {
-  // Both skeletons are sorted by field, so they're walked side by side.
+  // Both skeletons are sorted by field, so walk them side by side.
   case want, other {
     [], [] -> Distance(0, 0, 0)
     [a, ..rest], [b, ..more] if a.field == b.field ->
@@ -1225,10 +1226,13 @@ const has_minutes = 4
 
 @target(erlang)
 /// The flags in a run's key, like `runKey` in `codegen/matcher.ts`, for
-/// tokens that depend on their pattern. ICU writes Japanese year 1 as 元 when
-/// the pattern has 年 anywhere, and JavaScriptCore changes years in some
-/// calendars when the pattern has an era. ICU says noon all through 12
-/// o'clock unless the pattern shows minutes or seconds.
+/// tokens that depend on their pattern:
+///
+/// - ICU writes Japanese year 1 as 元 when the pattern has 年 anywhere.
+/// - JavaScriptCore changes years in some calendars when the pattern has an
+///   era.
+/// - ICU says noon all through 12 o'clock unless the pattern shows minutes or
+///   seconds.
 pub fn run_flags(letter: String, pattern: String, pieces: List(Piece)) -> Int {
   case letter {
     "y" -> {
@@ -1295,11 +1299,13 @@ fn is_space(c: String) -> Bool {
 }
 
 @target(erlang)
-/// JavaScriptCore's era workaround: Bun writes its own era before a set
-/// instant, because ICU never picks it. For Islamic calendars it replaces
-/// ICU's era and writes the year as 1 minus ICU's, in ASCII digits. Coptic's
-/// first era has no name in ICU, so it adds its era to the end. It only does
-/// this when the pattern has an era. `codegen/matcher.ts` does the same.
+/// JavaScriptCore's era workaround. Bun's JavaScriptCore writes its own era
+/// before a set instant, because ICU never picks that era. For Islamic
+/// calendars it replaces ICU's era and writes the year as 1 minus ICU's, in
+/// ASCII digits. Coptic's first era has no name in ICU, so JavaScriptCore adds
+/// its era to the end. JavaScriptCore applies the workaround only when the
+/// pattern has an era.
+/// `codegen/matcher.ts` does the same.
 pub type EraWorkaround {
   NoEraWorkaround
   Replaces(before_ms: Int, text: String)
@@ -1320,8 +1326,8 @@ pub fn era_workaround(calendar: String) -> EraWorkaround {
 }
 
 @target(erlang)
-/// Splits text into code points, like ICU, so an accent on an apostrophe
-/// doesn't hide it.
+/// Splits text into code points, like ICU, so an apostrophe with an accent on
+/// it still counts as an apostrophe.
 fn characters(text: String) -> List(String) {
   text
   |> string.to_utf_codepoints

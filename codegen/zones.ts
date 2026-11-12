@@ -2,8 +2,8 @@
 // changes. Writes them as one Erlang module, so `glintl/time_zone` can look
 // zones up on Erlang.
 //
-// On its own it writes just that module, which is quicker than the whole
-// generator: `bun codegen/zones.ts`.
+// Run `bun codegen/zones.ts` to write only that module, which is faster than
+// running the whole generator.
 
 import { join } from "node:path";
 import * as erlang from "./erlang.ts";
@@ -145,7 +145,7 @@ export function zoneData(): ZoneData {
     }
   });
 
-  // A name ICU doesn't list leads to its zone's own name.
+  // A name missing from ICU's name data uses the key of its zone's own name.
   const nameKeys = accepted.map(([name, n]) => {
     const key = nameKey(name) ?? nameKey(names[real[n]!]!);
 
@@ -177,13 +177,14 @@ const NAME_TYPES = ["ls", "ld", "ss", "sd"] as const;
 // A name that stops a locale from using its parent's.
 const NO_INHERITANCE = "∅∅∅";
 
-// Name numbers 0 and 1 mean no name here, and no name at all.
+// Name number 0 means the bundle has no name of its own, and 1 means the zone
+// has no name at all.
 const NO_NAME = 0;
 const BLOCKED = 1;
 const FIRST_NAME = 2;
 
-// A metazone period without a start or an end, like ICU's `gDefaultFrom` and
-// `gDefaultTo`. So zones have no names before 1970.
+// The start and end ICU gives a metazone period that has none, like ICU's
+// `gDefaultFrom` and `gDefaultTo`. So zones have no names before 1970.
 const FIRST_INSTANT = 0;
 const LAST_INSTANT = Date.UTC(9999, 11, 31, 23, 59) / 1000;
 
@@ -304,7 +305,7 @@ function nameData(data: ZoneData): Names {
 
 // --- Erlang ----------------------------------------------------------------------
 
-// Written as Gleam's `Rules` and `Final` from `glintl/internal/zones`.
+// Writes rules as Gleam's `Rules` and `Final` from `glintl/internal/zones`.
 const rulesTerm = (r: Rules): string =>
   `{rules, ${[
     erlang.bytes(r.transitions.flatMap((t) => signed(t, TRANSITION_BYTES))),
@@ -325,8 +326,8 @@ const START_BYTES = 3;
 const TIME_BYTES = 8;
 const LARGEST_NUMBER = 0xffff;
 
-// Lengths are stored a byte each, with where every 16th item starts, so
-// finding an item adds up at most 15 lengths.
+// The index stores each length in a byte, with where every 16th item starts,
+// so finding an item adds up at most 15 lengths.
 const CHECKPOINT_EVERY = 16;
 const LARGEST_LENGTH = 0xff;
 

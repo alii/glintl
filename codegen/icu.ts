@@ -1,6 +1,6 @@
-// Reads ICU's own data file, for what Intl doesn't show, like the patterns
-// ICU picks from when you ask for some fields. It's the same release as the
-// pinned Bun's ICU, so the two agree.
+// Reads ICU's own data file to get what Intl hides, like the patterns ICU
+// picks from for a set of fields. The file comes from the same ICU release as
+// the pinned Bun, so the two agree.
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -21,13 +21,14 @@ const DAT = `icudt${MAJOR}l.dat`;
 // compiled into ICU's code, not its data file.
 const FALLBACK_URL = `https://raw.githubusercontent.com/unicode-org/icu/release-${ICU_VERSION}/icu4c/source/common/localefallback_data.h`;
 
-// Cached by ICU version, because the file's name doesn't change between them.
+// The cached copy's name includes the ICU version, because the file has the
+// same name in every release.
 const FALLBACK = `localefallback_data-${ICU_VERSION}.h`;
 
 const FALLBACK_SHA256 =
   "f022a3e22e21c88061228e6d8f9ff4b8ce87e8b66995e0490c9f7c11067490d0";
 
-// Kept out of `.cache`, which each run empties.
+// ICU's files live outside `.cache`, because each run empties `.cache`.
 const DIR = join(import.meta.dir, ".icu");
 
 // --- The zip ------------------------------------------------------------------

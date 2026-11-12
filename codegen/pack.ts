@@ -46,8 +46,8 @@ const BYTE = 0xff;
 const BITS_PER_BYTE = 8;
 const LARGEST_NUMBER = 0xffff;
 
-// Numbers items from 1, because Erlang's `element` counts from 1. A repeat gets the number
-// it had first.
+// Numbers items from 1, because Erlang's `element` counts from 1. A repeat
+// gets the number it had first.
 function table() {
   const numbers = new Map<string, number>();
   const items: string[] = [];

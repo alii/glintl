@@ -1,6 +1,6 @@
 // Fails if `@target` is on a public definition other than an opaque type, an
 // `@internal` one or one in an internal module, because the compiler lets each
-// target give it a different type. Tests aren't checked.
+// target give it a different type. It checks only `src` and `dev`.
 //
 //   bun codegen/targets.ts
 

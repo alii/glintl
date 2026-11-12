@@ -30,20 +30,20 @@ pub opaque type TimeZone {
 pub const utc = Offset(minutes: 0)
 
 /// A place's time zone by its IANA name, like `"Europe/London"` or
-/// `"America/New_York"`. Like Intl, it takes old names like `"GB"` too, and
-/// case doesn't matter. Summer time is worked out for each moment you format.
+/// `"America/New_York"`. Like Intl, it takes old names like `"GB"` too, in
+/// any case. glintl works out summer time for each moment you format.
 ///
-/// It returns `Error(Nil)` for a name glintl doesn't know.
+/// It returns `Error(Nil)` for a name glintl has no data for.
 pub fn from_name(name: String) -> Result(TimeZone, Nil) {
   find(name)
 }
 
-/// The computer's own time zone, the one Intl uses when you don't give it
-/// one. In a browser, that's the user's zone.
+/// The computer's own time zone, which Intl uses by default. In a browser,
+/// that's the user's zone.
 ///
-/// On Erlang it comes from the `TZ` setting, or else from `/etc/localtime` or
-/// `/etc/timezone`. It returns `Error(Nil)` if none of them names a zone
-/// glintl knows.
+/// On Erlang, glintl reads the zone from the `TZ` setting, or else from
+/// `/etc/localtime` or `/etc/timezone`. It returns `Error(Nil)` when none of
+/// them names a zone glintl knows.
 pub fn local() -> Result(TimeZone, Nil) {
   case local_name() {
     Ok(name) -> from_name(name)
@@ -86,7 +86,7 @@ const minutes_per_hour = 60
 
 const hours_per_day = 24
 
-/// Why an offset couldn't be made.
+/// Why `offset` or `from_duration` returned an error.
 pub type OffsetError {
   /// `hours` and `minutes` have different signs, like
   /// `offset(hours: -3, minutes: 30)`.

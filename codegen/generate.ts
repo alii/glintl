@@ -66,7 +66,8 @@ type LocaleData = {
 };
 
 // Each calendar's maths is worked out and checked once in its own process,
-// then shared through the cache. JSON has no -Infinity, so it's a string.
+// then shared through the cache. JSON has no -Infinity, so the cache stores
+// it as a string.
 const mathPath = (id: CalendarId) => join(CACHE, `math-${id}.json`);
 const maths = new Map<CalendarId, Math_>();
 
@@ -173,7 +174,7 @@ if (mathExits.some((code) => code !== 0)) {
   throw new Error("A calendar failed");
 }
 
-// Gregorian's maths is written by hand in `data.gleam`, so check it.
+// `data.gleam` has Gregorian's maths written by hand, so check it against ICU.
 const gregorianMath = mathFor("gregory");
 
 const gregorian = JSON.stringify(
@@ -335,9 +336,9 @@ pub fn locale() -> Locale {
 `;
 }
 
-// Language and region tags, like "zh-TW", for locales whose tag has a
-// script instead, like "zh-Hant", so they aren't mistaken for their
-// language's default.
+// Language and region tags, like "zh-TW", for locales whose tag has a script
+// instead, like "zh-Hant". The aliases make those tags find that locale, not
+// their language's default.
 function aliases(): Map<string, string> {
   const known = new Set(LOCALES.map(([, tag]) => tag.toLowerCase()));
   const found = new Map<string, string>();
@@ -391,9 +392,9 @@ pub fn all() -> List(Locale) {
   [${list}]
 }
 
-/// Find a locale by its BCP 47 tag. Case and \`_\` or \`-\` don't matter.
+/// Finds a locale by its BCP 47 tag, ignoring case and treating \`_\` as \`-\`.
 ///
-/// If there is no exact match, the last part of the tag is dropped and it
+/// If there is no exact match, \`from_tag\` drops the last part of the tag and
 /// tries again, so \`"fr-CA-x-mine"\` gives Canadian French and \`"en-XX"\`
 /// gives English.
 ///
@@ -524,7 +525,7 @@ if (!keep) {
   rmSync(CACHE, { recursive: true, force: true });
 }
 
-// Gleam isn't in the Bun Docker image, so formatting can be left for later.
+// The Bun Docker image has no Gleam, so formatting may have to wait.
 if (Bun.which("gleam")) {
   await $`gleam format src test`.cwd(ROOT);
 } else {

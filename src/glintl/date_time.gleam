@@ -19,10 +19,10 @@
 //// // -> "25 October 2026 at 23:40"
 //// ```
 ////
-//// On Erlang the formats come from data baked into this package, made from
-//// ICU when the package is built. On JavaScript the runtime's own
-//// `Intl.DateTimeFormat` is used, so the output can differ slightly between
-//// targets and between JavaScript runtimes.
+//// On Erlang, glintl uses data from ICU that we build into the package. On
+//// JavaScript, glintl uses the runtime's own `Intl.DateTimeFormat`. So the
+//// output can differ slightly between targets, and between JavaScript
+//// runtimes.
 
 import gleam/time/timestamp.{type Timestamp}
 import glintl.{type Locale}
@@ -94,8 +94,8 @@ pub fn date_time_formatter(
 /// // -> "25 Oct"
 /// ```
 ///
-/// Like Intl, if you pick no date or time part, this adds a numeric year,
-/// month and day. An era or a time zone's name is added to that.
+/// Like Intl, the formatter shows a numeric year, month and day when you pick
+/// no date or time part. It adds an era or a time zone's name to that date.
 pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
   Formatter(engine.fields(locale, fields.request))
 }
@@ -169,7 +169,7 @@ pub fn day(options: Fields, digits: glintl.Digits) -> Fields {
 }
 
 /// Show the time of day in words, like "in the morning", where the locale
-/// has them. With an hour, it only shows on a 12 hour clock.
+/// has them. Next to an hour, the words show on a 12 hour clock only.
 pub fn day_period(options: Fields, width: glintl.Width) -> Fields {
   Fields(matcher.Request(..options.request, day_period: engine.width(width)))
 }

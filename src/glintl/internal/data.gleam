@@ -24,7 +24,8 @@ pub type Math {
   /// before `julian_before` use the Julian calendar, which ICU does by default
   /// for every calendar but Gregorian.
   Proleptic(eras: List(EraRule), julian_before: Int)
-  /// A table of whole years, made from ICU. Years are numbered from 0.
+  /// A table of whole years that the generator reads from ICU. Years are
+  /// numbered from 0.
   Table(
     /// True for Chinese and Dangi, which have related years and a 60 year
     /// cycle.
@@ -129,8 +130,9 @@ pub type ZoneNames {
 /// A timestamp's local date and time in a calendar. Each format call makes
 /// one record to keep allocation down. `month` is an index into the
 /// calendar's month names.
-/// `year_start` and `next_year_start` are `start_of_time` when they haven't
-/// been worked out, which only happens for calendars with Gregorian months.
+/// `year_start` and `next_year_start` are `start_of_time` until glintl needs
+/// them. Only calendars with Gregorian months leave them unset, and
+/// `week_year` works them out when it needs them.
 pub type Local {
   Local(
     epoch_day: Int,
@@ -303,8 +305,8 @@ pub fn week_year(
   minimal_days: Int,
   exceptions: List(#(Int, Int)),
 ) -> Int {
-  // Calendars with Gregorian months leave their year bounds for this to work
-  // out, because their years start on 1 January.
+  // Calendars with Gregorian months leave their year bounds for this function
+  // to work out, because their years start on 1 January.
   let #(year_start, next_year_start) = case m.next_year_start == start_of_time {
     True -> #(
       days_from_civil(m.extended, 1, 1),
@@ -386,7 +388,7 @@ pub fn civil_from_days(days: Int) -> #(Int, Int, Int) {
 }
 
 @target(erlang)
-/// A Julian date, as #(astronomical year, month, day), for days since
+/// A Julian date, as `#(astronomical year, month, day)`, for days since
 /// 1970-01-01. From Richards' algorithm in the Explanatory Supplement to the
 /// Astronomical Almanac, whose other numbers are part of the algorithm.
 pub fn julian_from_days(days: Int) -> #(Int, Int, Int) {

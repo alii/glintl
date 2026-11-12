@@ -3,7 +3,7 @@
 import { Error as GleamError, Ok } from "./gleam.mjs";
 
 /**
- * A `matcher.Request`. Each field is an Intl option, or "" or 0 when not shown.
+ * A `matcher.Request`. Each field is an Intl option, or "" or 0 to leave it out.
  * @typedef {object} Request
  * @property {string} weekday
  * @property {string} era
@@ -137,7 +137,7 @@ export function timeZoneName(name) {
 }
 
 /**
- * The time zone Intl uses when it isn't given one.
+ * The time zone Intl uses by default.
  * @returns {Ok | GleamError}
  */
 export function localTimeZone() {

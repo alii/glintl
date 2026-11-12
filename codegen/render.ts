@@ -69,7 +69,7 @@ export function renderParts(
 
   const hasMinute = tokens.some((t) => t.t === "minute");
   const hasSecond = tokens.some((t) => t.t === "second");
-  // Weekday names are numbered from 0 for Sunday, so this is too.
+  // Weekday names are numbered from 0 for Sunday, so `weekday` is too.
   const weekday = isoWeekday(m.epochDay) % DAYS_PER_WEEK;
 
   return tokens.map((token) => {

@@ -1,7 +1,7 @@
 -module(glintl_test_ffi).
 -export([on_erlang/0, with_tz/2]).
 
-%% Some behaviour differs by target, as JavaScript uses `Intl`.
+%% Some behaviour differs by target, because JavaScript uses `Intl`.
 on_erlang() -> true.
 
 %% Runs `F` with the `TZ` setting set to `Value`, then puts it back.

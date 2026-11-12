@@ -1,5 +1,5 @@
-//// Measures how much formatting allocates and how long it takes. Memory is
-//// only measured on Erlang.
+//// Measures how much formatting allocates and how long it takes. The bench
+//// measures memory only on Erlang.
 ////
 ////   gleam run -m glintl_bench
 

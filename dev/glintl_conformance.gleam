@@ -1,14 +1,22 @@
 //// Formats cases read from standard input, for `codegen/conformance.ts` to
-//// compare with `Intl.DateTimeFormat`. Each line is a locale tag, an ICU
-//// calendar name (empty for the locale's own), a date style and a time style
-//// (0 for none, then 1 to 4 for full to short), an ICU hour cycle (empty for
-//// the locale's own), fields as Intl options like `day=numeric,month=short`
-//// (empty for styles), Unix seconds, milliseconds and a time zone, as an offset
-//// in minutes or a name like `Europe/London`,
-//// separated by tabs. Cases that share a formatter come one after another,
-//// so it only keeps the last formatter.
+//// compare with `Intl.DateTimeFormat`. Each line holds these values,
+//// separated by tabs:
 ////
-//// It only runs on Erlang, because on JavaScript glintl just calls `Intl`.
+//// - a locale tag
+//// - an ICU calendar name, or empty for the locale's own
+//// - a date style and a time style, each 0 for none or 1 to 4 for full to
+////   short
+//// - an ICU hour cycle, or empty for the locale's own
+//// - fields as Intl options like `day=numeric,month=short`, or empty for
+////   styles
+//// - Unix seconds, then milliseconds
+//// - a time zone, as an offset in minutes or a name like `Europe/London`
+////
+//// Cases that share a formatter come one after another, so the loop keeps
+//// only the last formatter.
+////
+//// The module only runs on Erlang, because on JavaScript glintl calls `Intl`
+//// directly.
 
 import gleam/int
 import gleam/io

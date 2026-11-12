@@ -73,7 +73,7 @@ export type Token =
       t: "zone";
       // Whether a named zone shows its name, like "BST" or "British Summer
       // Time", where the locale has one. Otherwise, and for fixed offsets,
-      // it shows the offset like this.
+      // the zone shows its offset as the fields below describe.
       names: ZoneNames;
       zero: string;
       positive: string;
@@ -348,7 +348,8 @@ export function derive(
           const year = (d: number) => calendarDate(math, d)?.year;
 
           // Some patterns write ICU's extended year, which runs on through
-          // eras, and call it a year. It shows where the two differ.
+          // eras, and call it a year. To tell the two apart, the check needs a
+          // day where they differ.
           const differs = days().find((d) => {
             const c = calendarDate(math, d);
 
@@ -604,7 +605,7 @@ export function derive(
 
           const longMonth = near(occurrences(math).longMonths);
           // Names for days 0 to 30. Day 0 only happens where ICU's
-          // astronomy goes wrong, so it's taken from one of those days.
+          // astronomy goes wrong, so we take it from one of those days.
           const zero = math.dayZero[0];
 
           return {
@@ -926,7 +927,7 @@ function nearest(days: number[], target: number): number {
 export type EraFormats = {
   era: number;
   dates: Token[][];
-  // Set where ICU doesn't just join the era's date and time. `glues` hold its
+  // Set where ICU does more than join the era's date and time. `glues` hold its
   // dates, or else `combined` has dates with times by date then time style.
   glues?: GluePiece[][];
   combined?: Token[][];
@@ -936,7 +937,7 @@ export type Formats = {
   dates: Token[][];
   times: Token[][];
   glues: GluePiece[][];
-  // Dates with times, by date style then time style, when ICU doesn't just
+  // Dates with times, by date style then time style, when ICU does more than
   // join them with the glue.
   combined?: Token[][];
   eras: EraFormats[];
@@ -950,8 +951,8 @@ const RANDOM_CHECK_DAYS = 40;
 const FIRST_YEAR_CHECK_DAYS = 12;
 const NEGATIVE_YEAR_CHECK_DAYS = 3;
 
-// Days after the start of an era to check it on, so a check isn't just the
-// day it starts.
+// Days after the start of an era to check it on, so checks cover more than
+// the day it starts.
 const DAYS_INTO_ERA = [40, 100, 400];
 
 const RANDOM_SEED = 7;

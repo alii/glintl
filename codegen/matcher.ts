@@ -1,6 +1,7 @@
-// This copies ICU's DateTimePatternGenerator, which picks a pattern for some
-// fields, and the way JavaScriptCore calls it. `src/glintl/internal/matcher.gleam` does the
-// same on Erlang, and the generator checks both against Intl.
+// This module copies ICU's DateTimePatternGenerator, which picks a pattern for
+// some fields. It also copies the way JavaScriptCore calls it.
+// `src/glintl/internal/matcher.gleam` does the same on Erlang, and the
+// generator checks both against Intl.
 
 // Fields, in ICU's `UDateTimePatternField` order.
 export const ERA = 0;
@@ -249,8 +250,8 @@ function quoteLiteral(list: string[], i: number): [string, number] {
   return go(start, head);
 }
 
-// Whether a field is only separators. Like ICU, it looks for a dot in the item
-// at each character's index, not in the character itself.
+// Whether a field holds only separators. Like ICU, the check looks for a dot
+// in the item at each character's index, not in the character itself.
 const isSeparator = (field: string, list: string[]) =>
   [...field].every((c, i) => SEPARATORS.includes(c) || list[i]?.[0] === DOT);
 
@@ -435,8 +436,8 @@ function distance(want: Skeleton, other: Skeleton, mask: number): Distance {
 const fieldMask = (s: Skeleton) =>
   FIELDS.reduce((m, i) => (s.type[i] === NONE ? m : m | (1 << i)), 0);
 
-// A stored pattern, with the skeleton it's stored under. `specified` is set
-// when CLDR gave the skeleton, rather than ICU working it out.
+// A stored pattern, with the skeleton it's stored under. `specified` is true
+// when CLDR gave the skeleton, and false when ICU worked it out.
 export type Entry = {
   skeleton: Skeleton;
   pattern: string;
@@ -570,8 +571,8 @@ export function matcher(data: MatcherData): Matcher {
 
 type Best = { entry: Entry; missing: number; extra: number };
 
-// Like ICU's `getBestRaw`: the closest pattern, preferring ones missing less
-// significant fields.
+// Like ICU's `getBestRaw`, finds the closest pattern. On a tie it prefers the
+// pattern whose missing fields are less significant.
 function best(m: Matcher, want: Skeleton, mask: number): Best {
   type Search = Best & { distance: number };
 
@@ -745,7 +746,8 @@ function mapMetacharacters(m: Matcher, form: string): string {
 
 const HIGHEST_BIT = 31;
 
-// With no fields, ICU would read before the start of its append items.
+// ICU reads before the start of its append items when there are no fields, so
+// `topBit` throws instead.
 function topBit(mask: number): number {
   if (mask === 0) {
     throw new Error("A pattern was appended for no fields");
@@ -1217,14 +1219,14 @@ export function pieces(pattern: string): Piece[] {
 // --- JavaScriptCore's era workaround ------------------------------------------
 
 // Bun's JavaScriptCore writes its own era before these instants, because ICU
-// never picks it. For Islamic calendars it replaces ICU's era and writes the
-// year as 1 minus ICU's, in ASCII digits. Coptic's first era has no name in
-// ICU, so it adds the era to the end. It only does this when the pattern has
-// an era.
+// never picks that era. For Islamic calendars JavaScriptCore replaces ICU's
+// era and writes the year as 1 minus ICU's, in ASCII digits. Coptic's first
+// era has no name in ICU, so JavaScriptCore adds the era to the end.
+// JavaScriptCore applies the workaround only when the pattern has an era.
 type EraWorkaround = {
   beforeMs: number;
   text: string;
-  // True where ICU writes an era to replace, and the year is flipped.
+  // True when JavaScriptCore replaces the era ICU writes and flips the year.
   replaces: boolean;
 };
 

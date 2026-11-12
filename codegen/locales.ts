@@ -15,8 +15,8 @@ export function moduleName(tag: string): string {
 }
 
 // JavaScript can't list the locales it has, so we ask it about each of
-// CLDR's. Those it has no data for fall back to another language, which we
-// can't tell apart from a real locale, so they are left out.
+// CLDR's. A locale with no data falls back to another language and still
+// formats dates, so we leave out tags whose language changes.
 export const LOCALES = cldr.availableLocales.full
   .filter((tag) => tag !== "und")
   .filter((tag) => {

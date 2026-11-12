@@ -76,13 +76,14 @@ pub type Digits {
 
 /// The calendars glintl can format dates in.
 ///
-/// Each locale has a default: most use `Gregorian`, Thai uses `Buddhist`,
-/// Persian uses `Persian`, and Saudi Arabic uses `IslamicUmmAlQura`.
+/// Each locale has its own calendar. Most use `Gregorian`. Thai uses
+/// `Buddhist`, Persian uses `Persian`, and Saudi Arabic uses
+/// `IslamicUmmAlQura`.
 ///
-/// On Erlang, calendars with their own months work for years 1 to 4000 of
-/// the Gregorian calendar, and dates outside that are written in the
-/// Gregorian calendar instead. These are every calendar but `Gregorian`,
-/// `Iso8601`, `Buddhist`, `Japanese` and `RepublicOfChina`.
+/// On Erlang, calendars with their own months cover the Gregorian years 1 to
+/// 4000. glintl writes dates outside that range in the Gregorian calendar.
+/// Every calendar has its own months except `Gregorian`, `Iso8601`,
+/// `Buddhist`, `Japanese` and `RepublicOfChina`.
 pub type Calendar {
   Gregorian
   /// The Gregorian calendar, with ISO 8601 rules for weeks and patterns.
@@ -136,9 +137,9 @@ pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
   Locale(..locale, calendar:)
 }
 
-/// Which hours a clock shows. These are the same as the `hourCycle` option
-/// of JavaScript's `Intl.DateTimeFormat`. This is how British English shows
-/// a quarter past midnight and a quarter to midnight in each:
+/// Which hours a clock shows, like the `hourCycle` option of JavaScript's
+/// `Intl.DateTimeFormat`. British English shows a quarter past midnight and a
+/// quarter to midnight like this in each hour cycle:
 ///
 /// | Hour cycle | Hours    | Times              |
 /// | ---------- | -------- | ------------------ |
@@ -148,7 +149,7 @@ pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
 /// | `H24`      | 1 to 24  | 24:15, 23:45       |
 ///
 /// With `H11` and `H12`, each locale uses its own words for morning and
-/// evening, and these can move or change the rest of the time.
+/// evening. Those words can move or change the rest of the time.
 pub type HourCycle {
   H11
   H12
@@ -169,8 +170,8 @@ pub fn with_hour_cycle(locale: Locale, hour_cycle: HourCycle) -> Locale {
   Locale(..locale, hour_cycle: Some(hour_cycle))
 }
 
-/// The hour cycle a locale shows. This is the one set with
-/// `with_hour_cycle`, or the locale's own if none was set.
+/// The hour cycle a locale shows. That's the one you set with
+/// `with_hour_cycle`, or else the locale's own.
 pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
   case locale.hour_cycle {
     Some(hour_cycle) -> hour_cycle

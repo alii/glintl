@@ -12,7 +12,8 @@
 //// // -> "26 October 2026"
 //// ```
 ////
-//// Or pick the parts to show, like the date options of `Intl.DateTimeFormat`:
+//// You can also pick the parts to show, like the date options of
+//// `Intl.DateTimeFormat`:
 ////
 //// ```gleam
 //// import glintl
@@ -28,8 +29,8 @@
 //// // -> "Monday 26 October"
 //// ```
 ////
-//// Like Intl, with no year, month, day or weekday, a formatter shows a
-//// numeric date.
+//// Like Intl, a formatter shows a numeric date when you pick no year, month,
+//// day or weekday.
 
 import gleam/time/calendar
 import gleam/time/timestamp

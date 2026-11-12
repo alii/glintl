@@ -281,7 +281,7 @@ const nonEmpty = (r: FieldOptions) =>
 
 // A request that mixes dates and times gets a date pattern and a time
 // pattern glued together, unless one stored pattern has exactly its fields.
-// So every request's fields are among these.
+// So the date requests and time requests below cover every request's fields.
 const DATE_REQUESTS = every(choicesFor(DATE_FIELDS)).filter(nonEmpty);
 
 const TIME_REQUESTS = every([...choicesFor(TIME_FIELDS), HOUR_CYCLES]).filter(
@@ -327,7 +327,8 @@ function spotChecks(name: string): FieldOptions[] {
   }));
 }
 
-// Many locales and calendars have the same matcher, so each is searched once.
+// Many locales and calendars share a matcher, so `reachable` searches each
+// matcher once.
 const reachableCache = new Map<string, Map<string, FieldOptions>>();
 
 // Each run key the matcher can write, with a request that writes it.
@@ -589,8 +590,8 @@ export function fieldsData(
     const pattern = jscPattern(m, request);
     const workaround = eraWorkaround(calendar);
 
-    // JavaScriptCore's era workaround hides how ICU writes years, so those
-    // days aren't read.
+    // JavaScriptCore's era workaround hides how ICU writes years, so `learn`
+    // skips those days.
     const skip = (d: number) =>
       workaround !== undefined &&
       hasEra(pattern) &&

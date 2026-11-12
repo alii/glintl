@@ -1,8 +1,8 @@
 -module(glintl_ffi).
 -export([local_time_zone/0]).
 
-%% The computer's time zone name: from `TZ`, or else where `/etc/localtime`
-%% links to, or else `/etc/timezone`.
+%% Reads the computer's time zone name from `TZ`, then from where
+%% `/etc/localtime` links, then from `/etc/timezone`.
 local_time_zone() ->
     case os:getenv("TZ") of
         Unset when Unset =:= false; Unset =:= "" -> from_files();
@@ -20,7 +20,8 @@ from_files() ->
             end
     end.
 
-%% A name, or a path like `/usr/share/zoneinfo/Europe/London`.
+%% Takes a zone name, or strips a path like
+%% `/usr/share/zoneinfo/Europe/London` down to its zone name.
 from_name(Name) ->
     case string:split(Name, "zoneinfo/", trailing) of
         [_, Zone] -> {ok, unicode:characters_to_binary(Zone)};

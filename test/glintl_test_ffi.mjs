@@ -1,5 +1,5 @@
 /**
- * Some behaviour differs by target, as JavaScript uses `Intl`.
+ * Some behaviour differs by target, because JavaScript uses `Intl`.
  * @returns {boolean}
  */
 export function on_erlang() {

@@ -30,12 +30,12 @@ export const FIRST_YEAR = 1;
 export const LAST_YEAR = 4000;
 export const SCAN_FROM = -5000;
 
-// Era rules are also checked this far outside the years scanned.
+// Also check the era rules this far outside the years scanned.
 const CHECK_FROM_YEAR = -9000;
 const CHECK_TO_YEAR = 9999;
 
-// Check the era rules every this many days. It's prime so the days drift
-// through months and weekdays.
+// Check the era rules once every `CHECK_EVERY` days. `CHECK_EVERY` is prime,
+// so the days drift through months and weekdays.
 const CHECK_EVERY = 997;
 
 // Sample years on 1 July so we're far from both ends.
@@ -61,8 +61,8 @@ const JULIAN_SEARCH: [[number, number, number], [number, number, number]] = [
   [1800, 1, 1],
 ];
 
-// The Julian day number of 1970-01-01. Richards' algorithm's other numbers
-// are as published in the Explanatory Supplement to the Astronomical Almanac.
+// The Julian day number of 1970-01-01. Richards' algorithm takes its other
+// numbers from the Explanatory Supplement to the Astronomical Almanac.
 const JULIAN_DAY_OF_UNIX_EPOCH = 2_440_588;
 
 export type CalendarId =
@@ -83,9 +83,9 @@ export type CalendarId =
   | "islamic-tbla"
   | "islamic-umalqura";
 
-// This is the order of the Gleam `Calendar` type. Calendars with Gregorian
-// months only differ in eras and years, so a few rules cover them with no
-// date limits. The rest use a table of years.
+// `CALENDARS` follows the order of the Gleam `Calendar` type. Calendars with
+// Gregorian months only differ in eras and years, so a few rules cover them
+// with no date limits. The rest use a table of years.
 export const CALENDARS: {
   id: CalendarId;
   gleam: string;
@@ -354,7 +354,8 @@ function reader(calendar: CalendarId): (epochDay: number) => Fields {
         ),
       ].join(" / "),
       year,
-      // `table` fills this in per year, because it can't be read for one day.
+      // `table` fills in the extended year for each year, because one day
+      // can't show it.
       extended: 0,
       related,
       cycle: cyclic ? year - 1 : 0,
@@ -696,8 +697,8 @@ export function table(calendar: CalendarId): Table {
     ),
   );
 
-  // The first 30 day month from 1970 on, or the last one before. This keeps
-  // what the old search did, as it took any day before 1970 for "not found".
+  // The first 30 day month from 1970 on, or else the last one before. This
+  // matches the old search, which treated any day before 1970 as not found.
   const longMonth =
     longStarts.find((d) => d >= 0) ?? longStarts.at(-1) ?? NO_LONG_MONTH;
 
@@ -1002,7 +1003,7 @@ export function weekBasedYear(
 }
 
 // Checks a calendar's maths against ICU on every day it covers: years 1 to
-// 4000 for tables, and 5000 BC to AD 4000 for the others.
+// 4000 for tables, and 5001 BC to AD 4000 for the others.
 export function checkEveryDay(calendar: CalendarId, math: Math_): number {
   const [from, to] =
     math.kind === "table"

@@ -269,7 +269,7 @@ const EVERY_DAYS = [
   day(200, 6, 15),
 ];
 
-// The first day gets every time. The others get these ones.
+// The first day in `EVERY_DAYS` gets every time. The other days get these two.
 const OTHER_DAY_TIMES = [EVERY_TIMES[0]!, EVERY_TIMES[4]!];
 
 const EVERY_OFFSETS = [0, 60, 330, -600];
