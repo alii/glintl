@@ -162,10 +162,17 @@ pub opaque type Compiled {
     main: Prepared,
     /// Patterns for eras that ICU formats differently.
     eras: List(#(Int, Prepared)),
-    /// The locale's number in the digits table, or 0 for ASCII digits.
-    digits: Int,
+    digits: Digits,
     days: Days,
   )
+}
+
+@target(erlang)
+/// The digits a locale writes numbers with.
+type Digits {
+  Ascii
+  /// The locale's ten digits, from zero to nine.
+  Local(Names)
 }
 
 @target(erlang)
@@ -317,7 +324,7 @@ fn compile_formats(
   shown: Shown,
   days: Days,
 ) -> Compiled {
-  let digits = number_at(entry, 0)
+  let digits = digits_of(number_at(entry, 0))
   let index = entry_header + position * formats_per_calendar + cycle
   let formats = element(number_at(entry, index), formats())
   let #(dates, formats) = split(formats)
@@ -394,7 +401,7 @@ fn compile_fields_at(
   let numbers = bit_array_byte_size(entry) / number_bytes
   let calendars =
     { numbers - entry_header } / { formats_per_calendar + fields_per_calendar }
-  let digits = number_at(entry, 0)
+  let digits = digits_of(number_at(entry, 0))
   let row =
     element(
       number_at(
@@ -840,7 +847,7 @@ fn walk(
   p: Prepared,
   m: data.Local,
   milliseconds: Int,
-  digits: Int,
+  digits: Digits,
   acc: String,
 ) -> String {
   case bits {
@@ -864,11 +871,11 @@ fn text(
   p: Prepared,
   m: data.Local,
   milliseconds: Int,
-  digits: Int,
+  digits: Digits,
 ) -> String {
   case token {
     Literal(text) -> text
-    AsciiDigits(inner) -> text(inner, p, m, milliseconds, 0)
+    AsciiDigits(inner) -> text(inner, p, m, milliseconds, Ascii)
     Year(two_digit: True, minus:, ..) -> {
       let sign = case m.year < 0 {
         True -> minus
@@ -1016,7 +1023,7 @@ fn zone_name(style: ZoneNameStyle, m: data.Local) -> Result(String, Nil) {
 
 @target(erlang)
 /// The name at `index`, or `otherwise` as a number if there are too few names.
-fn pick(names: Names, index: Int, otherwise: Int, digits: Int) -> String {
+fn pick(names: Names, index: Int, otherwise: Int, digits: Digits) -> String {
   case index >= 0 && index < tuple_size(names) {
     True -> element(index + 1, names)
     False -> number(otherwise, False, digits)
@@ -1059,7 +1066,7 @@ const milliseconds_per_hundredth = 10
 
 @target(erlang)
 /// The first `shown` digits of a fraction of a second.
-fn fraction(milliseconds: Int, shown: Int, digits: Int) -> String {
+fn fraction(milliseconds: Int, shown: Int, digits: Digits) -> String {
   case shown, milliseconds < milliseconds_per_hundredth {
     1, _ -> number(milliseconds / milliseconds_per_tenth, False, digits)
     2, _ -> number(milliseconds / milliseconds_per_hundredth, True, digits)
@@ -1071,7 +1078,7 @@ fn fraction(milliseconds: Int, shown: Int, digits: Int) -> String {
 }
 
 @target(erlang)
-fn signed(n: Int, minus: String, digits: Int) -> String {
+fn signed(n: Int, minus: String, digits: Digits) -> String {
   case n < 0 {
     True -> minus <> number(-n, False, digits)
     False -> number(n, False, digits)
@@ -1080,8 +1087,12 @@ fn signed(n: Int, minus: String, digits: Int) -> String {
 
 @target(erlang)
 /// `n` with zeros in front to make at least `count` digits.
-fn padded(n: Int, count: Int, digits: Int) -> String {
-  zeros(count - digit_count(n, 1), digits) <> number(n, False, digits)
+fn padded(n: Int, count: Int, digits: Digits) -> String {
+  case count - digit_count(n, 1) {
+    missing if missing > 0 ->
+      zeros(missing, number(0, False, digits)) <> number(n, False, digits)
+    _ -> number(n, False, digits)
+  }
 }
 
 @target(erlang)
@@ -1093,35 +1104,44 @@ fn digit_count(n: Int, count: Int) -> Int {
 }
 
 @target(erlang)
-fn zeros(count: Int, digits: Int) -> String {
-  case count > 0 {
-    True -> number(0, False, digits) <> zeros(count - 1, digits)
-    False -> ""
+fn zeros(count: Int, zero: String) -> String {
+  case count > 1 {
+    True -> zero <> zeros(count - 1, zero)
+    False -> zero
   }
 }
 
 @target(erlang)
-/// `n` in the locale's digits, or ASCII digits if `digits` is 0.
-fn number(n: Int, pad: Bool, digits: Int) -> String {
+/// A locale's number in the digits table is 0 for ASCII digits.
+fn digits_of(number: Int) -> Digits {
+  case number {
+    0 -> Ascii
+    _ -> Local(element(number, digits_table()))
+  }
+}
+
+@target(erlang)
+/// `n` in the locale's digits.
+fn number(n: Int, pad: Bool, digits: Digits) -> String {
   case digits, pad && n < ten {
-    0, False -> int.to_string(n)
-    0, True -> "0" <> int.to_string(n)
-    _, False -> local_digits(n, digits)
-    _, True -> digit(0, digits) <> local_digits(n, digits)
+    Ascii, False -> int.to_string(n)
+    Ascii, True -> "0" <> int.to_string(n)
+    Local(table), False -> local_digits(n, table)
+    Local(table), True -> digit(0, table) <> local_digits(n, table)
   }
 }
 
 @target(erlang)
-fn local_digits(n: Int, digits: Int) -> String {
+fn local_digits(n: Int, table: Names) -> String {
   case n < ten {
-    True -> digit(n, digits)
-    False -> local_digits(n / ten, digits) <> digit(n % ten, digits)
+    True -> digit(n, table)
+    False -> local_digits(n / ten, table) <> digit(n % ten, table)
   }
 }
 
 @target(erlang)
-fn digit(d: Int, digits: Int) -> String {
-  pick_or(element(digits, digits_table()), d, int.to_string(d))
+fn digit(d: Int, table: Names) -> String {
+  pick_or(table, d, int.to_string(d))
 }
 
 @target(erlang)
