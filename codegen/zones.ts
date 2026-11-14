@@ -339,14 +339,12 @@ const START_BYTES = 3;
 const TIME_BYTES = 8;
 const LARGEST_NUMBER = 0xffff;
 
-// The index stores each length in a byte, with where every 16th item starts,
-// so finding an item adds up at most 15 lengths.
-const CHECKPOINT_EVERY = 16;
-const LARGEST_LENGTH = 0xff;
+const LARGEST_START = 0xffffff;
 
-// Where each item starts, then where the last one ends.
-const starts = (lengths: number[]): number[] =>
-  lengths.reduce(
+// Where each item starts, then where the last one ends, so item `i` runs from
+// start `i` to start `i + 1`.
+function startIndex(name: string, lengths: number[]): string[] {
+  const starts = lengths.reduce(
     (acc, n) => {
       acc.push(acc.at(-1)! + n);
 
@@ -355,21 +353,11 @@ const starts = (lengths: number[]): number[] =>
     [0],
   );
 
-// An index of items by their lengths: the lengths, and every 16th start.
-function lengthIndex(name: string, lengths: number[]): string[][] {
-  if (lengths.some((n) => n > LARGEST_LENGTH)) {
-    throw new Error(`Some of ${name} are too long for a byte`);
+  if (starts.at(-1)! > LARGEST_START) {
+    throw new Error(`${name} are too long for ${START_BYTES} byte starts`);
   }
 
-  return [
-    [`${name}_lengths() ->\n    ${erlang.bytes(lengths)}`],
-    [
-      `${name}_checkpoints() ->\n    ${packed(
-        starts(lengths).filter((_, i) => i % CHECKPOINT_EVERY === 0),
-        START_BYTES,
-      )}`,
-    ],
-  ];
+  return [`${name}_starts() ->\n    ${packed(starts, START_BYTES)}`];
 }
 
 // Each bundle's entries for one length of name: [key, standard, daylight].
@@ -386,6 +374,20 @@ const entries = (bundles: number[][][], columns: [number, number]) =>
       NUMBER_BYTES,
     ),
   );
+
+// One byte for each zone key: 1 if any bundle has the zone's own names in
+// these columns. Zones without any skip straight to their metazone.
+const ownNames = (names: Names, keys: number, columns: [number, number]) => {
+  const own = new Set(
+    names.bundles.flatMap((bundle) =>
+      bundle
+        .filter((entry) => columns.some((c) => entry[c] !== NO_NAME))
+        .map((entry) => entry[0]!),
+    ),
+  );
+
+  return erlang.bytes(Array.from({ length: keys }, (_, k) => +own.has(k)));
+};
 
 // Columns of `Names.bundles` entries, after the key.
 const LONG_COLUMNS: [number, number] = [1, 2];
@@ -417,12 +419,12 @@ export function zonesModule(header: string): string {
       "metazones/0",
       "long_names/0",
       "short_names/0",
+      "own_long_names/0",
+      "own_short_names/0",
       "words/0",
-      "word_lengths/0",
-      "word_checkpoints/0",
+      "word_starts/0",
       "name_words/0",
-      "name_lengths/0",
-      "name_checkpoints/0",
+      "name_starts/0",
     ],
     [
       [
@@ -459,13 +461,19 @@ export function zonesModule(header: string): string {
       [
         `short_names() ->\n    ${erlang.tuple(entries(names.bundles, SHORT_COLUMNS))}`,
       ],
+      [
+        `own_long_names() ->\n    ${ownNames(names, data.keys.length, LONG_COLUMNS)}`,
+      ],
+      [
+        `own_short_names() ->\n    ${ownNames(names, data.keys.length, SHORT_COLUMNS)}`,
+      ],
       [`words() ->\n    ${erlang.string(names.words.join(""))}`],
-      ...lengthIndex(
+      startIndex(
         "word",
         names.words.map((w) => encoder.encode(w).length),
       ),
       [`name_words() ->\n    ${packed(names.names.flat(), NUMBER_BYTES)}`],
-      ...lengthIndex(
+      startIndex(
         "name",
         names.names.map((n) => n.length),
       ),

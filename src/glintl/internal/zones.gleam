@@ -428,28 +428,30 @@ fn long_names() -> Bundles
 fn short_names() -> Bundles
 
 @target(erlang)
+/// A byte for each zone key: 1 if any bundle has the zone's own long names.
+@external(erlang, "glintl_generated_time_zones", "own_long_names")
+fn own_long_names() -> BitArray
+
+@target(erlang)
+/// Like `own_long_names`, for short names.
+@external(erlang, "glintl_generated_time_zones", "own_short_names")
+fn own_short_names() -> BitArray
+
+@target(erlang)
 @external(erlang, "glintl_generated_time_zones", "words")
 fn words() -> BitArray
 
 @target(erlang)
-@external(erlang, "glintl_generated_time_zones", "word_lengths")
-fn word_lengths() -> BitArray
-
-@target(erlang)
-@external(erlang, "glintl_generated_time_zones", "word_checkpoints")
-fn word_checkpoints() -> BitArray
+@external(erlang, "glintl_generated_time_zones", "word_starts")
+fn word_starts() -> BitArray
 
 @target(erlang)
 @external(erlang, "glintl_generated_time_zones", "name_words")
 fn name_words() -> BitArray
 
 @target(erlang)
-@external(erlang, "glintl_generated_time_zones", "name_lengths")
-fn name_lengths() -> BitArray
-
-@target(erlang)
-@external(erlang, "glintl_generated_time_zones", "name_checkpoints")
-fn name_checkpoints() -> BitArray
+@external(erlang, "glintl_generated_time_zones", "name_starts")
+fn name_starts() -> BitArray
 
 @target(erlang)
 @external(erlang, "erlang", "element")
@@ -478,11 +480,6 @@ const time_bits = 64
 const entry_bits = 48
 
 @target(erlang)
-/// The data stores where every 16th word or name starts, and each one's
-/// length.
-const checkpoint_every = 16
-
-@target(erlang)
 /// Name number 1 stops a locale from using its parent's name. Real names
 /// start at 2.
 const blocked = 1
@@ -501,12 +498,16 @@ pub fn name(
   daylight: Bool,
   long: Bool,
 ) -> Result(String, Nil) {
-  let table = case long {
-    True -> long_names()
-    False -> short_names()
+  let #(table, own) = case long {
+    True -> #(long_names(), own_long_names())
+    False -> #(short_names(), own_short_names())
   }
   let all = metazones()
-  case find_name(table, chain, key, daylight) {
+  let own_name = case byte(own, key) {
+    0 -> Error(Nil)
+    _ -> find_name(table, chain, key, daylight)
+  }
+  case own_name {
     Ok(n) -> Ok(name_text(n))
     Error(Nil) ->
       case metazone_at(periods_of(key + 1, all), unix_seconds) {
@@ -600,39 +601,24 @@ fn metazone_at(periods: BitArray, unix_seconds: Int) -> Result(Int, Nil) {
 }
 
 @target(erlang)
-/// Where item `i` starts: the last checkpoint, plus the lengths after it.
-fn start(lengths: BitArray, checkpoints: BitArray, i: Int) -> Int {
-  let checkpoint = i / checkpoint_every
+/// Where item `i` starts and ends. The data stores each item's start, then
+/// where the last one ends.
+fn span(starts: BitArray, i: Int) -> #(Int, Int) {
   let assert <<
-    _:bits-size(checkpoint * start_bits),
-    base:size(start_bits),
+    _:bits-size(i * start_bits),
+    from:size(start_bits),
+    to:size(start_bits),
     _:bits,
-  >> = checkpoints
-  sum_bytes(lengths, checkpoint * checkpoint_every, i, base)
-}
-
-@target(erlang)
-fn sum_bytes(bits: BitArray, from: Int, to: Int, total: Int) -> Int {
-  let assert <<_:bytes-size(from), run:bytes-size(to - from), _:bits>> = bits
-  add_bytes(run, total)
-}
-
-@target(erlang)
-fn add_bytes(bits: BitArray, total: Int) -> Int {
-  case bits {
-    <<b, rest:bytes>> -> add_bytes(rest, total + b)
-    _ -> total
-  }
+  >> = starts
+  #(from, to)
 }
 
 @target(erlang)
 /// A name's text, joined from its words.
 fn name_text(n: Int) -> String {
-  let i = n - first_name
-  let lengths = name_lengths()
-  let from = start(lengths, name_checkpoints(), i)
+  let #(from, to) = span(name_starts(), n - first_name)
   // The generator writes the words, so they're always valid UTF-8.
-  join(word_list(name_words(), from, from + byte(lengths, i)))
+  join(word_list(name_words(), from, to))
 }
 
 @target(erlang)
@@ -642,10 +628,8 @@ fn word_list(numbers: BitArray, i: Int, end: Int) -> List(BitArray) {
     False -> {
       let assert <<_:bits-size(i * number_bits), w:size(number_bits), _:bits>> =
         numbers
-      let lengths = word_lengths()
-      let from = start(lengths, word_checkpoints(), w)
-      let length = byte(lengths, w)
-      let assert <<_:bytes-size(from), word:bytes-size(length), _:bits>> =
+      let #(from, to) = span(word_starts(), w)
+      let assert <<_:bytes-size(from), word:bytes-size(to - from), _:bits>> =
         words()
       [word, ..word_list(numbers, i + 1, end)]
     }
