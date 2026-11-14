@@ -231,8 +231,10 @@ export function packer() {
     pattern(
       pieces.map((p) => {
         switch (p.t) {
+          // Glue text is part of one ICU pattern with the date and time, so
+          // in parts it joins the literals next to it.
           case "text":
-            return `{literal,${string(p.value)}}`;
+            return `{glue_text,${string(p.value)}}`;
           case "token":
             return token(p.token);
           case "date":

@@ -119,6 +119,16 @@ const between = ([from, to]: [number, number]) =>
 
 type Case = { line: string; expected: string };
 
+// Between parts, and between each part's type and text.
+const PART_SEPARATOR = "\u001f";
+
+// What Intl writes, then its parts, the way the Erlang side prints them.
+const formatted = (formatter: Intl.DateTimeFormat, ms: number): string =>
+  `${formatter.format(ms)}\t${formatter
+    .formatToParts(ms)
+    .map((part) => `${part.type}=${part.value}`)
+    .join(PART_SEPARATOR)}`;
+
 // ICU mixes up the era and year in table calendars when the local and UTC
 // dates fall in different eras, so we leave those moments out. glintl's
 // README explains this.
@@ -239,7 +249,7 @@ function group(): Case[] {
           milliseconds,
           offset,
         ].join("\t"),
-        expected: formatter.format(seconds * MS_PER_SECOND + milliseconds),
+        expected: formatted(formatter, seconds * MS_PER_SECOND + milliseconds),
       },
     ];
   });
@@ -366,7 +376,7 @@ function everyCases(tag: string, calendar: string, index: number): Case[] {
           milliseconds,
           offset,
         ].join("\t"),
-        expected: formatter.format(seconds * MS_PER_SECOND + milliseconds),
+        expected: formatted(formatter, seconds * MS_PER_SECOND + milliseconds),
       },
     ];
   });
@@ -538,7 +548,7 @@ function zoneCases(
 
     return moments.map((seconds) => ({
       line: [tag, "", date, time, "", fields, seconds, 0, zone].join("\t"),
-      expected: formatter.format(seconds * MS_PER_SECOND),
+      expected: formatted(formatter, seconds * MS_PER_SECOND),
     }));
   });
 }

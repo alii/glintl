@@ -41,6 +41,8 @@ Creating a formatter takes some work, so create it once and reuse it.
 
 Each locale is its own module, like `glintl/locale/fr`. To choose a locale while your app runs, use the helpers in `glintl/locales`. They can read an `Accept-Language` header, for example.
 
+To style each piece of a date, like a bold weekday, use `date_time.format_to_parts`.
+
 ## How it works
 
 On JavaScript, glintl calls `Intl.DateTimeFormat` directly. glintl adds no locale data to your JavaScript bundle, so you can use it in size-sensitive programs, like in the browser.

@@ -85,6 +85,9 @@ type Pattern {
 @target(erlang)
 type Token {
   Literal(String)
+  /// Text in a glue pattern. In parts, it joins the literals next to it,
+  /// because ICU writes the glue, date and time as one pattern.
+  GlueText(String)
   /// A part written with ASCII digits, whatever the locale's digits are.
   AsciiDigits(Token)
   /// `first` and `minus_first` are names for years 1 and -1, like 元, or "".
@@ -140,6 +143,27 @@ type Token {
   )
   GlueDate
   GlueTime
+}
+
+@target(erlang)
+/// What a part of the text is, like `glintl.DatePart`, which this module can't
+/// use.
+pub type PartKind {
+  EraPart
+  YearPart
+  RelatedYearPart
+  YearNamePart
+  MonthPart
+  DayPart
+  WeekdayPart
+  DayPeriodPart
+  HourPart
+  MinutePart
+  SecondPart
+  FractionalSecondPart
+  TimeZoneNamePart
+  LiteralPart
+  UnknownPart
 }
 
 @target(erlang)
@@ -728,6 +752,38 @@ pub fn render(
 }
 
 @target(erlang)
+/// Like `render`, but in parts, with the text that's the same for every date
+/// joined into one part.
+pub fn render_parts(
+  compiled: Compiled,
+  unix_seconds: Int,
+  milliseconds: Int,
+  offset_seconds: Int,
+  names: data.ZoneNames,
+) -> List(#(PartKind, String)) {
+  case compiled.days {
+    GregorianDays ->
+      write_parts(
+        compiled,
+        gregorian_local(unix_seconds, offset_seconds, names),
+        milliseconds,
+      )
+    OtherDays(math:, gregorian:) ->
+      case local(math(), unix_seconds, offset_seconds, names) {
+        Ok(local) -> write_parts(compiled, local, milliseconds)
+        Error(Nil) ->
+          render_parts(
+            gregorian(),
+            unix_seconds,
+            milliseconds,
+            offset_seconds,
+            names,
+          )
+      }
+  }
+}
+
+@target(erlang)
 fn write(compiled: Compiled, local: data.Local, milliseconds: Int) -> String {
   let prepared = case compiled.eras {
     [] -> compiled.main
@@ -750,6 +806,84 @@ fn write(compiled: Compiled, local: data.Local, milliseconds: Int) -> String {
         })
       with_workaround(texts, workaround, local, milliseconds)
     }
+  }
+}
+
+@target(erlang)
+fn write_parts(
+  compiled: Compiled,
+  local: data.Local,
+  milliseconds: Int,
+) -> List(#(PartKind, String)) {
+  let prepared = case compiled.eras {
+    [] -> compiled.main
+    eras ->
+      case key_find(eras, local.era) {
+        Ok(prepared) -> prepared
+        Error(Nil) -> compiled.main
+      }
+  }
+  let reversed = case prepared {
+    Prepared(tokens:, ..) ->
+      walk_parts(
+        tokens,
+        prepared,
+        local,
+        milliseconds,
+        compiled.digits,
+        [],
+        False,
+      )
+    Listed(..) -> {
+      let #(pieces, added) =
+        listed_pieces(prepared, local, milliseconds, compiled.digits)
+      // JavaScriptCore keeps the parts its workaround adds on their own.
+      list.fold(pieces, [], fn(acc, piece) { add_part(acc, piece.1, piece.2) })
+      |> list.append(list.reverse(added), _)
+    }
+  }
+  list.reverse(reversed)
+}
+
+@target(erlang)
+/// Adds a part to parts in reverse order. Like Intl, it leaves out empty parts
+/// and joins literals that come together.
+fn add_part(
+  parts: List(#(PartKind, String)),
+  kind: PartKind,
+  text: String,
+) -> List(#(PartKind, String)) {
+  case text, kind, parts {
+    "", _, _ -> parts
+    _, LiteralPart, [#(LiteralPart, before), ..rest] -> [
+      #(LiteralPart, before <> text),
+      ..rest
+    ]
+    _, _, _ -> [#(kind, text), ..parts]
+  }
+}
+
+@target(erlang)
+/// A fields pattern's pieces, each with its run's letter, its kind and its
+/// text, after JavaScriptCore's era workaround. Then the parts the workaround
+/// adds to the end.
+fn listed_pieces(
+  prepared: Prepared,
+  local: data.Local,
+  milliseconds: Int,
+  digits: Digits,
+) -> #(List(#(String, PartKind, String)), List(#(PartKind, String))) {
+  case prepared {
+    Listed(pieces:, workaround:, ..) ->
+      list.map(pieces, fn(piece) {
+        #(
+          piece.0,
+          kind(piece.1),
+          text(piece.1, prepared, local, milliseconds, digits),
+        )
+      })
+      |> with_workaround_parts(workaround, local, milliseconds)
+    Prepared(..) -> #([], [])
   }
 }
 
@@ -799,6 +933,46 @@ fn with_workaround(
 }
 
 @target(erlang)
+/// Applies JavaScriptCore's era workaround to the pieces, and gives the parts
+/// it adds to the end.
+fn with_workaround_parts(
+  pieces: List(#(String, PartKind, String)),
+  workaround: Workaround,
+  m: data.Local,
+  milliseconds: Int,
+) -> #(List(#(String, PartKind, String)), List(#(PartKind, String))) {
+  let ms = m.unix_seconds * milliseconds_per_second + milliseconds
+  case workaround {
+    ReplaceEra(before_ms:, text:, two_digit_year:) if ms < before_ms -> {
+      let era = last_part_index(pieces, "G", 0, -1)
+      let year = last_part_index(pieces, "y", 0, -1)
+      let replaced =
+        list.index_map(pieces, fn(piece, i) {
+          case i == era, i == year {
+            True, _ -> #(piece.0, piece.1, text)
+            _, True -> #(
+              piece.0,
+              piece.1,
+              flipped_year(m.extended, two_digit_year),
+            )
+            _, _ -> piece
+          }
+        })
+      #(replaced, [])
+    }
+    AppendEra(before_ms:, text:) if ms < before_ms -> {
+      let kept = list.filter(pieces, fn(piece) { piece.0 != "G" })
+      let written = string_concat(list.map(kept, fn(piece) { piece.2 }))
+      case matcher.ends_with_space(written) {
+        True -> #(kept, [#(EraPart, text)])
+        False -> #(kept, [#(LiteralPart, " "), #(EraPart, text)])
+      }
+    }
+    _ -> #(pieces, [])
+  }
+}
+
+@target(erlang)
 fn last_index(
   texts: List(#(String, String)),
   letter: String,
@@ -809,6 +983,21 @@ fn last_index(
     [] -> found
     [#(l, _), ..rest] if l == letter -> last_index(rest, letter, i + 1, i)
     [_, ..rest] -> last_index(rest, letter, i + 1, found)
+  }
+}
+
+@target(erlang)
+fn last_part_index(
+  pieces: List(#(String, PartKind, String)),
+  letter: String,
+  i: Int,
+  found: Int,
+) -> Int {
+  case pieces {
+    [] -> found
+    [#(l, _, _), ..rest] if l == letter ->
+      last_part_index(rest, letter, i + 1, i)
+    [_, ..rest] -> last_part_index(rest, letter, i + 1, found)
   }
 }
 
@@ -866,6 +1055,71 @@ fn walk(
 }
 
 @target(erlang)
+/// Like `walk`, but adds parts in reverse order. Literals stay apart, as
+/// Intl gave them to the generator, except that glue text joins the literals
+/// next to it. `join` says the last part was glue text.
+fn walk_parts(
+  bits: BitArray,
+  p: Prepared,
+  m: data.Local,
+  milliseconds: Int,
+  digits: Digits,
+  acc: List(#(PartKind, String)),
+  join: Bool,
+) -> List(#(PartKind, String)) {
+  case bits {
+    <<id:16, rest:bits>> ->
+      case element(id, tokens()), p {
+        GlueDate, Prepared(date:, ..) ->
+          walk_parts(date, p, m, milliseconds, digits, acc, join)
+          |> walk_parts(rest, p, m, milliseconds, digits, _, False)
+        GlueTime, Prepared(time:, ..) ->
+          walk_parts(time, p, m, milliseconds, digits, acc, join)
+          |> walk_parts(rest, p, m, milliseconds, digits, _, False)
+        GlueText(""), _ ->
+          walk_parts(rest, p, m, milliseconds, digits, acc, join)
+        GlueText(text), _ ->
+          add_part(acc, LiteralPart, text)
+          |> walk_parts(rest, p, m, milliseconds, digits, _, True)
+        token, _ ->
+          case text(token, p, m, milliseconds, digits), join {
+            "", _ -> walk_parts(rest, p, m, milliseconds, digits, acc, join)
+            text, True ->
+              add_part(acc, kind(token), text)
+              |> walk_parts(rest, p, m, milliseconds, digits, _, False)
+            text, False ->
+              [#(kind(token), text), ..acc]
+              |> walk_parts(rest, p, m, milliseconds, digits, _, False)
+          }
+      }
+    _ -> acc
+  }
+}
+
+@target(erlang)
+/// Which kind of part a token writes, like Intl's part types.
+fn kind(token: Token) -> PartKind {
+  case token {
+    Literal(_) | GlueText(_) | GlueDate | GlueTime -> LiteralPart
+    AsciiDigits(inner) -> kind(inner)
+    Year(..) | ExtendedYear(..) -> YearPart
+    WeekYear(..) -> UnknownPart
+    RelatedYear(..) -> RelatedYearPart
+    CycleEra | Era(_) -> EraPart
+    YearName(_) -> YearNamePart
+    MonthName(_) | MonthNumber(..) -> MonthPart
+    DayName(_) | Day(..) -> DayPart
+    Weekday(_) -> WeekdayPart
+    DayPeriod(..) -> DayPeriodPart
+    Hour(..) -> HourPart
+    Minute(..) -> MinutePart
+    Second(..) -> SecondPart
+    Fraction(..) -> FractionalSecondPart
+    Zone(..) -> TimeZoneNamePart
+  }
+}
+
+@target(erlang)
 fn text(
   token: Token,
   p: Prepared,
@@ -874,7 +1128,7 @@ fn text(
   digits: Digits,
 ) -> String {
   case token {
-    Literal(text) -> text
+    Literal(text) | GlueText(text) -> text
     AsciiDigits(inner) -> text(inner, p, m, milliseconds, Ascii)
     Year(two_digit: True, minus:, ..) -> {
       let sign = case m.year < 0 {

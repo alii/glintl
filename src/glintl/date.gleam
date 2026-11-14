@@ -34,7 +34,7 @@
 
 import gleam/time/calendar
 import gleam/time/timestamp
-import glintl.{type Locale}
+import glintl.{type DatePart, type Locale}
 import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
@@ -92,6 +92,28 @@ pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
 
 /// Format a date.
 pub fn format(formatter: Formatter, date: calendar.Date) -> String {
+  engine.format(formatter.compiled, seconds(date), 0, time_zone.utc)
+}
+
+/// Like `format`, but in parts, so you can style each one. Joining the parts'
+/// text gives what `format` returns.
+///
+/// ```gleam
+/// date.date_formatter(en_gb.locale(), style: date.Long)
+/// |> date.format_to_parts(calendar.Date(2026, calendar.October, 26))
+/// // -> [
+/// //   glintl.Day("26"), glintl.Literal(" "), glintl.Month("October"),
+/// //   glintl.Literal(" "), glintl.Year("2026"),
+/// // ]
+/// ```
+pub fn format_to_parts(
+  formatter: Formatter,
+  date: calendar.Date,
+) -> List(DatePart) {
+  engine.format_to_parts(formatter.compiled, seconds(date), 0, time_zone.utc)
+}
+
+fn seconds(date: calendar.Date) -> Int {
   // Date formatters never show a time or a time zone, so any time works.
   let #(seconds, _) =
     timestamp.from_calendar(
@@ -100,7 +122,7 @@ pub fn format(formatter: Formatter, date: calendar.Date) -> String {
       offset: calendar.utc_offset,
     )
     |> timestamp.to_unix_seconds_and_nanoseconds
-  engine.format(formatter.compiled, seconds, 0, time_zone.utc)
+  seconds
 }
 
 /// Start picking the fields to show.

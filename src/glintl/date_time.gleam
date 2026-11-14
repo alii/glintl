@@ -25,7 +25,7 @@
 //// runtimes.
 
 import gleam/time/timestamp.{type Timestamp}
-import glintl.{type Locale}
+import glintl.{type DatePart, type Locale}
 import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
@@ -222,6 +222,27 @@ pub fn format(
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
   engine.format(formatter.compiled, seconds, nanoseconds, zone)
+}
+
+/// Like `format`, but in parts, so you can style each one. Joining the parts'
+/// text gives what `format` returns.
+///
+/// ```gleam
+/// date_time.date_formatter(en_gb.locale(), style: date_time.Long)
+/// |> date_time.format_to_parts(moment, zone: time_zone.utc)
+/// // -> [
+/// //   glintl.Day("26"), glintl.Literal(" "), glintl.Month("October"),
+/// //   glintl.Literal(" "), glintl.Year("2026"),
+/// // ]
+/// ```
+pub fn format_to_parts(
+  formatter: Formatter,
+  timestamp: Timestamp,
+  zone zone: TimeZone,
+) -> List(DatePart) {
+  let #(seconds, nanoseconds) =
+    timestamp.to_unix_seconds_and_nanoseconds(timestamp)
+  engine.format_to_parts(formatter.compiled, seconds, nanoseconds, zone)
 }
 
 fn internal_style(style: Style) -> data.Style {

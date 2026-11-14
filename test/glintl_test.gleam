@@ -57,6 +57,45 @@ pub fn fields_example_test() {
 }
 
 /// Like Intl, with no date or time part a formatter shows a numeric date.
+pub fn parts_test() {
+  let formatter =
+    date_time.date_time_formatter(
+      en_gb.locale(),
+      date: date_time.Long,
+      time: date_time.Short,
+    )
+  let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
+  let parts = date_time.format_to_parts(formatter, moment, zone:)
+  assert parts
+    == [
+      glintl.Day("25"),
+      glintl.Literal(" "),
+      glintl.Month("October"),
+      glintl.Literal(" "),
+      glintl.Year("2026"),
+      glintl.Literal(" at "),
+      glintl.Hour("23"),
+      glintl.Literal(":"),
+      glintl.Minute("40"),
+    ]
+  assert string.concat(list.map(parts, glintl.part_text))
+    == date_time.format(formatter, moment, zone:)
+}
+
+pub fn date_parts_test() {
+  let formatter =
+    date.new()
+    |> date.year(glintl.Numeric)
+    |> date.era(glintl.Short)
+    |> date.fields_formatter(
+      ja.locale() |> glintl.with_calendar(glintl.Japanese),
+      _,
+    )
+  assert date.format_to_parts(formatter, calendar.Date(2019, calendar.May, 1))
+    == [glintl.Era("令和"), glintl.Year("元"), glintl.Literal("年")]
+}
+
 pub fn default_fields_test() {
   let midday = timestamp.from_unix_seconds(1_792_929_600)
   let format = fn(fields) {

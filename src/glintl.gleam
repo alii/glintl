@@ -74,6 +74,57 @@ pub type Digits {
   TwoDigit
 }
 
+/// A piece of a formatted date, like Intl's `formatToParts`. Each piece has
+/// its text, so you can style one kind, like bold weekdays.
+///
+/// ```gleam
+/// [Day("26"), Literal(" "), Month("October"), Literal(" "), Year("2026")]
+/// ```
+pub type DatePart {
+  Era(String)
+  Year(String)
+  /// The Gregorian year in a calendar with cyclic years, like 2026 in the
+  /// Chinese calendar.
+  RelatedYear(String)
+  /// A cyclic year's name, like 丙午 in the Chinese calendar.
+  YearName(String)
+  Month(String)
+  Day(String)
+  Weekday(String)
+  /// Like "am" or "in the morning".
+  DayPeriod(String)
+  Hour(String)
+  Minute(String)
+  Second(String)
+  FractionalSecond(String)
+  TimeZoneName(String)
+  /// Text that's the same for every date, like spaces and commas.
+  Literal(String)
+  /// A field Intl has no kind for, like the week-based year.
+  Unknown(String)
+}
+
+/// The text of a part.
+pub fn part_text(part: DatePart) -> String {
+  case part {
+    Era(text)
+    | Year(text)
+    | RelatedYear(text)
+    | YearName(text)
+    | Month(text)
+    | Day(text)
+    | Weekday(text)
+    | DayPeriod(text)
+    | Hour(text)
+    | Minute(text)
+    | Second(text)
+    | FractionalSecond(text)
+    | TimeZoneName(text)
+    | Literal(text)
+    | Unknown(text) -> text
+  }
+}
+
 /// The calendars glintl can format dates in.
 ///
 /// Each locale has its own calendar. Most use `Gregorian`. Thai uses

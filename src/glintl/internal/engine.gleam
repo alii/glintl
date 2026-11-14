@@ -1,7 +1,8 @@
 //// The engine behind `glintl/date` and `glintl/date_time`. It turns picked
 //// fields or styles into a formatter, and formats with it.
 
-import glintl.{type Locale}
+import gleam/list
+import glintl.{type DatePart, type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
@@ -108,6 +109,16 @@ pub fn format(
   zone: TimeZone,
 ) -> String {
   do_format(compiled, seconds, nanoseconds, zone)
+}
+
+/// Like `format`, in parts.
+pub fn format_to_parts(
+  compiled: Compiled,
+  seconds: Int,
+  nanoseconds: Int,
+  zone: TimeZone,
+) -> List(DatePart) {
+  do_format_to_parts(compiled, seconds, nanoseconds, zone)
 }
 
 @target(erlang)
@@ -308,6 +319,59 @@ fn do_format(
   )
 }
 
+@target(erlang)
+fn do_format_to_parts(
+  compiled: Compiled,
+  seconds: Int,
+  nanoseconds: Int,
+  zone: TimeZone,
+) -> List(DatePart) {
+  let #(offset, names) = zone_at(compiled, zone, seconds)
+  render.render_parts(
+    compiled.rendered,
+    seconds,
+    nanoseconds / nanoseconds_per_millisecond,
+    offset,
+    names,
+  )
+  |> list.map(fn(part) { date_part(part.0, part.1) })
+}
+
+@target(erlang)
+/// The zone's offset at a moment, and where to find its name.
+fn zone_at(
+  compiled: Compiled,
+  zone: TimeZone,
+  seconds: Int,
+) -> #(Int, data.ZoneNames) {
+  let #(offset, key, daylight) = time_zone.at(zone, seconds)
+  case key < 0 {
+    True -> #(offset, data.Unnamed)
+    False -> #(offset, data.Named(key:, daylight:, chain: compiled.names))
+  }
+}
+
+@target(erlang)
+fn date_part(kind: render.PartKind, text: String) -> DatePart {
+  case kind {
+    render.EraPart -> glintl.Era(text)
+    render.YearPart -> glintl.Year(text)
+    render.RelatedYearPart -> glintl.RelatedYear(text)
+    render.YearNamePart -> glintl.YearName(text)
+    render.MonthPart -> glintl.Month(text)
+    render.DayPart -> glintl.Day(text)
+    render.WeekdayPart -> glintl.Weekday(text)
+    render.DayPeriodPart -> glintl.DayPeriod(text)
+    render.HourPart -> glintl.Hour(text)
+    render.MinutePart -> glintl.Minute(text)
+    render.SecondPart -> glintl.Second(text)
+    render.FractionalSecondPart -> glintl.FractionalSecond(text)
+    render.TimeZoneNamePart -> glintl.TimeZoneName(text)
+    render.LiteralPart -> glintl.Literal(text)
+    render.UnknownPart -> glintl.Unknown(text)
+  }
+}
+
 @target(javascript)
 fn do_format(
   compiled: Compiled,
@@ -317,6 +381,53 @@ fn do_format(
 ) -> String {
   intl_format(compiled, seconds, nanoseconds, time_zone.intl_time_zone(zone))
 }
+
+@target(javascript)
+fn do_format_to_parts(
+  compiled: Compiled,
+  seconds: Int,
+  nanoseconds: Int,
+  zone: TimeZone,
+) -> List(DatePart) {
+  intl_format_to_parts(
+    compiled,
+    seconds,
+    nanoseconds,
+    time_zone.intl_time_zone(zone),
+  )
+  |> list.map(fn(part) { intl_part(part.0, part.1) })
+}
+
+@target(javascript)
+/// A part from Intl's `formatToParts`, by its type.
+fn intl_part(kind: String, text: String) -> DatePart {
+  case kind {
+    "era" -> glintl.Era(text)
+    "year" -> glintl.Year(text)
+    "relatedYear" -> glintl.RelatedYear(text)
+    "yearName" -> glintl.YearName(text)
+    "month" -> glintl.Month(text)
+    "day" -> glintl.Day(text)
+    "weekday" -> glintl.Weekday(text)
+    "dayPeriod" -> glintl.DayPeriod(text)
+    "hour" -> glintl.Hour(text)
+    "minute" -> glintl.Minute(text)
+    "second" -> glintl.Second(text)
+    "fractionalSecond" -> glintl.FractionalSecond(text)
+    "timeZoneName" -> glintl.TimeZoneName(text)
+    "literal" -> glintl.Literal(text)
+    _ -> glintl.Unknown(text)
+  }
+}
+
+@target(javascript)
+@external(javascript, "../../glintl_ffi.mjs", "formatToParts")
+fn intl_format_to_parts(
+  compiled: Compiled,
+  seconds: Int,
+  nanoseconds: Int,
+  time_zone: String,
+) -> List(#(String, String))
 
 @target(javascript)
 @external(javascript, "../../glintl_ffi.mjs", "format")

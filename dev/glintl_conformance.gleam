@@ -60,8 +60,9 @@ fn loop(last: Option(#(String, Formatter))) -> Nil {
       let moment =
         timestamp.from_unix_seconds(number(seconds))
         |> timestamp.add(duration.milliseconds(number(milliseconds)))
-      date_time.format(formatter, moment, zone:)
-      |> io.println
+      let text = date_time.format(formatter, moment, zone:)
+      let parts = date_time.format_to_parts(formatter, moment, zone:)
+      io.println(text <> "\t" <> written_parts(parts))
       loop(Some(#(key, formatter)))
     }
   }
@@ -208,4 +209,35 @@ fn style(index: Int) -> date_time.Style {
 @external(erlang, "glintl_conformance_ffi", "read_line")
 fn read_line() -> Result(String, Nil) {
   panic as "only used on Erlang"
+}
+
+/// Between parts, and between each part's type and text, like
+/// `PART_SEPARATOR` in `codegen/conformance.ts`.
+const part_separator = "\u{1f}"
+
+fn written_parts(parts: List(glintl.DatePart)) -> String {
+  parts
+  |> list.map(fn(part) { intl_type(part) <> "=" <> glintl.part_text(part) })
+  |> string.join(part_separator)
+}
+
+/// Intl's name for a part's type.
+fn intl_type(part: glintl.DatePart) -> String {
+  case part {
+    glintl.Era(_) -> "era"
+    glintl.Year(_) -> "year"
+    glintl.RelatedYear(_) -> "relatedYear"
+    glintl.YearName(_) -> "yearName"
+    glintl.Month(_) -> "month"
+    glintl.Day(_) -> "day"
+    glintl.Weekday(_) -> "weekday"
+    glintl.DayPeriod(_) -> "dayPeriod"
+    glintl.Hour(_) -> "hour"
+    glintl.Minute(_) -> "minute"
+    glintl.Second(_) -> "second"
+    glintl.FractionalSecond(_) -> "fractionalSecond"
+    glintl.TimeZoneName(_) -> "timeZoneName"
+    glintl.Literal(_) -> "literal"
+    glintl.Unknown(_) -> "unknown"
+  }
 }

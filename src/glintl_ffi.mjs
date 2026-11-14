@@ -1,6 +1,6 @@
 // @ts-check
 
-import { Error as GleamError, Ok } from "./gleam.mjs";
+import { Error as GleamError, Ok, toList } from "./gleam.mjs";
 
 /**
  * A `matcher.Request`. Each field is an Intl option, or "" or 0 to leave it out.
@@ -103,6 +103,33 @@ const NANOSECONDS_PER_MILLISECOND = 1_000_000;
  * @returns {string}
  */
 export function format(compiled, seconds, nanoseconds, timeZone) {
+  return formatterIn(compiled, timeZone).format(
+    milliseconds(seconds, nanoseconds),
+  );
+}
+
+/**
+ * @param {Compiled} compiled
+ * @param {number} seconds
+ * @param {number} nanoseconds
+ * @param {string} timeZone
+ * @returns {unknown} A Gleam list of `#(type, value)` tuples.
+ */
+export function formatToParts(compiled, seconds, nanoseconds, timeZone) {
+  return toList(
+    formatterIn(compiled, timeZone)
+      .formatToParts(milliseconds(seconds, nanoseconds))
+      .map((part) => [part.type, part.value]),
+  );
+}
+
+/**
+ * The formatter for a time zone, made the first time it's needed.
+ * @param {Compiled} compiled
+ * @param {string} timeZone
+ * @returns {Intl.DateTimeFormat}
+ */
+function formatterIn(compiled, timeZone) {
   let formatter = compiled.byZone.get(timeZone);
   if (formatter === undefined) {
     formatter = new Intl.DateTimeFormat(
@@ -114,11 +141,17 @@ export function format(compiled, seconds, nanoseconds, timeZone) {
     );
     compiled.byZone.set(timeZone, formatter);
   }
-  return formatter.format(
-    seconds * MILLISECONDS_PER_SECOND +
-      Math.floor(nanoseconds / NANOSECONDS_PER_MILLISECOND),
-  );
+  return formatter;
 }
+
+/**
+ * @param {number} seconds
+ * @param {number} nanoseconds
+ * @returns {number}
+ */
+const milliseconds = (seconds, nanoseconds) =>
+  seconds * MILLISECONDS_PER_SECOND +
+  Math.floor(nanoseconds / NANOSECONDS_PER_MILLISECOND);
 
 /**
  * Intl's own spelling of a time zone name, or an error if Intl doesn't know it.
