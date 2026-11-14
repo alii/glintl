@@ -1112,11 +1112,21 @@ fn zeros(count: Int, zero: String) -> String {
 }
 
 @target(erlang)
-/// A locale's number in the digits table is 0 for ASCII digits.
+const digit_count_in_table = 10
+
+@target(erlang)
+/// A locale's number in the digits table is 0 for ASCII digits. `Local`
+/// always has all ten digits, so `digit` can read them without checking.
 fn digits_of(number: Int) -> Digits {
   case number {
     0 -> Ascii
-    _ -> Local(element(number, digits_table()))
+    _ -> {
+      let table = element(number, digits_table())
+      case tuple_size(table) == digit_count_in_table {
+        True -> Local(table)
+        False -> Ascii
+      }
+    }
   }
 }
 
@@ -1133,15 +1143,17 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
 
 @target(erlang)
 fn local_digits(n: Int, table: Names) -> String {
-  case n < ten {
-    True -> digit(n, table)
-    False -> local_digits(n / ten, table) <> digit(n % ten, table)
+  case n >= 0, n < ten {
+    True, True -> digit(n, table)
+    True, False -> local_digits(n / ten, table) <> digit(n % ten, table)
+    // Callers write the sign themselves, so this is only a safety net.
+    False, _ -> int.to_string(n)
   }
 }
 
 @target(erlang)
 fn digit(d: Int, table: Names) -> String {
-  pick_or(table, d, int.to_string(d))
+  element(d + 1, table)
 }
 
 @target(erlang)

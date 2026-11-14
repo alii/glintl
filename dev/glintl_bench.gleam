@@ -1,5 +1,7 @@
-//// Measures how much formatting allocates and how long it takes. The bench
-//// measures memory only on Erlang.
+//// Measures how much formatting allocates, how long it takes, and how many
+//// reductions it uses. Reductions count the work Erlang does, so they stay
+//// the same from run to run. The bench measures memory and reductions only on
+//// Erlang.
 ////
 ////   gleam run -m glintl_bench
 
@@ -11,6 +13,8 @@ import gleam/time/timestamp.{type Timestamp}
 import glintl
 import glintl/date_time
 import glintl/locale/en_gb
+import glintl/locale/fa
+import glintl/locale/ja
 import glintl/time_zone
 
 /// The first date is 14 November 2023, and the rest follow a week apart.
@@ -21,7 +25,7 @@ const seconds_per_week = 604_800
 const dates_per_run = 90
 
 /// How many runs to time, because one run is too quick to time well.
-const timed_runs = 100
+const timed_runs = 1000
 
 const microseconds_per_millisecond = 1000.0
 
@@ -30,14 +34,13 @@ const bytes_per_kilobyte = 1024
 const decimal_places = 3
 
 pub fn main() -> Nil {
-  let #(first, first_time) = measure(fn() { format_dates(1) })
-  let #(again, again_time) = measure(fn() { format_dates(1) })
-  let #(make, _) =
+  let #(first, first_time, _) = measure(fn() { format_dates(1) })
+  let #(again, again_time, _) = measure(fn() { format_dates(1) })
+  let #(make, _, _) =
     measure(fn() {
       formatter()
       Nil
     })
-  let #(_, many_time) = measure(fn() { format_dates(timed_runs) })
   io.println(
     "first "
     <> int.to_string(dates_per_run)
@@ -55,42 +58,78 @@ pub fn main() -> Nil {
     <> ms(again_time),
   )
   io.println("make a formatter: " <> kb(make))
-  let #(make_fields, _) =
+  let #(make_fields, _, _) =
     measure(fn() {
       fields_formatter()
       Nil
     })
-  let #(_, make_fields_time) =
+  let #(_, make_fields_time, _) =
     measure(fn() {
       int.range(from: 0, to: timed_runs, with: Nil, run: fn(_, _) {
         fields_formatter()
         Nil
       })
     })
-  let #(_, fields_time) =
-    measure(fn() { format_dates_with(fields_formatter(), timed_runs) })
   io.println(
     "make a fields formatter: "
     <> kb(make_fields)
     <> ", "
     <> per(make_fields_time, timed_runs),
   )
+  let assert Ok(london) = time_zone.from_name("Europe/London")
+  let japanese =
+    date_time.date_time_formatter(
+      glintl.with_calendar(ja.locale(), glintl.Japanese),
+      date: date_time.Full,
+      time: date_time.Short,
+    )
+  let persian =
+    date_time.date_time_formatter(
+      fa.locale(),
+      date: date_time.Long,
+      time: date_time.Short,
+    )
+  let zone_name =
+    date_time.date_time_formatter(
+      en_gb.locale(),
+      date: date_time.Long,
+      time: date_time.Full,
+    )
   io.println(
-    "per date with fields, over "
-    <> int.to_string(timed_runs * dates_per_run)
-    <> ": "
-    <> per(fields_time, timed_runs * dates_per_run),
+    "per date, over " <> int.to_string(timed_runs * dates_per_run) <> ":",
   )
-  io.println(
-    "per date, over "
-    <> int.to_string(timed_runs * dates_per_run)
-    <> ": "
-    <> float.to_string(float.to_precision(
-      int.to_float(many_time) /. int.to_float(timed_runs * dates_per_run),
-      decimal_places,
-    ))
-    <> " µs",
+  list.each(
+    [
+      #("styles", formatter(), zone()),
+      #("fields", fields_formatter(), zone()),
+      #("Persian digits", persian, zone()),
+      #("the Japanese calendar", japanese, zone()),
+      #("a zone name", zone_name, london),
+    ],
+    fn(case_) {
+      let #(name, formatter, zone) = case_
+      let #(_, micros, reductions) =
+        measure(fn() { format_dates_in(formatter, timed_runs, zone) })
+      let count = timed_runs * dates_per_run
+      io.println(
+        "  "
+        <> name
+        <> ": "
+        <> per(micros, count)
+        <> ", "
+        <> float.to_string(float.to_precision(
+          int.to_float(reductions) /. int.to_float(count),
+          decimal_places,
+        ))
+        <> " reductions",
+      )
+    },
   )
+}
+
+fn zone() -> time_zone.TimeZone {
+  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
+  zone
 }
 
 fn formatter() -> date_time.Formatter {
@@ -123,12 +162,15 @@ fn per(micros: Int, count: Int) -> String {
 
 /// Formats the dates, `times` times over, with one formatter.
 fn format_dates(times: Int) -> Nil {
-  format_dates_with(formatter(), times)
+  format_dates_in(formatter(), times, zone())
 }
 
-fn format_dates_with(formatter: date_time.Formatter, times: Int) -> Nil {
+fn format_dates_in(
+  formatter: date_time.Formatter,
+  times: Int,
+  zone: time_zone.TimeZone,
+) -> Nil {
   let dates = dates()
-  let assert Ok(zone) = time_zone.offset(hours: 1, minutes: 0)
   int.range(from: 0, to: times, with: Nil, run: fn(_, _) {
     list.each(dates, fn(date) { date_time.format(formatter, date, zone:) })
   })
@@ -150,4 +192,4 @@ fn kb(bytes: Int) -> String {
 
 @external(erlang, "glintl_bench_ffi", "measure")
 @external(javascript, "./glintl_bench_ffi.mjs", "measure")
-fn measure(f: fn() -> Nil) -> #(Int, Int)
+fn measure(f: fn() -> Nil) -> #(Int, Int, Int)

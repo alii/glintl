@@ -3,8 +3,6 @@
 //// the data.
 
 @target(erlang)
-import gleam/bit_array
-@target(erlang)
 import glintl/internal/data
 
 @target(erlang)
@@ -615,9 +613,15 @@ fn start(lengths: BitArray, checkpoints: BitArray, i: Int) -> Int {
 
 @target(erlang)
 fn sum_bytes(bits: BitArray, from: Int, to: Int, total: Int) -> Int {
-  case from >= to {
-    True -> total
-    False -> sum_bytes(bits, from + 1, to, total + byte(bits, from))
+  let assert <<_:bytes-size(from), run:bytes-size(to - from), _:bits>> = bits
+  add_bytes(run, total)
+}
+
+@target(erlang)
+fn add_bytes(bits: BitArray, total: Int) -> Int {
+  case bits {
+    <<b, rest:bytes>> -> add_bytes(rest, total + b)
+    _ -> total
   }
 }
 
@@ -627,16 +631,14 @@ fn name_text(n: Int) -> String {
   let i = n - first_name
   let lengths = name_lengths()
   let from = start(lengths, name_checkpoints(), i)
-  let assert Ok(text) =
-    join_words(name_words(), from, from + byte(lengths, i), <<>>)
-    |> bit_array.to_string
-  text
+  // The generator writes the words, so they're always valid UTF-8.
+  join(word_list(name_words(), from, from + byte(lengths, i)))
 }
 
 @target(erlang)
-fn join_words(numbers: BitArray, i: Int, end: Int, text: BitArray) -> BitArray {
+fn word_list(numbers: BitArray, i: Int, end: Int) -> List(BitArray) {
   case i >= end {
-    True -> text
+    True -> []
     False -> {
       let assert <<_:bits-size(i * number_bits), w:size(number_bits), _:bits>> =
         numbers
@@ -645,7 +647,11 @@ fn join_words(numbers: BitArray, i: Int, end: Int, text: BitArray) -> BitArray {
       let length = byte(lengths, w)
       let assert <<_:bytes-size(from), word:bytes-size(length), _:bits>> =
         words()
-      join_words(numbers, i + 1, end, <<text:bits, word:bits>>)
+      [word, ..word_list(numbers, i + 1, end)]
     }
   }
 }
+
+@target(erlang)
+@external(erlang, "erlang", "iolist_to_binary")
+fn join(words: List(BitArray)) -> String
