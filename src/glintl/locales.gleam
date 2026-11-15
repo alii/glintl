@@ -11,6 +11,7 @@ import gleam/result
 import gleam/string
 import glintl.{type Locale}
 import glintl/internal/accept_language
+import glintl/internal/unicode_extension
 import glintl/locale/af
 import glintl/locale/af_na
 import glintl/locale/agq
@@ -1344,8 +1345,12 @@ pub fn all() -> List(Locale) {
 /// Finds a locale by its BCP 47 tag, ignoring case and treating `_` as `-`.
 ///
 /// If there is no exact match, `from_tag` drops the last part of the tag and
-/// tries again, so `"fr-CA-x-mine"` gives Canadian French and `"en-XX"`
-/// gives English.
+/// tries again, so `"en-XX"` gives English.
+///
+/// Like Intl, it uses the calendar, hour cycle and numbering system a tag
+/// asks for, like `"ja-JP-u-ca-japanese"` for the Japanese calendar. It
+/// ignores the rest of the tag's extensions and private use, like
+/// `"-x-mine"`.
 ///
 /// ```gleam
 /// from_tag("en_GB")  // -> Ok(en_gb.locale())
@@ -1353,7 +1358,17 @@ pub fn all() -> List(Locale) {
 /// from_tag("xx")     // -> Error(Nil)
 /// ```
 pub fn from_tag(tag: String) -> Result(Locale, Nil) {
-  tag |> string.lowercase |> string.replace("_", "-") |> find
+  let #(tag, keywords) = split(tag)
+  find(tag) |> result.map(unicode_extension.apply(_, keywords))
+}
+
+/// A tag in lowercase with `-`, without its extensions, then the keywords
+/// of its `u` extension.
+fn split(tag: String) -> #(String, List(#(String, String))) {
+  tag
+  |> string.lowercase
+  |> string.replace("_", "-")
+  |> unicode_extension.split
 }
 
 /// Finds the best locale glintl has for an `Accept-Language` header, like
@@ -1371,7 +1386,7 @@ pub fn from_accept_language(header: String) -> Result(Locale, Nil) {
 /// Picks the best of your supported locales for an `Accept-Language`
 /// header. It tries each tag in order of preference: first as it is, then
 /// with parts dropped from the end, then any supported locale in the same
-/// language.
+/// language. Like `from_tag`, it uses the settings a tag asks for.
 ///
 /// ```gleam
 /// let supported = [en_gb.locale(), fr.locale()]
@@ -1385,10 +1400,13 @@ pub fn negotiate(
 ) -> Result(Locale, Nil) {
   accept_language.tags(header)
   |> list.find_map(fn(tag) {
-    let tag = tag |> string.lowercase |> string.replace("_", "-")
-    use <- result.lazy_or(supported_match(tag, supported))
-    let language = fn(tag) { string.split(tag, "-") |> list.first }
-    list.find(supported, fn(locale) { language(key(locale)) == language(tag) })
+    let #(tag, keywords) = split(tag)
+    {
+      use <- result.lazy_or(supported_match(tag, supported))
+      let language = fn(tag) { string.split(tag, "-") |> list.first }
+      list.find(supported, fn(locale) { language(key(locale)) == language(tag) })
+    }
+    |> result.map(unicode_extension.apply(_, keywords))
   })
 }
 

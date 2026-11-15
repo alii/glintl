@@ -69,7 +69,10 @@ export type Token =
   | { t: "cycle_era" }
   | { t: "year_name"; names: string[] }
   | { t: "month_number" | "day" | "minute" | "second"; pad: boolean }
-  | { t: "month_name" | "day_name" | "weekday" | "era"; names: string[] }
+  // `numeric` names are numbers in the locale's digits, like "10" for a
+  // Hebrew month. They take the digits of another numbering system.
+  | { t: "month_name" | "day_name"; names: string[]; numeric: boolean }
+  | { t: "weekday" | "era"; names: string[] }
   | { t: "hour"; pad: boolean; cycle: "h11" | "h12" | "h23" | "h24" }
   // The first digits of the fraction of a second, cut off, not rounded.
   | { t: "fraction"; digits: number }
@@ -182,15 +185,23 @@ const zoneOffset = (sign: "+" | "-", hours: number, minutes: number) =>
 const PROBE = at(PROBE_DAY);
 
 export function localDigits(tag: string): string[] {
-  const { numberingSystem } = new Intl.DateTimeFormat(tag).resolvedOptions();
+  return numberingSystemDigits(
+    new Intl.DateTimeFormat(tag).resolvedOptions().numberingSystem,
+  );
+}
 
-  const nf = new Intl.NumberFormat(tag, {
+// A numbering system's digits from zero to nine, like `["٠", "١", ...]`.
+export function numberingSystemDigits(numberingSystem: string): string[] {
+  const nf = new Intl.NumberFormat("en", {
     numberingSystem,
     useGrouping: false,
   });
 
   return Array.from({ length: ONE_DIGIT_BELOW }, (_, i) => nf.format(i));
 }
+
+// Every numbering system Intl supports, which all have ten digits.
+export const NUMBERING_SYSTEMS = Intl.supportedValuesOf("numberingSystem");
 
 export function defaultHourCycle(tag: string): HourCycle {
   const cycle = new Intl.DateTimeFormat(tag, {
@@ -217,6 +228,7 @@ type Options = FieldOptions & {
   dateStyle?: Style;
   timeStyle?: Style;
   timeZone?: string;
+  numberingSystem?: string;
 };
 
 function formatter(tag: string, calendar: CalendarId, options: Options) {
@@ -277,6 +289,28 @@ export function derive(
 
     return found.value;
   };
+
+  // The same, in another numbering system. Names whose text changes there are
+  // numbers, which take the digits of whatever numbering system is set.
+  const otherDigits = digits[0] === ADLAM_ZERO ? "arab" : "adlm";
+
+  const other = formatter(tag, calendar, {
+    ...options,
+    numberingSystem: otherDigits,
+  });
+
+  const swaps = (days: number[], i: number) =>
+    days.some((d) => {
+      const parts = other.formatToParts(at(d));
+
+      const n = probe
+        .slice(0, i)
+        .filter((p) => p.type === probe[i]!.type).length;
+
+      const found = parts.filter((p) => p.type === probe[i]!.type)[n];
+
+      return found !== undefined && found.value !== valueAt(at(d), i);
+    });
 
   const date = calendarDate(math, probeDay)!;
   const near = (days: number[]) => nearest(days, probeDay);
@@ -591,16 +625,15 @@ export function derive(
             // Use the probe's own year, which can be Julian.
             const year = civil(probeDay, math.julianBefore)[0];
 
-            const names = Array.from({ length: MONTHS_PER_YEAR }, (_, m) =>
-              valueAt(
-                at(civilDay(year, m + 1, MID_MONTH_DAY, math.julianBefore)),
-                i,
-              ),
+            const monthDays = Array.from({ length: MONTHS_PER_YEAR }, (_, m) =>
+              civilDay(year, m + 1, MID_MONTH_DAY, math.julianBefore),
             );
+
+            const names = monthDays.map((d) => valueAt(at(d), i));
 
             // Some locales write some months in other digits, so numbers are
             // only numbers if every month follows the same rule.
-            if (numeric(value)) {
+            if (numeric(value) && swaps(monthDays, i)) {
               const pad = padded(value, date.month + 1);
 
               if (names.every((name, m) => name === local(m + 1, pad))) {
@@ -608,14 +641,19 @@ export function derive(
               }
             }
 
-            return { t: "month_name", names };
+            return {
+              t: "month_name",
+              names,
+              numeric: swaps(monthDays, i),
+            };
           }
+
+          const monthDays = occurrences(math).months.map(near);
 
           return {
             t: "month_name",
-            names: occurrences(math).months.map((days) =>
-              valueAt(at(near(days)), i),
-            ),
+            names: monthDays.map((d) => valueAt(at(d), i)),
+            numeric: swaps(monthDays, i),
           };
         case "day": {
           if (numeric(value)) {
@@ -634,14 +672,18 @@ export function derive(
           // astronomy goes wrong, so we take it from one of those days.
           const zero = math.dayZero[0];
 
+          const dayDays = Array.from(
+            { length: LONGEST_LUNAR_MONTH },
+            (_, n) => longMonth + n,
+          );
+
           return {
             t: "day_name",
             names: [
               zero ? valueAt(at(zero[0]), i) : "",
-              ...Array.from({ length: LONGEST_LUNAR_MONTH }, (_, n) =>
-                valueAt(at(longMonth + n), i),
-              ),
+              ...dayDays.map((d) => valueAt(at(d), i)),
             ],
+            numeric: swaps(dayDays, i),
           };
         }
 
@@ -987,6 +1029,9 @@ export type Formats = {
 };
 
 const ASCII_DIGITS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+// The first digit of Adlam, which no locale glintl has writes by default.
+const ADLAM_ZERO = "𞥐";
 
 // Besides the odd days, check a calendar's patterns on this many random
 // days, first years of eras and negative years.

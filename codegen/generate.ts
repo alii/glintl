@@ -20,7 +20,7 @@ import {
   checkEveryDay,
 } from "./calendars.ts";
 import * as erlang from "./erlang.ts";
-import { type FieldsData, fieldsData } from "./fields.ts";
+import { decimalIn, type FieldsData, fieldsData, minusIn } from "./fields.ts";
 import { calendarFixtures, fieldFixtures, fixtures } from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
 import { packer } from "./pack.ts";
@@ -32,6 +32,7 @@ import {
   defaultHourCycle,
   formats,
   localDigits,
+  NUMBERING_SYSTEMS,
 } from "./patterns.ts";
 import { requirePinnedBun } from "./runtime.ts";
 import { PATH as ZONES_PATH, zonesModule } from "./zones.ts";
@@ -273,14 +274,57 @@ const ORDERS = [
   ["hour_cycles", HOUR_CYCLES.map((cycle) => erlang.atom(cycle))],
 ] as const;
 
+// Each locale's own symbol, then the symbols that change with the numbering
+// system, by digits number.
+const symbolsIn = (read: (tag: string, numberingSystem: string) => string) =>
+  LOCALES.map(([, tag]): [string, string, [number, string][]] => {
+    const own = read(
+      tag,
+      new Intl.DateTimeFormat(tag).resolvedOptions().numberingSystem,
+    );
+
+    return [
+      tag,
+      own,
+      NUMBERING_SYSTEMS.flatMap((ns, i): [number, string][] => {
+        const found = read(tag, ns);
+
+        return found === own ? [] : [[packed.numberingSystems[i]!, found]];
+      }),
+    ];
+  }).filter(([, , found]) => found.length > 0);
+
+const symbolList = (found: [number, string][]) =>
+  `[${found.map(([n, s]) => `{${n}, ${erlang.string(s)}}`).join(", ")}]`;
+
+const decimals = symbolsIn(decimalIn);
+const minusSigns = symbolsIn(minusIn);
+
+// Each numbering system's name by its digits number, then its digits number
+// by its name.
+const numberingNames = NUMBERING_SYSTEMS.map((ns, i): [number, string] => [
+  packed.numberingSystems[i]!,
+  ns,
+]).sort(([a], [b]) => a - b);
+
+if (numberingNames.some(([n], i) => n !== i)) {
+  throw new Error("Two numbering systems have the same digits");
+}
+
 await write(
   `${ERLANG}/glintl_generated_data.erl`,
   erlang.module(
     "glintl_generated_data",
     erlang.header(),
-    [...DATA_TABLES, ...ORDERS.map(([name]) => name)].map(
-      (name) => `${name}/0`,
-    ),
+    [
+      ...[...DATA_TABLES, ...ORDERS.map(([name]) => name)].map(
+        (name) => `${name}/0`,
+      ),
+      "numbering_system_names/0",
+      "numbering_system/1",
+      "decimals/1",
+      "minus_signs/1",
+    ],
     [
       ...DATA_TABLES.map((name) => [
         `${name}() ->\n    ${erlang.tuple(tables[name])}`,
@@ -288,6 +332,30 @@ await write(
       ...ORDERS.map(([name, atoms]) => [
         `${name}() ->\n    [${atoms.join(", ")}]`,
       ]),
+      [
+        `numbering_system_names() ->\n    ${erlang.tuple(numberingNames.map(([, ns]) => erlang.string(ns)))}`,
+      ],
+      [
+        ...numberingNames.map(
+          ([n, ns]) =>
+            `numbering_system(${erlang.string(ns)}) ->\n    {ok, ${n}}`,
+        ),
+        "numbering_system(_) ->\n    {error, nil}",
+      ],
+      [
+        ...decimals.map(
+          ([tag, , found]) =>
+            `decimals(${erlang.string(tag)}) ->\n    ${symbolList(found)}`,
+        ),
+        "decimals(_) ->\n    []",
+      ],
+      [
+        ...minusSigns.map(
+          ([tag, own, found]) =>
+            `minus_signs(${erlang.string(tag)}) ->\n    {${erlang.string(own)}, ${symbolList(found)}}`,
+        ),
+        "minus_signs(_) ->\n    {<<>>, []}",
+      ],
     ],
   ),
 );
@@ -386,6 +454,7 @@ import gleam/result
 import gleam/string
 import glintl.{type Locale}
 import glintl/internal/accept_language
+import glintl/internal/unicode_extension
 ${imports}
 
 pub fn all() -> List(Locale) {
@@ -395,8 +464,12 @@ pub fn all() -> List(Locale) {
 /// Finds a locale by its BCP 47 tag, ignoring case and treating \`_\` as \`-\`.
 ///
 /// If there is no exact match, \`from_tag\` drops the last part of the tag and
-/// tries again, so \`"fr-CA-x-mine"\` gives Canadian French and \`"en-XX"\`
-/// gives English.
+/// tries again, so \`"en-XX"\` gives English.
+///
+/// Like Intl, it uses the calendar, hour cycle and numbering system a tag
+/// asks for, like \`"ja-JP-u-ca-japanese"\` for the Japanese calendar. It
+/// ignores the rest of the tag's extensions and private use, like
+/// \`"-x-mine"\`.
 ///
 /// \`\`\`gleam
 /// from_tag("en_GB")  // -> Ok(en_gb.locale())
@@ -404,7 +477,17 @@ pub fn all() -> List(Locale) {
 /// from_tag("xx")     // -> Error(Nil)
 /// \`\`\`
 pub fn from_tag(tag: String) -> Result(Locale, Nil) {
-  tag |> string.lowercase |> string.replace("_", "-") |> find
+  let #(tag, keywords) = split(tag)
+  find(tag) |> result.map(unicode_extension.apply(_, keywords))
+}
+
+/// A tag in lowercase with \`-\`, without its extensions, then the keywords
+/// of its \`u\` extension.
+fn split(tag: String) -> #(String, List(#(String, String))) {
+  tag
+  |> string.lowercase
+  |> string.replace("_", "-")
+  |> unicode_extension.split
 }
 
 /// Finds the best locale glintl has for an \`Accept-Language\` header, like
@@ -422,7 +505,7 @@ pub fn from_accept_language(header: String) -> Result(Locale, Nil) {
 /// Picks the best of your supported locales for an \`Accept-Language\`
 /// header. It tries each tag in order of preference: first as it is, then
 /// with parts dropped from the end, then any supported locale in the same
-/// language.
+/// language. Like \`from_tag\`, it uses the settings a tag asks for.
 ///
 /// \`\`\`gleam
 /// let supported = [en_gb.locale(), fr.locale()]
@@ -433,10 +516,13 @@ pub fn from_accept_language(header: String) -> Result(Locale, Nil) {
 pub fn negotiate(header: String, among supported: List(Locale)) -> Result(Locale, Nil) {
   accept_language.tags(header)
   |> list.find_map(fn(tag) {
-    let tag = tag |> string.lowercase |> string.replace("_", "-")
-    use <- result.lazy_or(supported_match(tag, supported))
-    let language = fn(tag) { string.split(tag, "-") |> list.first }
-    list.find(supported, fn(locale) { language(key(locale)) == language(tag) })
+    let #(tag, keywords) = split(tag)
+    {
+      use <- result.lazy_or(supported_match(tag, supported))
+      let language = fn(tag) { string.split(tag, "-") |> list.first }
+      list.find(supported, fn(locale) { language(key(locale)) == language(tag) })
+    }
+    |> result.map(unicode_extension.apply(_, keywords))
   })
 }
 

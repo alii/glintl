@@ -2,6 +2,10 @@
 //// fields or styles into a formatter, and formats with it.
 
 import gleam/list
+@target(erlang)
+import gleam/option.{type Option, None, Some}
+@target(erlang)
+import gleam/result
 import glintl.{type DatePart, type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
@@ -137,20 +141,73 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
         shown,
       )
   }
-  Compiled(rendered:, names: zones.name_chain(glintl.locale_tag(locale)))
+  Compiled(
+    rendered: with_numbering_system(rendered, locale),
+    names: zones.name_chain(glintl.locale_tag(locale)),
+  )
 }
+
+@target(erlang)
+/// The decimal separator for the numbering system set on the locale, where it
+/// isn't the locale's own, like "٫" with Arabic digits.
+fn decimal(locale: Locale) -> Option(String) {
+  case glintl.numbering_system_number(locale) {
+    None -> None
+    Some(number) ->
+      list.key_find(decimals(glintl.locale_tag(locale)), number)
+      |> option.from_result
+  }
+}
+
+@target(erlang)
+/// A locale's decimal separators that change with the numbering system, by
+/// digits number.
+@external(erlang, "glintl_generated_data", "decimals")
+fn decimals(tag: String) -> List(#(Int, String))
+
+@target(erlang)
+fn with_numbering_system(
+  rendered: render.Compiled,
+  locale: Locale,
+) -> render.Compiled {
+  case glintl.numbering_system_number(locale) {
+    None -> rendered
+    Some(number) -> {
+      let #(own_minus, found) = minus_signs(glintl.locale_tag(locale))
+      let minus = list.key_find(found, number) |> result.unwrap(own_minus)
+      render.with_digits(
+        rendered,
+        number,
+        own_minus,
+        minus,
+        matcher.era_workaround(
+          glintl.icu_calendar(glintl.locale_calendar(locale)),
+        ),
+      )
+    }
+  }
+}
+
+@target(erlang)
+/// A locale's own minus sign, then the ones that change with the numbering
+/// system, by digits number.
+@external(erlang, "glintl_generated_data", "minus_signs")
+fn minus_signs(tag: String) -> #(String, List(#(Int, String)))
 
 @target(erlang)
 fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
   let calendar = glintl.locale_calendar(locale)
-  Compiled(
-    rendered: render.compile_fields(
+  let rendered =
+    render.compile_fields(
       glintl.locale_data(locale),
       glintl.calendar_position(calendar),
       request,
       glintl.icu_calendar(calendar),
       fn() { calendar_math(calendar) },
-    ),
+      decimal(locale),
+    )
+  Compiled(
+    rendered: with_numbering_system(rendered, locale),
     names: zones.name_chain(glintl.locale_tag(locale)),
   )
 }
@@ -161,6 +218,7 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
     glintl.locale_tag(locale),
     glintl.icu_calendar(glintl.locale_calendar(locale)),
     request,
+    glintl.intl_numbering_system_option(locale),
   )
 }
 
@@ -170,6 +228,7 @@ fn intl_fields_formatter(
   tag: String,
   calendar: String,
   request: matcher.Request,
+  numbering_system: String,
 ) -> Compiled
 
 @target(javascript)
@@ -185,6 +244,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
     date_style,
     time_style,
     glintl.intl_hour_cycle_option(locale),
+    glintl.intl_numbering_system_option(locale),
   )
 }
 
@@ -197,6 +257,7 @@ fn intl_formatter(
   date_style: String,
   time_style: String,
   hour_cycle: String,
+  numbering_system: String,
 ) -> Compiled
 
 @target(javascript)

@@ -9,6 +9,10 @@
 import gleam/int
 @target(erlang)
 import gleam/list
+@target(erlang)
+import gleam/option.{type Option}
+@target(erlang)
+import gleam/string
 import glintl/internal/data
 @target(erlang)
 import glintl/internal/matcher
@@ -115,8 +119,10 @@ type Token {
   /// The Chinese and Dangi era: which 60 year cycle the year is in.
   CycleEra
   YearName(Names)
-  MonthName(Names)
-  DayName(Names)
+  /// `numeric` names are numbers in the locale's digits, like "10" for a
+  /// Hebrew month.
+  MonthName(names: Names, numeric: Bool)
+  DayName(names: Names, numeric: Bool)
   Weekday(Names)
   Era(Names)
   MonthNumber(pad: Bool)
@@ -176,7 +182,7 @@ type ZoneNameStyle {
 }
 
 @target(erlang)
-type Names =
+pub type Names =
   data.HomogenousUnknownLengthTuple(String)
 
 @target(erlang)
@@ -197,6 +203,17 @@ type Digits {
   Ascii
   /// The locale's ten digits, from zero to nine.
   Local(Names)
+  /// Digits other than the locale's own, set with a numbering system. Text
+  /// written in the locale's own digits, `own`, takes these too, and years
+  /// written with the locale's own minus sign take `minus`. Before
+  /// `ascii_years_before`, JavaScriptCore writes years in ASCII digits.
+  Swapped(
+    digits: Digits,
+    own: List(String),
+    own_minus: String,
+    minus: String,
+    ascii_years_before: Option(Int),
+  )
 }
 
 @target(erlang)
@@ -316,6 +333,55 @@ pub fn default_hour_cycle(locale: Int) -> Int {
 }
 
 @target(erlang)
+/// The digits number of a locale's own numbering system.
+pub fn default_digits(locale: Int) -> Int {
+  number_at(element(locale, locales()), 0)
+}
+
+@target(erlang)
+/// The name at `index` in names numbered from 0, or `""`.
+pub fn name_at(names: Names, index: Int) -> String {
+  pick_or(names, index, "")
+}
+
+@target(erlang)
+/// A formatter that writes numbers with the digits at `number` in the digits
+/// table, and so does the Gregorian formatter it falls back to. Years written
+/// with the locale's own minus sign, `own_minus`, take `minus` instead. For
+/// the years JavaScriptCore flips, the calendar's `workaround` says when.
+pub fn with_digits(
+  compiled: Compiled,
+  number: Int,
+  own_minus: String,
+  minus: String,
+  workaround: matcher.EraWorkaround,
+) -> Compiled {
+  let days = case compiled.days {
+    GregorianDays -> GregorianDays
+    OtherDays(math:, gregorian:) ->
+      OtherDays(math:, gregorian: fn() {
+        with_digits(gregorian(), number, own_minus, minus, workaround)
+      })
+  }
+  let ascii_years_before = case workaround {
+    matcher.Replaces(before_ms:, ..) -> option.Some(before_ms)
+    _ -> option.None
+  }
+  let digits = case digits_of(number) {
+    digits if digits == compiled.digits -> digits
+    digits ->
+      Swapped(
+        digits:,
+        own: digit_list(compiled.digits),
+        own_minus:,
+        minus:,
+        ascii_years_before:,
+      )
+  }
+  Compiled(..compiled, digits:, days:)
+}
+
+@target(erlang)
 /// A formatter for a locale's Gregorian formats. `cycle` is 0 for the
 /// locale's own hour cycle, or 1 more than a position in `HOUR_CYCLES`.
 pub fn compile(locale: Int, cycle: Int, shown: Shown) -> Compiled {
@@ -390,6 +456,7 @@ pub fn compile_fields(
   request: matcher.Request,
   calendar: String,
   math: fn() -> data.Math,
+  decimal: Option(String),
 ) -> Compiled {
   let gregorian = fn() {
     compile_fields_at(
@@ -398,6 +465,7 @@ pub fn compile_fields(
       request,
       matcher.NoEraWorkaround,
       GregorianDays,
+      decimal,
     )
   }
   case position {
@@ -409,6 +477,7 @@ pub fn compile_fields(
         request,
         matcher.era_workaround(calendar),
         OtherDays(math:, gregorian:),
+        decimal,
       )
   }
 }
@@ -420,6 +489,7 @@ fn compile_fields_at(
   request: matcher.Request,
   workaround: matcher.EraWorkaround,
   days: Days,
+  decimal: Option(String),
 ) -> Compiled {
   let entry = element(locale, locales())
   let numbers = bit_array_byte_size(entry) / number_bytes
@@ -437,6 +507,7 @@ fn compile_fields_at(
   // The hour letter, the entries, the texts, then the runs for each field.
   let assert <<hour_letter, entries_id:16, texts_id:16, runs:bits>> = row
   let texts = strings(element(texts_id, field_texts()))
+  let own_decimal = at(list.drop(texts, 2 * field_count + style_count), 0, "")
   let m =
     matcher.Matcher(
       entries: entries(element(entries_id, field_entries())),
@@ -444,7 +515,7 @@ fn compile_fields_at(
       display_names: list.take(list.drop(texts, field_count), field_count),
       glues: list.take(list.drop(texts, 2 * field_count), style_count),
       default_hour_letter: from_codepoint(hour_letter),
-      decimal: at(list.drop(texts, 2 * field_count + style_count), 0, ""),
+      decimal: option.unwrap(decimal, own_decimal),
     )
   let main = case matcher.pattern(m, request) {
     Ok(pattern) -> listed(pattern, runs, request, workaround)
@@ -1107,8 +1178,8 @@ fn kind(token: Token) -> PartKind {
     RelatedYear(..) -> RelatedYearPart
     CycleEra | Era(_) -> EraPart
     YearName(_) -> YearNamePart
-    MonthName(_) | MonthNumber(..) -> MonthPart
-    DayName(_) | Day(..) -> DayPart
+    MonthName(..) | MonthNumber(..) -> MonthPart
+    DayName(..) | Day(..) -> DayPart
     Weekday(_) -> WeekdayPart
     DayPeriod(..) -> DayPeriodPart
     Hour(..) -> HourPart
@@ -1131,6 +1202,10 @@ fn text(
     Literal(text) | GlueText(text) -> text
     AsciiDigits(inner) -> text(inner, p, m, milliseconds, Ascii)
     Year(two_digit: True, minus:, ..) -> {
+      let #(minus, digits) = case digits {
+        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
+        _ -> #(minus, digits)
+      }
       let sign = case m.year < 0 {
         True -> minus
         False -> ""
@@ -1138,6 +1213,10 @@ fn text(
       sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
     Year(two_digit: False, min_digits:, minus:, first:, minus_first:) -> {
+      let #(minus, digits) = case digits {
+        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
+        _ -> #(minus, digits)
+      }
       // Year 1 and -1 can have a name, like 元.
       let named = case m.year {
         1 -> first
@@ -1158,6 +1237,10 @@ fn text(
       minimal_days:,
       exceptions:,
     ) -> {
+      let #(minus, digits) = case digits {
+        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
+        _ -> #(minus, digits)
+      }
       let year = data.week_year(m, first_day, minimal_days, exceptions)
       case two_digit, year < 0 {
         False, False -> padded(year, min_digits, digits)
@@ -1168,8 +1251,18 @@ fn text(
         True, False -> number(year % two_digit_years, True, digits)
       }
     }
-    ExtendedYear(minus:, two_digit: False) -> signed(m.extended, minus, digits)
+    ExtendedYear(minus:, two_digit: False) -> {
+      let #(minus, digits) = case digits {
+        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
+        _ -> #(minus, digits)
+      }
+      signed(m.extended, minus, digits)
+    }
     ExtendedYear(minus:, two_digit: True) -> {
+      let #(minus, digits) = case digits {
+        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
+        _ -> #(minus, digits)
+      }
       let sign = case m.extended < 0 {
         True -> minus
         False -> ""
@@ -1184,8 +1277,13 @@ fn text(
       }
     CycleEra -> number(data.cycle_era(m.related), False, digits)
     YearName(names) -> pick(names, m.cycle, m.cycle + 1, digits)
-    MonthName(names) -> pick(names, m.month, m.month + 1, digits)
-    DayName(names) -> pick(names, m.day, m.day, digits)
+    MonthName(names:, numeric: False) ->
+      pick(names, m.month, m.month + 1, digits)
+    MonthName(names:, numeric: True) ->
+      pick(names, m.month, m.month + 1, digits) |> swapped(True, digits)
+    DayName(names:, numeric: False) -> pick(names, m.day, m.day, digits)
+    DayName(names:, numeric: True) ->
+      pick(names, m.day, m.day, digits) |> swapped(True, digits)
     Weekday(names) -> {
       let weekday = modulo(m.epoch_day + thursday, data.days_per_week)
       pick(names, weekday, weekday, digits)
@@ -1229,7 +1327,7 @@ fn text(
             m.offset_seconds,
             m.unix_seconds >= 0 && m.names == data.Unnamed
           {
-            0, True -> zero
+            0, True -> swapped(zero, True, digits)
             offset, _ -> {
               let #(sign, suffix, whole_suffix) = case offset < 0 {
                 True -> #(negative, negative_suffix, negative_whole_suffix)
@@ -1392,7 +1490,91 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
     Ascii, True -> "0" <> int.to_string(n)
     Local(table), False -> local_digits(n, table)
     Local(table), True -> digit(0, table) <> local_digits(n, table)
+    Swapped(digits:, ..), _ -> number(n, pad, digits)
   }
+}
+
+@target(erlang)
+/// Text in the locale's own digits, in the digits set with a numbering system
+/// if `swap` is true.
+fn swapped(text: String, swap: Bool, digits: Digits) -> String {
+  case swap, digits {
+    True, Swapped(digits:, own:, ..) ->
+      string.to_graphemes(text)
+      |> list.map(fn(c) {
+        case index_of(own, c, 0) {
+          i if i < digit_count_in_table -> number(i, False, digits)
+          _ -> c
+        }
+      })
+      |> string_concat
+    _, _ -> text
+  }
+}
+
+@target(erlang)
+/// A year's minus sign and digits in the numbering system set.
+fn year_digits(
+  minus: String,
+  digits: Digits,
+  p: Prepared,
+  m: data.Local,
+  milliseconds: Int,
+) -> #(String, Digits) {
+  let ms = m.unix_seconds * milliseconds_per_second + milliseconds
+  case digits {
+    // JavaScriptCore flips years only in patterns with an era.
+    Swapped(ascii_years_before: option.Some(before), ..) if ms < before ->
+      case has_era(p) {
+        True -> #(minus, Ascii)
+        False -> swapped_minus(minus, digits)
+      }
+    _ -> swapped_minus(minus, digits)
+  }
+}
+
+@target(erlang)
+fn swapped_minus(minus: String, digits: Digits) -> #(String, Digits) {
+  case digits {
+    Swapped(own_minus:, minus: swapped, ..) if minus == own_minus -> #(
+      swapped,
+      digits,
+    )
+    _ -> #(minus, digits)
+  }
+}
+
+@target(erlang)
+fn has_era(p: Prepared) -> Bool {
+  case p {
+    Listed(pieces:, ..) -> list.any(pieces, fn(piece) { is_era(piece.1) })
+    Prepared(tokens:, date:, time:, ..) ->
+      ids_have_era(tokens) || ids_have_era(date) || ids_have_era(time)
+  }
+}
+
+@target(erlang)
+fn ids_have_era(ids: BitArray) -> Bool {
+  case ids {
+    <<id:16, rest:bits>> -> is_era(element(id, tokens())) || ids_have_era(rest)
+    _ -> False
+  }
+}
+
+@target(erlang)
+fn is_era(token: Token) -> Bool {
+  case token {
+    Era(_) -> True
+    AsciiDigits(inner) -> is_era(inner)
+    _ -> False
+  }
+}
+
+@target(erlang)
+fn digit_list(digits: Digits) -> List(String) {
+  int.range(from: digit_count_in_table - 1, to: -1, with: [], run: fn(acc, d) {
+    [number(d, False, digits), ..acc]
+  })
 }
 
 @target(erlang)

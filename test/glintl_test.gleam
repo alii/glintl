@@ -19,6 +19,7 @@ import glintl/internal/engine
 import glintl/internal/render
 import glintl/locale/en
 import glintl/locale/en_gb
+import glintl/locale/fa
 import glintl/locale/ja
 import glintl/locale/th
 import glintl/locale/zh
@@ -94,6 +95,57 @@ pub fn date_parts_test() {
     )
   assert date.format_to_parts(formatter, calendar.Date(2019, calendar.May, 1))
     == [glintl.Era("令和"), glintl.Year("元"), glintl.Literal("年")]
+}
+
+pub fn numbering_system_test() {
+  let assert Ok(moment) = timestamp.parse_rfc3339("2026-10-26T13:05:09Z")
+  let short = fn(locale) {
+    date_time.date_formatter(locale, style: date_time.Short)
+    |> date_time.format(moment, zone: time_zone.utc)
+  }
+  let assert Ok(latin) = glintl.numbering_system("latn")
+  let assert Ok(arabic) = glintl.numbering_system("ARAB")
+  assert glintl.numbering_system_name(arabic) == "arab"
+  assert glintl.numbering_system("roman") == Error(Nil)
+  assert glintl.numbering_system_name(
+      glintl.locale_numbering_system(fa.locale()),
+    )
+    == "arabext"
+  assert short(fa.locale()) == "۱۴۰۵/۸/۴"
+  // Persian months come from a table, so their digits change too.
+  assert short(fa.locale() |> glintl.with_numbering_system(latin)) == "1405/8/4"
+  assert short(en.locale() |> glintl.with_numbering_system(arabic))
+    == "١٠/٢٦/٢٦"
+  // Arabic digits have their own decimal separator.
+  assert date_time.new()
+    |> date_time.second(glintl.Numeric)
+    |> date_time.fraction(date_time.Tenths)
+    |> date_time.fields_formatter(
+      en.locale() |> glintl.with_numbering_system(arabic),
+      _,
+    )
+    |> date_time.format(moment, zone: time_zone.utc)
+    == "٩٫٠"
+}
+
+pub fn tag_settings_test() {
+  let assert Ok(japanese) = locales.from_tag("ja-JP-u-ca-japanese")
+  assert glintl.locale_calendar(japanese) == glintl.Japanese
+  let assert Ok(clock) = locales.from_tag("en-u-hc-h23")
+  assert glintl.locale_hour_cycle(clock) == glintl.H23
+  let assert Ok(digits) = locales.from_tag("EN_u_nu_arab")
+  assert glintl.numbering_system_name(glintl.locale_numbering_system(digits))
+    == "arab"
+  // Like Intl, it takes aliases and ignores values it doesn't know.
+  let assert Ok(islamic) = locales.from_tag("en-u-ca-islamic-hc-h99")
+  assert glintl.locale_calendar(islamic) == glintl.IslamicTabular
+  assert glintl.locale_hour_cycle(islamic) == glintl.H12
+  // Everything after -x- is private.
+  let assert Ok(private) = locales.from_tag("en-x-u-ca-japanese")
+  assert glintl.locale_calendar(private) == glintl.Gregorian
+  let assert Ok(negotiated) =
+    locales.negotiate("en-AU-u-ca-buddhist", among: [en.locale()])
+  assert glintl.locale_calendar(negotiated) == glintl.Buddhist
 }
 
 pub fn default_fields_test() {

@@ -34,11 +34,22 @@ import { Error as GleamError, Ok, toList } from "./gleam.mjs";
  * @param {string} dateStyle
  * @param {string} timeStyle
  * @param {string} hourCycle
+ * @param {string} numberingSystem
  * @returns {Compiled}
  */
-export function formatter(tag, calendar, dateStyle, timeStyle, hourCycle) {
+export function formatter(
+  tag,
+  calendar,
+  dateStyle,
+  timeStyle,
+  hourCycle,
+  numberingSystem,
+) {
   /** @type {Compiled["options"]} */
   const options = { calendar };
+  if (numberingSystem !== "") {
+    options.numberingSystem = numberingSystem;
+  }
   if (dateStyle !== "") {
     options.dateStyle = dateStyle;
   }
@@ -55,11 +66,13 @@ export function formatter(tag, calendar, dateStyle, timeStyle, hourCycle) {
  * @param {string} tag
  * @param {string} calendar
  * @param {Request} request
+ * @param {string} numberingSystem
  * @returns {Compiled}
  */
-export function fieldsFormatter(tag, calendar, request) {
+export function fieldsFormatter(tag, calendar, request, numberingSystem) {
   /** @type {Compiled["options"]} */
   const options = { calendar };
+  if (numberingSystem !== "") options.numberingSystem = numberingSystem;
   if (request.weekday !== "") options.weekday = request.weekday;
   if (request.era !== "") options.era = request.era;
   if (request.year !== "") options.year = request.year;
@@ -90,6 +103,27 @@ export function hourCycle(tag, calendar) {
       timeStyle: "short",
     }).resolvedOptions().hourCycle
   );
+}
+
+/**
+ * The locale's own numbering system.
+ * @param {string} tag
+ * @param {string} calendar
+ * @returns {string}
+ */
+export function numberingSystem(tag, calendar) {
+  return new Intl.DateTimeFormat(tag, { calendar }).resolvedOptions()
+    .numberingSystem;
+}
+
+const NUMBERING_SYSTEMS = new Set(Intl.supportedValuesOf("numberingSystem"));
+
+/**
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isNumberingSystem(name) {
+  return NUMBERING_SYSTEMS.has(name);
 }
 
 const MILLISECONDS_PER_SECOND = 1000;

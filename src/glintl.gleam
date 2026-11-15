@@ -13,6 +13,7 @@
 //// ```
 
 import gleam/option.{type Option, None, Some}
+import gleam/string
 @target(erlang)
 import glintl/internal/render
 
@@ -27,6 +28,8 @@ pub opaque type Locale {
     calendar: Calendar,
     /// `None` for the locale's own hour cycle.
     hour_cycle: Option(HourCycle),
+    /// `None` for the locale's own numbering system.
+    numbering_system: Option(NumberingSystem),
     /// The locale's number in glintl's packed data.
     data: Int,
   )
@@ -35,21 +38,26 @@ pub opaque type Locale {
 @target(javascript)
 /// On JavaScript a locale holds no data, because `Intl.DateTimeFormat` has it.
 pub opaque type Locale {
-  Locale(tag: String, calendar: Calendar, hour_cycle: Option(HourCycle))
+  Locale(
+    tag: String,
+    calendar: Calendar,
+    hour_cycle: Option(HourCycle),
+    numbering_system: Option(NumberingSystem),
+  )
 }
 
 @target(erlang)
 /// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, data: Int) -> Locale {
-  Locale(tag:, calendar:, hour_cycle: None, data:)
+  Locale(tag:, calendar:, hour_cycle: None, numbering_system: None, data:)
 }
 
 @target(javascript)
 /// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, _data: Int) -> Locale {
-  Locale(tag:, calendar:, hour_cycle: None)
+  Locale(tag:, calendar:, hour_cycle: None, numbering_system: None)
 }
 
 /// The BCP 47 tag of a locale, such as `"en-GB"`.
@@ -227,6 +235,118 @@ pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
   case locale.hour_cycle {
     Some(hour_cycle) -> hour_cycle
     None -> default_hour_cycle(locale)
+  }
+}
+
+/// The digits a locale writes numbers with, like the `numberingSystem` option
+/// of JavaScript's `Intl.DateTimeFormat`. Most locales use `"latn"`, the
+/// digits 0 to 9. Persian uses `"arabext"`, like ۱۴۰۵.
+///
+/// Names and words stay the same. Only the digits change.
+pub opaque type NumberingSystem {
+  NumberingSystem(name: String)
+}
+
+/// A numbering system by its Unicode name, like `"latn"` or `"arab"`, in any
+/// case. It returns `Error(Nil)` for a name Intl doesn't support.
+pub fn numbering_system(name: String) -> Result(NumberingSystem, Nil) {
+  let name = string.lowercase(name)
+  case is_numbering_system(name) {
+    True -> Ok(NumberingSystem(name))
+    False -> Error(Nil)
+  }
+}
+
+/// The Unicode name of a numbering system, like `"arab"`.
+pub fn numbering_system_name(numbering_system: NumberingSystem) -> String {
+  numbering_system.name
+}
+
+/// Write numbers with other digits, like Arabic with the digits 0 to 9.
+///
+/// ```gleam
+/// let assert Ok(latin) = glintl.numbering_system("latn")
+///
+/// fa.locale()
+/// |> glintl.with_numbering_system(latin)
+/// |> date_time.date_formatter(style: date_time.Short)
+/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
+/// // -> "1405/8/4"
+/// ```
+pub fn with_numbering_system(
+  locale: Locale,
+  numbering_system: NumberingSystem,
+) -> Locale {
+  Locale(..locale, numbering_system: Some(numbering_system))
+}
+
+/// The numbering system a locale writes numbers with. That's the one you set
+/// with `with_numbering_system`, or else the locale's own.
+pub fn locale_numbering_system(locale: Locale) -> NumberingSystem {
+  case locale.numbering_system {
+    Some(numbering_system) -> numbering_system
+    None -> NumberingSystem(default_numbering_system(locale))
+  }
+}
+
+@target(erlang)
+fn is_numbering_system(name: String) -> Bool {
+  case numbering_system_digits(name) {
+    Ok(_) -> True
+    Error(Nil) -> False
+  }
+}
+
+@target(erlang)
+/// A numbering system's digits number in the packed data, by its name.
+@external(erlang, "glintl_generated_data", "numbering_system")
+fn numbering_system_digits(name: String) -> Result(Int, Nil)
+
+@target(erlang)
+/// Numbering system names by their digits number, plus 1.
+@external(erlang, "glintl_generated_data", "numbering_system_names")
+fn numbering_system_names() -> render.Names
+
+@target(erlang)
+fn default_numbering_system(locale: Locale) -> String {
+  render.name_at(numbering_system_names(), render.default_digits(locale.data))
+}
+
+@target(javascript)
+@external(javascript, "./glintl_ffi.mjs", "isNumberingSystem")
+fn is_numbering_system(name: String) -> Bool
+
+@target(javascript)
+fn default_numbering_system(locale: Locale) -> String {
+  intl_numbering_system(locale.tag, icu_calendar(locale.calendar))
+}
+
+@target(javascript)
+@external(javascript, "./glintl_ffi.mjs", "numberingSystem")
+fn intl_numbering_system(tag: String, calendar: String) -> String
+
+@target(erlang)
+/// The packed data's digits number for the numbering system set with
+/// `with_numbering_system`, or `None` for the locale's own.
+@internal
+pub fn numbering_system_number(locale: Locale) -> Option(Int) {
+  case locale.numbering_system {
+    None -> None
+    Some(NumberingSystem(name)) ->
+      case numbering_system_digits(name) {
+        Ok(n) -> Some(n)
+        Error(Nil) -> None
+      }
+  }
+}
+
+/// The `numberingSystem` option of `Intl.DateTimeFormat`, or `""` for the
+/// locale's own.
+@internal
+pub fn intl_numbering_system_option(locale: Locale) -> String {
+  case locale.numbering_system {
+    None -> ""
+    Some(NumberingSystem(name)) -> name
   }
 }
 

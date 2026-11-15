@@ -42,7 +42,7 @@ import {
   randomFields,
 } from "./fixtures.ts";
 import { LOCALES } from "./locales.ts";
-import { HOUR_CYCLES } from "./patterns.ts";
+import { HOUR_CYCLES, NUMBERING_SYSTEMS } from "./patterns.ts";
 import { random } from "./random.ts";
 import { requirePinnedBun } from "./runtime.ts";
 import { zoneData } from "./zones.ts";
@@ -84,6 +84,9 @@ const STYLES = [undefined, "full", "long", "medium", "short"] as const;
 
 // How often a group picks fields instead of styles.
 const FIELDS_SHARE = 0.5;
+
+// How often a case asks for another numbering system.
+const NUMBERING_SHARE = 0.2;
 
 // How often a moment falls exactly on midnight, noon or the hour, where day
 // periods change. The rest are random.
@@ -177,11 +180,11 @@ function gather<T>(count: number, more: () => T[], gathered: T[] = []): T[] {
 }
 
 function group(): Case[] {
-  const tag = pick(LOCALES)[1];
+  const base = pick(LOCALES)[1];
   const calendar = next() < 0.5 ? "" : pick(CALENDARS).id;
 
   const resolved =
-    calendar || new Intl.DateTimeFormat(tag).resolvedOptions().calendar;
+    calendar || new Intl.DateTimeFormat(base).resolvedOptions().calendar;
 
   const kind = kindOf(resolved);
   // 0 means no date style. A case without a date must have a time.
@@ -197,7 +200,20 @@ function group(): Case[] {
   const offset = pick(OFFSETS);
 
   // Empty means the locale's own hour cycle.
-  const hourCycle = next() < 0.5 ? "" : pick(HOUR_CYCLES);
+  const cycle = next() < 0.5 ? "" : pick(HOUR_CYCLES);
+
+  // Some cases ask for their hour cycle or numbering system in the tag, to
+  // check that `from_tag` reads it.
+  const cycleInTag = cycle !== "" && next() < 0.5;
+  const hourCycle = cycleInTag ? "" : cycle;
+  const numbering = next() < NUMBERING_SHARE ? pick(NUMBERING_SYSTEMS) : "";
+
+  const keywords = [
+    ...(cycleInTag ? [`hc-${cycle}`] : []),
+    ...(numbering === "" ? [] : [`nu-${numbering}`]),
+  ];
+
+  const tag = keywords.length > 0 ? `${base}-u-${keywords.join("-")}` : base;
   const fields = next() < FIELDS_SHARE ? randomFields(next) : [];
 
   const formatter = new Intl.DateTimeFormat(tag, {

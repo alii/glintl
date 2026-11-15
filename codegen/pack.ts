@@ -5,7 +5,8 @@
 // - patterns: a `Pattern`, whose tokens are 16-bit token numbers.
 // - formats: 16-bit pattern numbers for each style, dates with times if they
 //   aren't glued, then eras.
-// - digits: a tuple of ten digits, for locales without ASCII digits.
+// - digits: a tuple of ten digits for each numbering system but `latn`, in
+//   the order of `NUMBERING_SYSTEMS`.
 // - locales: a digits number (0 for ASCII), the default hour cycle, then for
 //   each calendar its formats, then its formats in each hour cycle, then for
 //   each calendar its fields.
@@ -29,6 +30,8 @@ import {
   type GluePiece,
   HOUR_CYCLES,
   type HourCycle,
+  NUMBERING_SYSTEMS,
+  numberingSystemDigits,
   STYLES,
   type Token,
 } from "./patterns.ts";
@@ -105,9 +108,10 @@ function token(t: Token): string {
       return `{related_year,${bool(t.pad)}}`;
     case "cycle_era":
       return "cycle_era";
-    case "year_name":
     case "month_name":
     case "day_name":
+      return `{${t.t},${tuple(t.names.map(string))},${bool(t.numeric)}}`;
+    case "year_name":
     case "weekday":
     case "era":
       return `{${t.t},${tuple(t.names.map(string))}}`;
@@ -147,6 +151,14 @@ export function packer() {
   const patterns = table();
   const formats = table();
   const digits = table();
+
+  // Numbering systems come first, so each one's number is fixed.
+  const numberingSystems = NUMBERING_SYSTEMS.map((ns) => {
+    const d = numberingSystemDigits(ns);
+
+    return d.join("") === ASCII_DIGITS ? 0 : digits.add(tuple(d.map(string)));
+  });
+
   const locales = table();
   const fieldStrings = table();
   const fieldEntries = table();
@@ -307,6 +319,10 @@ export function packer() {
         ? 0
         : digits.add(tuple(localDigits.map(string)));
 
+    if (!numberingSystems.includes(digitsNumber)) {
+      throw new Error(`No numbering system has the digits ${localDigits}`);
+    }
+
     return locales.add(
       bytes([
         ...u16(digitsNumber),
@@ -319,6 +335,9 @@ export function packer() {
 
   return {
     locale,
+    // Each numbering system's digits number, in the order of
+    // `NUMBERING_SYSTEMS`.
+    numberingSystems,
     // Gives each table as Erlang terms. Call it after adding every locale.
     tables: () => ({
       tokens: tokens.items,

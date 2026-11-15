@@ -166,14 +166,45 @@ function defaultHourLetter(tag: string, calendar: CalendarId): string {
 const FRACTION = 1.5;
 
 function decimal(tag: string): string {
-  const { numberingSystem } = new Intl.DateTimeFormat(tag).resolvedOptions();
+  return decimalIn(
+    tag,
+    new Intl.DateTimeFormat(tag).resolvedOptions().numberingSystem,
+  );
+}
 
+// The decimal separator, which can depend on the numbering system, like "٫"
+// with Arabic digits.
+export const decimalIn = (tag: string, numberingSystem: string): string =>
+  numberPart(tag, numberingSystem, FRACTION, "decimal");
+
+// The minus sign, with the direction marks around it, which can depend on the
+// numbering system too.
+export function minusIn(tag: string, numberingSystem: string): string {
+  const parts = new Intl.NumberFormat(tag, { numberingSystem }).formatToParts(
+    -1,
+  );
+
+  return parts
+    .slice(
+      0,
+      parts.findIndex((p) => p.type === "integer"),
+    )
+    .map((p) => p.value)
+    .join("");
+}
+
+function numberPart(
+  tag: string,
+  numberingSystem: string,
+  n: number,
+  type: Intl.NumberFormatPartTypes,
+): string {
   const part = new Intl.NumberFormat(tag, { numberingSystem })
-    .formatToParts(FRACTION)
-    .find((p) => p.type === "decimal");
+    .formatToParts(n)
+    .find((p) => p.type === type);
 
   if (part === undefined) {
-    throw new Error(`${tag}: no decimal separator`);
+    throw new Error(`${tag}: no ${type}`);
   }
 
   return part.value;
