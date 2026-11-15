@@ -446,6 +446,8 @@ const NAME_FORMATS: [number, number, string][] = [
   [STYLES.indexOf("short"), STYLES.indexOf("long"), ""],
   [0, 0, "hour=numeric,minute=2-digit,timeZoneName=short"],
   [0, 0, "day=numeric,month=short,hour=numeric,timeZoneName=long"],
+  [0, 0, "hour=numeric,minute=2-digit,timeZoneName=shortGeneric"],
+  [0, 0, "day=numeric,month=short,hour=numeric,timeZoneName=longGeneric"],
 ];
 
 // Locales with names in different shapes, for every zone.

@@ -96,10 +96,24 @@ export type Token =
     };
 
 // ICU's `z` shows short names and `zzzz` long ones. The full time style uses
-// `zzzz` and the long one `z`, in every locale.
-export type ZoneNames = "only_offset" | "short_names" | "long_names";
+// `zzzz` and the long one `z`, in every locale. `v` and `vvvv` show generic
+// names.
+export type ZoneNames =
+  | "only_offset"
+  | "short_names"
+  | "long_names"
+  | "short_generic_names"
+  | "long_generic_names";
 
 function zoneNames(options: Options): ZoneNames {
+  if (options.timeZoneName === "longGeneric") {
+    return "long_generic_names";
+  }
+
+  if (options.timeZoneName === "shortGeneric") {
+    return "short_generic_names";
+  }
+
   if (options.timeStyle === "full" || options.timeZoneName === "long") {
     return "long_names";
   }

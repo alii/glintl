@@ -15,9 +15,10 @@ import glintl/internal/zones
 import glintl/time_zone.{type TimeZone}
 
 @target(erlang)
-/// A compiled formatter, and the locale's bundles of zone names.
+/// A compiled formatter, the locale's bundles of zone names, and what it
+/// needs for location names.
 pub type Compiled {
-  Compiled(rendered: render.Compiled, names: List(Int))
+  Compiled(rendered: render.Compiled, names: List(Int), location: data.Location)
 }
 
 @target(javascript)
@@ -144,6 +145,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
   Compiled(
     rendered: with_numbering_system(rendered, locale),
     names: zones.name_chain(glintl.locale_tag(locale)),
+    location: zones.location(glintl.locale_tag(locale)),
   )
 }
 
@@ -209,6 +211,7 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
   Compiled(
     rendered: with_numbering_system(rendered, locale),
     names: zones.name_chain(glintl.locale_tag(locale)),
+    location: zones.location(glintl.locale_tag(locale)),
   )
 }
 
@@ -366,10 +369,17 @@ fn do_format(
   nanoseconds: Int,
   zone: TimeZone,
 ) -> String {
-  let #(offset, key, daylight) = time_zone.at(zone, seconds)
+  let #(offset, key, zone, daylight) = time_zone.at(zone, seconds)
   let names = case key < 0 {
     True -> data.Unnamed
-    False -> data.Named(key:, daylight:, chain: compiled.names)
+    False ->
+      data.Named(
+        key:,
+        zone:,
+        daylight:,
+        chain: compiled.names,
+        location: compiled.location,
+      )
   }
   render.render(
     compiled.rendered,
@@ -405,10 +415,19 @@ fn zone_at(
   zone: TimeZone,
   seconds: Int,
 ) -> #(Int, data.ZoneNames) {
-  let #(offset, key, daylight) = time_zone.at(zone, seconds)
+  let #(offset, key, zone, daylight) = time_zone.at(zone, seconds)
   case key < 0 {
     True -> #(offset, data.Unnamed)
-    False -> #(offset, data.Named(key:, daylight:, chain: compiled.names))
+    False -> #(
+      offset,
+      data.Named(
+        key:,
+        zone:,
+        daylight:,
+        chain: compiled.names,
+        location: compiled.location,
+      ),
+    )
   }
 }
 

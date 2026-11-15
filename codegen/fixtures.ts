@@ -423,7 +423,17 @@ export const FIELD_CHOICES = [
   ["minute", ["numeric", "2-digit"]],
   ["second", ["numeric", "2-digit"]],
   ["fractionalSecondDigits", [1, 2, 3]],
-  ["timeZoneName", ["short", "long", "shortOffset", "longOffset"]],
+  [
+    "timeZoneName",
+    [
+      "short",
+      "long",
+      "shortOffset",
+      "longOffset",
+      "shortGeneric",
+      "longGeneric",
+    ],
+  ],
 ] as const;
 
 // How often each field is shown in a random request.

@@ -179,6 +179,10 @@ type ZoneNameStyle {
   OnlyOffset
   ShortNames
   LongNames
+  /// Names without standard or summer time, like "PT" or "Pacific Time",
+  /// like ICU's `v` and `vvvv`.
+  ShortGenericNames
+  LongGenericNames
 }
 
 @target(erlang)
@@ -1366,10 +1370,14 @@ fn text(
 fn zone_name(style: ZoneNameStyle, m: data.Local) -> Result(String, Nil) {
   case style, m.names {
     OnlyOffset, _ | _, data.Unnamed -> Error(Nil)
-    ShortNames, data.Named(key:, daylight:, chain:) ->
+    ShortNames, data.Named(key:, daylight:, chain:, ..) ->
       zones.name(chain, key, m.unix_seconds, daylight, False)
-    LongNames, data.Named(key:, daylight:, chain:) ->
+    LongNames, data.Named(key:, daylight:, chain:, ..) ->
       zones.name(chain, key, m.unix_seconds, daylight, True)
+    ShortGenericNames, data.Named(key:, zone:, chain:, location:, ..) ->
+      zones.generic_name(chain, location, key, zone, m.unix_seconds, False)
+    LongGenericNames, data.Named(key:, zone:, chain:, location:, ..) ->
+      zones.generic_name(chain, location, key, zone, m.unix_seconds, True)
   }
 }
 

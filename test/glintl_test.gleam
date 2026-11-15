@@ -542,6 +542,10 @@ fn parse_fields(text: String) -> date_time.Fields {
       "timeZoneName", "long" -> date_time.time_zone_name(f, date_time.LongName)
       "timeZoneName", "shortOffset" ->
         date_time.time_zone_name(f, date_time.ShortOffset)
+      "timeZoneName", "shortGeneric" ->
+        date_time.time_zone_name(f, date_time.ShortGeneric)
+      "timeZoneName", "longGeneric" ->
+        date_time.time_zone_name(f, date_time.LongGeneric)
       "timeZoneName", _ -> date_time.time_zone_name(f, date_time.LongOffset)
       _, _ -> panic as { "unknown field in the fixtures: " <> name }
     }

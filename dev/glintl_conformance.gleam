@@ -134,6 +134,8 @@ fn parse_fields(text: String) -> date_time.Fields {
           "short" -> date_time.ShortName
           "long" -> date_time.LongName
           "shortOffset" -> date_time.ShortOffset
+          "shortGeneric" -> date_time.ShortGeneric
+          "longGeneric" -> date_time.LongGeneric
           _ -> date_time.LongOffset
         })
       _ -> panic as { "unknown field: " <> name }

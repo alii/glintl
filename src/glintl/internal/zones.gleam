@@ -3,6 +3,10 @@
 //// the data.
 
 @target(erlang)
+import gleam/result
+@target(erlang)
+import gleam/string
+@target(erlang)
 import glintl/internal/data
 
 @target(erlang)
@@ -639,3 +643,545 @@ fn word_list(numbers: BitArray, i: Int, end: Int) -> List(BitArray) {
 @target(erlang)
 @external(erlang, "erlang", "iolist_to_binary")
 fn join(words: List(BitArray)) -> String
+
+// --- Generic names -----------------------------------------------------------
+//
+// Generic names copy ICU's `TZGNCore`: a zone's own generic name, or else its
+// metazone's, or else a name for its location, like "Los Angeles Time".
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "long_generic_names")
+fn long_generic_names() -> Bundles
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "short_generic_names")
+fn short_generic_names() -> Bundles
+
+@target(erlang)
+/// A byte for each zone key: 1 if any bundle has the zone's own long
+/// generic name.
+@external(erlang, "glintl_generated_time_zones", "own_long_generic_names")
+fn own_long_generic_names() -> BitArray
+
+@target(erlang)
+/// Like `own_long_generic_names`, for short names.
+@external(erlang, "glintl_generated_time_zones", "own_short_generic_names")
+fn own_short_generic_names() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "cities")
+fn cities() -> Bundles
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "region_names")
+fn region_names() -> Bundles
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "region_codes")
+fn region_codes() -> data.HomogenousUnknownLengthTuple(String)
+
+@target(erlang)
+/// For each zone key, its country as a region number plus 1, or 0 for none,
+/// then 1 if it's the country's main zone.
+@external(erlang, "glintl_generated_time_zones", "countries")
+fn countries() -> BitArray
+
+@target(erlang)
+/// Each metazone's zone key in each region, sorted by region.
+@external(erlang, "glintl_generated_time_zones", "golden_zones")
+fn golden_zones() -> data.HomogenousUnknownLengthTuple(BitArray)
+
+@target(erlang)
+/// Each zone key's number in the rules.
+@external(erlang, "glintl_generated_time_zones", "key_zones")
+fn key_zones() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "world_region")
+fn world_region() -> Int
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "labels")
+fn labels() -> BitArray
+
+@target(erlang)
+@external(erlang, "glintl_generated_time_zones", "label_starts")
+fn label_starts() -> BitArray
+
+@target(erlang)
+@external(erlang, "erlang", "element")
+fn golden_of(
+  position: Int,
+  zones: data.HomogenousUnknownLengthTuple(BitArray),
+) -> BitArray
+
+@target(erlang)
+@external(erlang, "erlang", "element")
+fn code_of(
+  position: Int,
+  codes: data.HomogenousUnknownLengthTuple(String),
+) -> String
+
+@target(erlang)
+/// What a locale needs for location names, by its tag.
+@external(erlang, "glintl_generated_time_zones", "location")
+pub fn location(tag: String) -> data.Location
+
+@target(erlang)
+/// ICU's `kDstCheckRange`: a zone uses standard names if it has no summer
+/// time this close to the moment.
+const dst_check_range = 15_897_600
+
+@target(erlang)
+/// Each entry in a generic name, city or country table is a key, then a
+/// name number.
+const single_bits = 32
+
+@target(erlang)
+/// Each zone key's country is a 16-bit region number, then a byte.
+const country_bytes = 3
+
+@target(erlang)
+const key_zone_bytes = 2
+
+@target(erlang)
+/// A zone's generic name at a moment, like ICU's
+/// `TimeZoneGenericNames::getDisplayName`. `Error(Nil)` means ICU would show
+/// the offset.
+pub fn generic_name(
+  chain: List(Int),
+  location: data.Location,
+  key: Int,
+  zone: Int,
+  unix_seconds: Int,
+  long: Bool,
+) -> Result(String, Nil) {
+  case non_location_name(chain, location, key, zone, unix_seconds, long) {
+    Ok(name) -> Ok(name)
+    Error(Nil) -> location_name(chain, location, key)
+  }
+}
+
+@target(erlang)
+/// ICU's `formatGenericNonLocationName`.
+fn non_location_name(
+  chain: List(Int),
+  location: data.Location,
+  key: Int,
+  zone: Int,
+  unix_seconds: Int,
+  long: Bool,
+) -> Result(String, Nil) {
+  let #(table, own) = case long {
+    True -> #(long_generic_names(), own_long_generic_names())
+    False -> #(short_generic_names(), own_short_generic_names())
+  }
+  let own_name = case byte(own, key) {
+    0 -> Error(Nil)
+    _ -> find_single(table, chain, key)
+  }
+  let all = metazones()
+  case own_name, metazone_at(periods_of(key + 1, all), unix_seconds) {
+    Ok(n), _ -> Ok(name_text(n))
+    Error(Nil), Error(Nil) -> Error(Nil)
+    Error(Nil), Ok(metazone) -> {
+      let generic =
+        find_single(table, chain, key_count(all) + metazone)
+        |> result.map(name_text)
+      let #(raw, dst) = offset_parts(zone, unix_seconds)
+      case standard_name(chain, key, zone, unix_seconds, long, dst, generic) {
+        Ok(name) -> Ok(name)
+        Error(Nil) ->
+          case generic {
+            Error(Nil) -> Error(Nil)
+            Ok(generic) ->
+              metazone_name(
+                chain,
+                location,
+                key,
+                metazone,
+                unix_seconds + raw + dst,
+                raw,
+                dst,
+                generic,
+              )
+          }
+      }
+    }
+  }
+}
+
+@target(erlang)
+/// A zone with no summer time near the moment uses its standard name, unless
+/// that's the same as its metazone's generic name.
+fn standard_name(
+  chain: List(Int),
+  key: Int,
+  zone: Int,
+  unix_seconds: Int,
+  long: Bool,
+  dst: Int,
+  generic: Result(String, Nil),
+) -> Result(String, Nil) {
+  case dst == 0 && !dst_nearby(zone, unix_seconds) {
+    False -> Error(Nil)
+    True ->
+      case name(chain, key, unix_seconds, False, long), generic {
+        Ok(standard), Ok(generic) ->
+          case string.lowercase(standard) == string.lowercase(generic) {
+            True -> Error(Nil)
+            False -> Ok(standard)
+          }
+        Ok(standard), Error(Nil) -> Ok(standard)
+        Error(Nil), _ -> Error(Nil)
+      }
+  }
+}
+
+@target(erlang)
+/// The metazone's generic name, or a partial location name like "Pacific
+/// Time (Canada)" if the zone's offset differs from the metazone's zone for
+/// the locale's region at the same wall time.
+fn metazone_name(
+  chain: List(Int),
+  location: data.Location,
+  key: Int,
+  metazone: Int,
+  wall_seconds: Int,
+  raw: Int,
+  dst: Int,
+  generic: String,
+) -> Result(String, Nil) {
+  case golden_for(metazone, location.region) {
+    Ok(golden) if golden != key -> {
+      let #(golden_raw, golden_dst) =
+        offset_parts_at_wall(key_zone(golden), wall_seconds)
+      case raw != golden_raw || dst != golden_dst {
+        False -> Ok(generic)
+        True -> partial_location_name(chain, location, key, metazone, generic)
+      }
+    }
+    _ -> Ok(generic)
+  }
+}
+
+@target(erlang)
+/// ICU's `getPartialLocationName`: the country if the zone is the metazone's
+/// zone there, or else the city.
+fn partial_location_name(
+  chain: List(Int),
+  location: data.Location,
+  key: Int,
+  metazone: Int,
+  generic: String,
+) -> Result(String, Nil) {
+  let place = case country_of(key) {
+    Ok(#(region, _)) ->
+      case golden_for(metazone, region) {
+        Ok(golden) if golden == key -> Ok(country_name(location, region))
+        _ -> city(chain, key)
+      }
+    Error(Nil) -> city(chain, key)
+  }
+  case place {
+    Ok(place) ->
+      Ok(
+        location.fallback_format
+        |> string.replace("{0}", place)
+        |> string.replace("{1}", generic),
+      )
+    Error(Nil) -> Error(Nil)
+  }
+}
+
+@target(erlang)
+/// ICU's `getGenericLocationName`: the country for its main zone, and the
+/// city for the others.
+fn location_name(
+  chain: List(Int),
+  location: data.Location,
+  key: Int,
+) -> Result(String, Nil) {
+  let place = case country_of(key) {
+    Ok(#(region, True)) -> Ok(country_name(location, region))
+    Ok(#(_, False)) -> city(chain, key)
+    Error(Nil) -> Error(Nil)
+  }
+  case place {
+    Ok(place) -> Ok(string.replace(location.region_format, "{0}", place))
+    Error(Nil) -> Error(Nil)
+  }
+}
+
+@target(erlang)
+/// A zone's country, and whether it's the country's main zone.
+fn country_of(key: Int) -> Result(#(Int, Bool), Nil) {
+  let assert <<_:bytes-size(key * country_bytes), region:16, main, _:bits>> =
+    countries()
+  case region {
+    0 -> Error(Nil)
+    _ -> Ok(#(region - 1, main == 1))
+  }
+}
+
+@target(erlang)
+/// A country's name, or its code where the locale has none, like ICU's
+/// `LocaleDisplayNames::regionDisplayName`.
+fn country_name(location: data.Location, region: Int) -> String {
+  case find_single(region_names(), location.regions, region) {
+    Ok(n) -> label_text(n)
+    Error(Nil) -> code_of(region + 1, region_codes())
+  }
+}
+
+@target(erlang)
+fn city(chain: List(Int), key: Int) -> Result(String, Nil) {
+  find_single(cities(), chain, key) |> result.map(label_text)
+}
+
+@target(erlang)
+fn label_text(n: Int) -> String {
+  let #(from, to) = span(label_starts(), n - first_name)
+  let assert <<_:bytes-size(from), text:bytes-size(to - from), _:bits>> =
+    labels()
+  join([text])
+}
+
+@target(erlang)
+/// ICU's `getReferenceZoneID`: a metazone's zone in a region, or else its
+/// zone for the world.
+fn golden_for(metazone: Int, region: Int) -> Result(Int, Nil) {
+  let zones = golden_of(metazone + 1, golden_zones())
+  case golden_in(zones, region) {
+    Ok(key) -> Ok(key)
+    Error(Nil) -> golden_in(zones, world_region())
+  }
+}
+
+@target(erlang)
+fn golden_in(zones: BitArray, region: Int) -> Result(Int, Nil) {
+  case zones {
+    <<r:size(number_bits), key:size(number_bits), _:bits>> if r == region ->
+      Ok(key)
+    <<_:size(number_bits), _:size(number_bits), rest:bits>> ->
+      golden_in(rest, region)
+    _ -> Error(Nil)
+  }
+}
+
+@target(erlang)
+fn key_zone(key: Int) -> Int {
+  let assert <<_:bytes-size(key * key_zone_bytes), zone:16, _:bits>> =
+    key_zones()
+  zone
+}
+
+@target(erlang)
+/// Like `find_name`, for tables with one name for each key.
+fn find_single(table: Bundles, chain: List(Int), key: Int) -> Result(Int, Nil) {
+  case chain {
+    [] -> Error(Nil)
+    [first, ..rest] -> {
+      let entries = bundle(first + 1, table)
+      let count = bit_array_bytes(entries) * bits_per_byte / single_bits
+      case single(entries, key, 0, count) {
+        Ok(n) if n == blocked -> Error(Nil)
+        Ok(n) -> Ok(n)
+        Error(Nil) -> find_single(table, rest, key)
+      }
+    }
+  }
+}
+
+@target(erlang)
+fn single(
+  entries: BitArray,
+  key: Int,
+  low: Int,
+  high: Int,
+) -> Result(Int, Nil) {
+  case low >= high {
+    True -> Error(Nil)
+    False -> {
+      let middle = { low + high } / 2
+      let assert <<
+        _:bits-size(middle * single_bits),
+        found:size(number_bits),
+        n:size(number_bits),
+        _:bits,
+      >> = entries
+      case found == key, found < key {
+        True, _ -> Ok(n)
+        False, True -> single(entries, key, middle + 1, high)
+        False, False -> single(entries, key, low, middle)
+      }
+    }
+  }
+}
+
+@target(erlang)
+/// How many seconds of a zone's offset are standard time, then summer time.
+fn offset_parts(zone: Int, unix_seconds: Int) -> #(Int, Int) {
+  let Rules(transitions:, types:, type_map:, final:) =
+    element(zone + 1, table())
+  case final {
+    Final(raw:, year:, rule:) ->
+      case unix_seconds >= data.days_from_civil(year, 1, 1) * seconds_per_day {
+        True -> {
+          let #(total, _) = final_offset(raw, rule, unix_seconds)
+          #(raw, total - raw)
+        }
+        False -> historical_parts(transitions, types, type_map, unix_seconds)
+      }
+    NoFinal -> historical_parts(transitions, types, type_map, unix_seconds)
+  }
+}
+
+@target(erlang)
+/// ICU's longest offset either way, `MAX_OFFSET_SECONDS`.
+const max_offset = 86_400
+
+@target(erlang)
+/// Like `offset_parts`, at a wall time, like ICU's `getOffset` with `local`
+/// true. A wall time that happens twice, or not at all, gets the offset after
+/// the change.
+fn offset_parts_at_wall(zone: Int, wall_seconds: Int) -> #(Int, Int) {
+  let Rules(transitions:, types:, type_map:, final:) =
+    element(zone + 1, table())
+  case final {
+    Final(raw:, year:, rule:) ->
+      case wall_seconds >= data.days_from_civil(year, 1, 1) * seconds_per_day {
+        // ICU's `TimeZone::getOffset` reads the wall time as standard time,
+        // then again as summer time if that finds summer time.
+        True -> {
+          let #(first, _) = final_offset(raw, rule, wall_seconds - raw)
+          case first - raw {
+            0 -> #(raw, 0)
+            dst -> {
+              let #(second, _) =
+                final_offset(raw, rule, wall_seconds - raw - dst)
+              #(raw, second - raw)
+            }
+          }
+        }
+        False ->
+          historical_parts_at_wall(transitions, types, type_map, wall_seconds)
+      }
+    NoFinal ->
+      historical_parts_at_wall(transitions, types, type_map, wall_seconds)
+  }
+}
+
+@target(erlang)
+/// ICU's `getHistoricalOffset` with `kFormer` and `kLatter`: the last change
+/// whose wall time, with the offset after it, is at or before `wall_seconds`.
+fn historical_parts_at_wall(
+  transitions: BitArray,
+  types: BitArray,
+  type_map: BitArray,
+  wall_seconds: Int,
+) -> #(Int, Int) {
+  let count = bit_array_bytes(transitions) * bits_per_byte / transition_bits
+  let last = last_at_or_before(transitions, wall_seconds + max_offset, 0, count)
+  type_parts(types, wall_type(transitions, types, type_map, wall_seconds, last))
+}
+
+@target(erlang)
+fn wall_type(
+  transitions: BitArray,
+  types: BitArray,
+  type_map: BitArray,
+  wall_seconds: Int,
+  i: Int,
+) -> Int {
+  case i < 0 {
+    True -> 0
+    False -> {
+      let after = byte(type_map, i)
+      let #(raw, dst) = type_parts(types, after)
+      case wall_seconds >= transition(transitions, i) + raw + dst {
+        True -> after
+        False -> wall_type(transitions, types, type_map, wall_seconds, i - 1)
+      }
+    }
+  }
+}
+
+@target(erlang)
+fn historical_parts(
+  transitions: BitArray,
+  types: BitArray,
+  type_map: BitArray,
+  unix_seconds: Int,
+) -> #(Int, Int) {
+  let count = bit_array_bytes(transitions) * bits_per_byte / transition_bits
+  case last_at_or_before(transitions, unix_seconds, 0, count) {
+    -1 -> type_parts(types, 0)
+    i -> type_parts(types, byte(type_map, i))
+  }
+}
+
+@target(erlang)
+fn type_parts(types: BitArray, type_: Int) -> #(Int, Int) {
+  let assert <<
+    _:bits-size(type_ * type_bits),
+    raw:signed-size(offset_bits),
+    dst:signed-size(offset_bits),
+    _:bits,
+  >> = types
+  #(raw, dst)
+}
+
+@target(erlang)
+/// Whether a zone changes to or from summer time within `dst_check_range` of
+/// the moment, like ICU's check with `getPreviousTransition` and
+/// `getNextTransition`.
+fn dst_nearby(zone: Int, unix_seconds: Int) -> Bool {
+  let Rules(transitions:, types:, type_map:, final:) =
+    element(zone + 1, table())
+  let final_start = case final {
+    Final(year:, ..) -> data.days_from_civil(year, 1, 1) * seconds_per_day
+    NoFinal -> 0
+  }
+  case final {
+    // A yearly rule with summer time always has a change within half a year.
+    Final(rule:, ..) if unix_seconds >= final_start -> rule.1 != 0 && rule.6 != 0
+    _ -> {
+      let count = bit_array_bytes(transitions) * bits_per_byte / transition_bits
+      let i = last_at_or_before(transitions, unix_seconds, 0, count)
+      let before = case i >= 0 {
+        True -> {
+          let from = case i {
+            0 -> 0
+            _ -> byte(type_map, i - 1)
+          }
+          unix_seconds - transition(transitions, i) < dst_check_range
+          && type_parts(types, from).1 != 0
+        }
+        False -> False
+      }
+      let after = case i + 1 < count, final {
+        True, _ ->
+          transition(transitions, i + 1) - unix_seconds < dst_check_range
+          && type_parts(types, byte(type_map, i + 1)).1 != 0
+        // The next change comes from the yearly rule, so look for it.
+        False, Final(..) -> summer_within(zone, unix_seconds, 1)
+        False, NoFinal -> False
+      }
+      before || after
+    }
+  }
+}
+
+@target(erlang)
+fn summer_within(zone: Int, unix_seconds: Int, day: Int) -> Bool {
+  let later = unix_seconds + day * seconds_per_day
+  case later - unix_seconds < dst_check_range {
+    False -> False
+    True ->
+      case offset(zone, later) {
+        #(_, True) -> True
+        #(_, False) -> summer_within(zone, unix_seconds, day + 1)
+      }
+  }
+}

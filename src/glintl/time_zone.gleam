@@ -131,14 +131,15 @@ fn from_minutes(minutes: Int) -> Result(TimeZone, OffsetError) {
 
 @target(erlang)
 /// At a moment: how many seconds the time zone is ahead of UTC, its key in the
-/// names data or -1 for a fixed offset, and whether it's on summer time.
+/// names data or -1 for a fixed offset, its number in the rules, and whether
+/// it's on summer time.
 @internal
-pub fn at(zone: TimeZone, unix_seconds: Int) -> #(Int, Int, Bool) {
+pub fn at(zone: TimeZone, unix_seconds: Int) -> #(Int, Int, Int, Bool) {
   case zone {
-    Offset(minutes:) -> #(minutes * seconds_per_minute, -1, False)
+    Offset(minutes:) -> #(minutes * seconds_per_minute, -1, -1, False)
     Named(zone:, key:, ..) -> {
       let #(offset, daylight) = zones.offset(zone, unix_seconds)
-      #(offset, key, daylight)
+      #(offset, key, zone, daylight)
     }
   }
 }

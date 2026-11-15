@@ -7,7 +7,7 @@
 
 import { join } from "node:path";
 import * as erlang from "./erlang.ts";
-import { bundleName, bundlesIn, chain, lookup, type Resource } from "./icu.ts";
+import { bundleName, chain, lookup, type Resource } from "./icu.ts";
 import { LOCALES } from "./locales.ts";
 import { requirePinnedBun } from "./runtime.ts";
 
@@ -28,6 +28,9 @@ const int = (r: Resource | undefined): number => (r?.t === "int" ? r.value : 0);
 
 const text = (r: Resource | undefined): string =>
   r?.t === "string" ? r.value : "";
+
+const tableEntries = (r: Resource | undefined): [string, Resource][] =>
+  r?.t === "table" ? r.entries : [];
 
 const items = (r: Resource | undefined): Resource[] =>
   r?.t === "array" ? r.items : [];
@@ -184,17 +187,31 @@ export function zoneData(): ZoneData {
 
 // --- Names -----------------------------------------------------------------------
 
-// The names ICU gives a zone: long and short, standard and daylight saving.
-const NAME_TYPES = ["ls", "ld", "ss", "sd"] as const;
+// The names ICU gives a zone: long and short, standard and daylight saving,
+// then generic, then its city.
+const NAME_TYPES = ["ls", "ld", "ss", "sd", "lg", "sg", "ec"] as const;
 
 // A name that stops a locale from using its parent's.
 const NO_INHERITANCE = "∅∅∅";
+
+const WORLD = "001";
+const ROOT_BUNDLE = "zone/root";
+
+// Where a zone's city is in a `Names.bundles` entry.
+const CITY_COLUMN = 7;
+
+// ICU's `gDefRegionPattern` and `gDefFallbackPattern`.
+const DEFAULT_REGION_FORMAT = "{0}";
+const DEFAULT_FALLBACK_FORMAT = "{1} ({0})";
 
 // Name number 0 means the bundle has no name of its own, and 1 means the zone
 // has no name at all.
 const NO_NAME = 0;
 const BLOCKED = 1;
 const FIRST_NAME = 2;
+
+// A city the generator fills in once it knows which zones need one.
+const PENDING = -1;
 
 // The start and end ICU gives a metazone period that has none, like ICU's
 // `gDefaultFrom` and `gDefaultTo`. So zones have no names before 1970.
@@ -208,15 +225,37 @@ const instant = (s: string): number =>
 type Names = {
   // Each key's metazones, as [metazone, from, to] in seconds since 1970.
   periods: [number, number, number][][];
-  // Each zone bundle's names: [key, ls, ld, ss, sd] as name numbers. Metazones
-  // come after the keys.
+  // Each zone bundle's names: [key, ls, ld, ss, sd, lg, sg, ec] as name
+  // numbers. Metazones come after the keys.
   bundles: number[][][];
+  // Regions that location names need, like "US", and "001" for the world.
+  regions: string[];
+  // Each region bundle's country names: [region, name].
+  regionBundles: number[][][];
+  // Each key's country, as a region number plus 1 or 0 for none, then 1 if
+  // it's the country's main zone.
+  countries: [number, number][];
+  // Each metazone's zone in each region, as [region, key], sorted.
+  golden: [number, number][][];
+  // Each locale's region bundles, most specific first, its region format and
+  // fallback format, and its region.
+  locations: [string, number[], string, string, number][];
   // Each locale's zone bundles, most specific first.
   chains: [string, number[]][];
   // The names, as numbers of words, and the words.
   names: number[][];
   words: string[];
+  // Place names, numbered from `FIRST_NAME` like names.
+  labels: string[];
 };
+
+// The bundles in a folder that glintl's locales look in, like "zone/en_GB",
+// in the order they're first found.
+const usedBundles = (folder: string): string[] => [
+  ...new Set(
+    LOCALES.flatMap(([, tag]) => chain(chain(bundleName(tag))[0]!, folder)),
+  ),
+];
 
 // Splits a name into words, each with the spaces after it, so they join back
 // into the name.
@@ -272,7 +311,29 @@ function nameData(data: ZoneData): Names {
     return nameNumbers.get(r.value)!;
   };
 
-  const bundleNames = bundlesIn("zone/");
+  // Place names, like cities and countries, rarely share words, so they're
+  // stored whole.
+  const labels: string[] = [];
+  const labelNumbers = new Map<string, number>();
+
+  const labelNumber = (value: string): number => {
+    if (value === NO_INHERITANCE) {
+      return BLOCKED;
+    }
+
+    if (!labelNumbers.has(value)) {
+      labelNumbers.set(value, FIRST_NAME + labels.length);
+      labels.push(value);
+    }
+
+    return labelNumbers.get(value)!;
+  };
+
+  // Cities by bundle and key, until we know which zones need them.
+  const cityTexts = new Map<string, string>();
+
+  // Only the bundles some locale looks in.
+  const bundleNames = usedBundles("zone/");
   const bundleNumbers = new Map(bundleNames.map((name, i) => [name, i]));
 
   const bundles = bundleNames.map((name) => {
@@ -283,9 +344,19 @@ function nameData(data: ZoneData): Names {
           .flatMap(([key, value]) => {
             const n = keyNumbers.get(key);
 
-            const found = NAME_TYPES.map((type) =>
-              nameNumber(get(value, type)),
-            );
+            const found = NAME_TYPES.map((type) => {
+              if (type !== "ec") {
+                return nameNumber(get(value, type));
+              }
+
+              const city = text(get(value, type));
+
+              if (city !== "" && n !== undefined) {
+                cityTexts.set(`${name} ${n}`, city);
+              }
+
+              return city === "" ? NO_NAME : PENDING;
+            });
 
             return n === undefined || found.every((f) => f === NO_NAME)
               ? []
@@ -295,7 +366,192 @@ function nameData(data: ZoneData): Names {
       : [];
   });
 
+  // --- Location names, for generic names ---
+
+  const zoneNames = items(lookup(["zoneinfo64"], ["Names"])).map(text);
+  const zoneRegions = items(lookup(["zoneinfo64"], ["Regions"])).map(text);
+
+  const regionOf = (key: string): string =>
+    zoneRegions[zoneNames.indexOf(key.replaceAll(":", "/"))] ?? WORLD;
+
+  const keyOf = (id: string): number => {
+    const direct = data.keys.indexOf(id.replaceAll("/", ":"));
+
+    return direct >= 0 ? direct : data.keys.indexOf(nameKey(id) ?? "");
+  };
+
+  const mapTimezones = lookup(["metaZones"], ["mapTimezones"]);
+  const primaryZones = lookup(["metaZones"], ["primaryZones"]);
+
+  const targetRegion = (tag: string) =>
+    new Intl.Locale(tag).maximize().region ?? WORLD;
+
+  const regions = [
+    ...new Set([
+      WORLD,
+      ...data.keys.map(regionOf),
+      ...metazones.flatMap((mz) =>
+        tableEntries(get(mapTimezones, mz)).map(([region]) => region),
+      ),
+      ...LOCALES.map(([, tag]) => targetRegion(tag)),
+    ]),
+  ].sort();
+
+  const regionNumber = (region: string) => regions.indexOf(region);
+
+  // ICU's `ZoneMeta::getCanonicalCountry`: a zone is its country's main zone
+  // if it's the only one there, or CLDR says it's the primary one.
+  const zonesIn = new Map<string, number>();
+
+  data.keys.forEach((key) => {
+    const region = regionOf(key);
+    zonesIn.set(region, (zonesIn.get(region) ?? 0) + 1);
+  });
+
+  const countries = data.keys.map((key): [number, number] => {
+    const region = regionOf(key);
+
+    if (region === WORLD) {
+      return [0, 0];
+    }
+
+    const primary = text(get(primaryZones, region)).replaceAll("/", ":");
+
+    return [
+      regionNumber(region) + 1,
+      +(zonesIn.get(region) === 1 || primary === key),
+    ];
+  });
+
+  const golden = metazones.map((mz) => {
+    return tableEntries(get(mapTimezones, mz))
+      .map(([region, id]): [number, number] => [
+        regionNumber(region),
+        keyOf(text(id)),
+      ])
+      .filter(([, key]) => key >= 0)
+      .sort((a, b) => a[0] - b[0]);
+  });
+
+  // A zone's generic location name is its country's name if it's the
+  // country's main zone, and otherwise its city's.
+  // ICU's `getReferenceZoneID`: a metazone's zone in a region, or else its
+  // zone for the world.
+  const world = regionNumber(WORLD);
+
+  const goldenFor = (mz: number, region: number) =>
+    (golden[mz]!.find(([r]) => r === region) ??
+      golden[mz]!.find(([r]) => r === world))?.[1];
+
+  const targets = [
+    ...new Set(LOCALES.map(([, tag]) => regionNumber(targetRegion(tag)))),
+  ];
+
+  // Metazones where a zone can get a partial location name, like "Pacific
+  // Time (Canada)": its offset can differ from the metazone's zone in some
+  // locale's region.
+  const partialIn = (n: number) =>
+    [
+      ...new Set(periodsByZone[n]!.map(([mz]) => metazones.indexOf(mz!))),
+    ].filter((mz) => targets.some((r) => goldenFor(mz, r) !== n));
+
+  // A partial location name uses the country if the zone is the metazone's
+  // zone there, and otherwise the city.
+  const country = (n: number) => countries[n]![0] - 1;
+
+  const needsCity = (n: number) =>
+    countries[n]![1] === 0 ||
+    partialIn(n).some((mz) => goldenFor(mz, country(n)) !== n);
+
+  bundleNames.forEach((name, b) => {
+    bundles[b]!.forEach((entry) => {
+      const city = cityTexts.get(`${name} ${entry[0]}`);
+
+      entry[CITY_COLUMN] =
+        city !== undefined && needsCity(entry[0]!)
+          ? labelNumber(city)
+          : NO_NAME;
+    });
+  });
+
+  // ICU's `getDefaultExemplarLocationName`: a zone in a country without a
+  // city name uses the last part of its ID, like "Los Angeles".
+  const root = bundleNumbers.get(ROOT_BUNDLE)!;
+
+  data.keys.forEach((key, n) => {
+    const last = key.split(":").at(-1)!;
+
+    if (regionOf(key) === WORLD || !key.includes(":") || !needsCity(n)) {
+      return;
+    }
+
+    const city = labelNumber(last.replaceAll("_", " "));
+    const entry = bundles[root]!.find((e) => e[0] === n);
+
+    if (entry === undefined) {
+      bundles[root]!.push([n, ...NAME_TYPES.map(() => NO_NAME)]);
+      bundles[root]!.at(-1)![CITY_COLUMN] = city;
+    } else if (entry[CITY_COLUMN] === NO_NAME) {
+      entry[CITY_COLUMN] = city;
+    }
+  });
+
+  bundles[root]!.sort((a, b) => a[0]! - b[0]!);
+
+  // Only countries with a main zone need their names.
+  const mainCountries = new Set(
+    data.keys.flatMap((_, n) =>
+      countries[n]![1] === 1 ||
+      partialIn(n).some((mz) => goldenFor(mz, country(n)) === n)
+        ? [country(n)]
+        : [],
+    ),
+  );
+
+  const regionBundleNames = usedBundles("region/");
+  const regionBundleNumbers = new Map(regionBundleNames.map((b, i) => [b, i]));
+
+  const regionBundles = regionBundleNames.map((name) => {
+    return tableEntries(get(lookup([name], []), "Countries"))
+      .flatMap(([region, value]) => {
+        const r = regionNumber(region);
+        const country = text(value);
+
+        return r < 0 || country === "" || !mainCountries.has(r)
+          ? []
+          : [[r, labelNumber(country)]];
+      })
+      .sort((a, b) => a[0]! - b[0]!);
+  });
+
+  // The region and fallback formats, like "{0} Time" and "{1} ({0})", from
+  // the first zone bundle that has them.
+  const zoneFormat = (bundleChain: string[], key: string, otherwise: string) =>
+    bundleChain
+      .map((b) => text(get(get(lookup([b], []), "zoneStrings"), key)))
+      .find((s) => s !== "") ?? otherwise;
+
+  const locations = LOCALES.map(
+    ([, tag]): [string, number[], string, string, number] => {
+      const icu = chain(bundleName(tag))[0]!;
+      const zoneChain = chain(icu, "zone/");
+
+      return [
+        tag,
+        chain(icu, "region/").map((b) => regionBundleNumbers.get(b)!),
+        zoneFormat(zoneChain, "regionFormat", DEFAULT_REGION_FORMAT),
+        zoneFormat(zoneChain, "fallbackFormat", DEFAULT_FALLBACK_FORMAT),
+        regionNumber(targetRegion(tag)),
+      ];
+    },
+  );
+
   return {
+    regions,
+    regionBundles,
+    countries,
+    golden,
+    locations,
     periods: periodsByZone.map((periods) =>
       periods.map(([mz, from, to]): [number, number, number] => [
         metazones.indexOf(mz!),
@@ -313,6 +569,7 @@ function nameData(data: ZoneData): Names {
     ]),
     names,
     words,
+    labels,
   };
 }
 
@@ -339,6 +596,10 @@ const START_BYTES = 3;
 const TIME_BYTES = 8;
 const LARGEST_NUMBER = 0xffff;
 
+// Name and word numbers.
+const NAME_BYTES = 2;
+const LARGEST_NAME = 0xffff;
+
 const LARGEST_START = 0xffffff;
 
 // Where each item starts, then where the last one ends, so item `i` runs from
@@ -360,18 +621,38 @@ function startIndex(name: string, lengths: number[]): string[] {
   return [`${name}_starts() ->\n    ${packed(starts, START_BYTES)}`];
 }
 
-// Each bundle's entries for one length of name: [key, standard, daylight].
+// Each bundle's entries for one length of name: a 16-bit key, then 24-bit
+// name numbers for standard and daylight saving time.
 const entries = (bundles: number[][][], columns: [number, number]) =>
   bundles.map((bundle) =>
-    packed(
+    erlang.bytes(
       bundle.flatMap((entry) => {
         const [standard, daylight] = columns.map((c) => entry[c]!);
 
         return standard === NO_NAME && daylight === NO_NAME
           ? []
-          : [entry[0]!, standard!, daylight!];
+          : [
+              ...signed(entry[0]!, NUMBER_BYTES),
+              ...signed(standard!, NAME_BYTES),
+              ...signed(daylight!, NAME_BYTES),
+            ];
       }),
-      NUMBER_BYTES,
+    ),
+  );
+
+// Like `entries`, for tables with one name: a 16-bit key and a 24-bit name
+// number.
+const singles = (bundles: number[][][], column: number) =>
+  bundles.map((bundle) =>
+    erlang.bytes(
+      bundle.flatMap((entry) =>
+        entry[column] === NO_NAME
+          ? []
+          : [
+              ...signed(entry[0]!, NUMBER_BYTES),
+              ...signed(entry[column]!, NAME_BYTES),
+            ],
+      ),
     ),
   );
 
@@ -392,6 +673,8 @@ const ownNames = (names: Names, keys: number, columns: [number, number]) => {
 // Columns of `Names.bundles` entries, after the key.
 const LONG_COLUMNS: [number, number] = [1, 2];
 const SHORT_COLUMNS: [number, number] = [3, 4];
+const LONG_GENERIC_COLUMN = 5;
+const SHORT_GENERIC_COLUMN = 6;
 
 const packed = (numbers: number[], bytes: number) =>
   erlang.bytes(numbers.flatMap((n) => signed(n, bytes)));
@@ -402,11 +685,12 @@ export function zonesModule(header: string): string {
   const encoder = new TextEncoder();
 
   if (
-    names.words.length > LARGEST_NUMBER ||
-    FIRST_NAME + names.names.length > LARGEST_NUMBER ||
+    names.words.length > LARGEST_NAME ||
+    FIRST_NAME + names.names.length > LARGEST_NAME ||
+    FIRST_NAME + names.labels.length > LARGEST_NAME ||
     data.keys.length + names.periods.flat().length > LARGEST_NUMBER
   ) {
-    throw new Error("Too many zone names for 16-bit numbers");
+    throw new Error("Too many zone names for their numbers");
   }
 
   return erlang.module(
@@ -421,6 +705,20 @@ export function zonesModule(header: string): string {
       "short_names/0",
       "own_long_names/0",
       "own_short_names/0",
+      "long_generic_names/0",
+      "short_generic_names/0",
+      "own_long_generic_names/0",
+      "own_short_generic_names/0",
+      "cities/0",
+      "region_names/0",
+      "countries/0",
+      "golden_zones/0",
+      "key_zones/0",
+      "location/1",
+      "labels/0",
+      "label_starts/0",
+      "region_codes/0",
+      "world_region/0",
       "words/0",
       "word_starts/0",
       "name_words/0",
@@ -467,12 +765,67 @@ export function zonesModule(header: string): string {
       [
         `own_short_names() ->\n    ${ownNames(names, data.keys.length, SHORT_COLUMNS)}`,
       ],
+      [
+        `long_generic_names() ->\n    ${erlang.tuple(singles(names.bundles, LONG_GENERIC_COLUMN))}`,
+      ],
+      [
+        `short_generic_names() ->\n    ${erlang.tuple(singles(names.bundles, SHORT_GENERIC_COLUMN))}`,
+      ],
+      [
+        `own_long_generic_names() ->\n    ${ownNames(names, data.keys.length, [LONG_GENERIC_COLUMN, LONG_GENERIC_COLUMN])}`,
+      ],
+      [
+        `own_short_generic_names() ->\n    ${ownNames(names, data.keys.length, [SHORT_GENERIC_COLUMN, SHORT_GENERIC_COLUMN])}`,
+      ],
+      [`cities() ->\n    ${erlang.tuple(singles(names.bundles, CITY_COLUMN))}`],
+      [
+        `region_names() ->\n    ${erlang.tuple(
+          singles(names.regionBundles, 1),
+        )}`,
+      ],
+      [
+        `countries() ->\n    ${erlang.bytes(
+          names.countries.flatMap(([region, primary]) => [
+            ...signed(region, NUMBER_BYTES),
+            primary,
+          ]),
+        )}`,
+      ],
+      [
+        `golden_zones() ->\n    ${erlang.tuple(
+          names.golden.map((zones) => packed(zones.flat(), NUMBER_BYTES)),
+        )}`,
+      ],
+      [
+        `key_zones() ->\n    ${packed(
+          data.keys.map(
+            (_, k) => data.names.find(([, , key]) => key === k)![1],
+          ),
+          NUMBER_BYTES,
+        )}`,
+      ],
+      [
+        ...names.locations.map(
+          ([tag, regionChain, regionFormat, fallbackFormat, region]) =>
+            `location(${erlang.string(tag)}) ->\n    {location, [${regionChain.join(", ")}], ${erlang.string(regionFormat)}, ${erlang.string(fallbackFormat)}, ${region}}`,
+        ),
+        `location(_) ->\n    {location, [], ${erlang.string(DEFAULT_REGION_FORMAT)}, ${erlang.string(DEFAULT_FALLBACK_FORMAT)}, ${0}}`,
+      ],
       [`words() ->\n    ${erlang.string(names.words.join(""))}`],
       startIndex(
         "word",
         names.words.map((w) => encoder.encode(w).length),
       ),
-      [`name_words() ->\n    ${packed(names.names.flat(), NUMBER_BYTES)}`],
+      [`name_words() ->\n    ${packed(names.names.flat(), NAME_BYTES)}`],
+      [`labels() ->\n    ${erlang.string(names.labels.join(""))}`],
+      [
+        `region_codes() ->\n    ${erlang.tuple(names.regions.map(erlang.string))}`,
+      ],
+      [`world_region() ->\n    ${names.regions.indexOf(WORLD)}`],
+      startIndex(
+        "label",
+        names.labels.map((l) => encoder.encode(l).length),
+      ),
       startIndex(
         "name",
         names.names.map((n) => n.length),

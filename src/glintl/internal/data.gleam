@@ -121,9 +121,29 @@ pub type HomogenousUnknownLengthTuple(a)
 /// What the zone of a moment can be called. A fixed offset is `Unnamed`.
 pub type ZoneNames {
   Unnamed
-  /// `key` is the zone's key in the names data, and `chain` the locale's
-  /// bundles of names, most specific first.
-  Named(key: Int, daylight: Bool, chain: List(Int))
+  /// `key` is the zone's key in the names data, `zone` its number in the
+  /// rules, and `chain` the locale's bundles of names, most specific first.
+  Named(
+    key: Int,
+    zone: Int,
+    daylight: Bool,
+    chain: List(Int),
+    location: Location,
+  )
+}
+
+@target(erlang)
+/// What a locale needs for location names, like "Los Angeles Time":
+/// its bundles of country names, most specific first, its pattern for a
+/// location, like "{0} Time", its pattern for a partial location, like
+/// "{1} ({0})", and its region's number.
+pub type Location {
+  Location(
+    regions: List(Int),
+    region_format: String,
+    fallback_format: String,
+    region: Int,
+  )
 }
 
 @target(erlang)

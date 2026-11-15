@@ -118,12 +118,17 @@ pub type Fraction {
 /// How the time zone is written, like Intl's `timeZoneName`. In British
 /// English, in summer:
 ///
-/// | Name          | London              | An offset of +1 |
-/// | ------------- | ------------------- | --------------- |
-/// | `ShortName`   | BST                 | GMT+1           |
-/// | `LongName`    | British Summer Time | GMT+01:00       |
-/// | `ShortOffset` | GMT+1               | GMT+1           |
-/// | `LongOffset`  | GMT+01:00           | GMT+01:00       |
+/// | Name           | London              | An offset of +1 |
+/// | -------------- | ------------------- | --------------- |
+/// | `ShortName`    | BST                 | GMT+1           |
+/// | `LongName`     | British Summer Time | GMT+01:00       |
+/// | `ShortOffset`  | GMT+1               | GMT+1           |
+/// | `LongOffset`   | GMT+01:00           | GMT+01:00       |
+/// | `ShortGeneric` | United Kingdom Time | GMT+1           |
+/// | `LongGeneric`  | British Time        | GMT+01:00       |
+///
+/// Generic names stay the same in summer and winter. Where a locale has no
+/// generic name for a zone, they name its country or city instead.
 ///
 /// Where a locale has no name for a zone, the names show the offset too.
 pub type TimeZoneName {
@@ -131,6 +136,8 @@ pub type TimeZoneName {
   LongName
   ShortOffset
   LongOffset
+  ShortGeneric
+  LongGeneric
 }
 
 /// Start picking the fields to show.
@@ -207,6 +214,8 @@ pub fn time_zone_name(options: Fields, name: TimeZoneName) -> Fields {
     LongName -> "long"
     ShortOffset -> "shortOffset"
     LongOffset -> "longOffset"
+    ShortGeneric -> "shortGeneric"
+    LongGeneric -> "longGeneric"
   }
   Fields(matcher.Request(..options.request, time_zone_name: name))
 }
