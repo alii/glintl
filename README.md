@@ -49,11 +49,11 @@ To style each piece of a date, like a bold weekday, use `date_time.format_to_par
 
 On JavaScript, glintl calls `Intl.DateTimeFormat` directly. glintl adds no locale data to your JavaScript bundle, so you can use it in size-sensitive programs, like in the browser.
 
-On Erlang, glintl reads its data from ICU when we build the package, and ships that data inside the package. Your program reads it from the package itself, with no files to download or read from disk. glintl stores the data as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), which Erlang keeps in one place for every process to share. We're still working on making it load even faster.
+On Erlang, glintl's locales are built-in to the package. The locales are generated when we build and publish glintl. We store the data as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), which Erlang keeps in one place for every process to share. This reduces memory usage compared to downloading or parsing files at runtime. And we're still working on improving performance!
 
-If you're coming from Elixir, [Localize](https://github.com/elixir-localize/localize) does much more than glintl, like formatting numbers and units. We plan to add these to glintl too. The main difference is where the locale data comes from:
+If you're coming from Elixir, [Localize](https://github.com/elixir-localize/localize) offers a few more features than glintl, like formatting numbers and units. We do plan to add these to glintl. Beyond that, the main difference is where the locale data comes from:
 
 - Localize loads locale data from files or the network. When a file is missing, it quietly falls back to another locale.
-- glintl builds every locale into the package. `glintl/locales` returns an error for a tag it has no data for, and has helpers if you want to fall back yourself.
+- glintl builds every locale into the package. `glintl/locales` returns an error for a tag it has no data for, and has helpers if you want to implement the fallback yourself.
 
 [Limits](LIMITS.md) • [Contributing](CONTRIBUTING.md)
