@@ -1,9 +1,8 @@
-//// Formats timestamps on Erlang with the tables that `codegen/pack.ts` writes
-//// to `glintl_generated_data`. The JavaScript target uses only `Shown`.
+//// Formats moments on Erlang from the tables `codegen/pack.ts` writes to
+//// `glintl_generated_data`. JavaScript uses this module's `Shown` type.
 ////
-//// The tables store each distinct token once, and a pattern is a list of its
-//// tokens' numbers. A formatter points at these literals instead of copying
-//// them.
+//// The tables hold each distinct token once, and a pattern is a list of token
+//// numbers, so locales with the same patterns share them.
 
 @target(erlang)
 import gleam/int
@@ -19,7 +18,7 @@ import glintl/internal/matcher
 @target(erlang)
 import glintl/internal/zones
 
-/// What a formatter shows.
+/// Whether a formatter shows the date, the time or both, and in which styles.
 pub type Shown {
   DateOnly(data.Style)
   TimeOnly(data.Style)
@@ -36,7 +35,6 @@ const seconds_per_hour = 3600
 pub const seconds_per_day = 86_400
 
 @target(erlang)
-/// The longest a year can be in a calendar with Gregorian months.
 const days_in_longest_year = 366
 
 @target(erlang)
@@ -46,25 +44,25 @@ const hours_per_half_day = 12
 const hours_per_day = 24
 
 @target(erlang)
-/// 1970-01-01 was a Thursday, and weekdays are numbered from Sunday.
+/// 1970-01-01 was a Thursday, and weekdays count from Sunday here.
 const thursday = 4
 
 @target(erlang)
-/// Two digit years show the year modulo this.
+/// A two digit year is the year modulo this.
 const two_digit_years = 100
 
 @target(erlang)
 const ten = 10
 
 @target(erlang)
-/// Pattern numbers in formats are this many bytes.
+/// Each pattern number in formats takes this many bytes.
 const number_bytes = 2
 
 @target(erlang)
 const style_count = 4
 
 @target(erlang)
-/// Formats are stored by style, in this order.
+/// The order formats store their styles in.
 const styles = [data.Full, data.Long, data.Medium, data.Short]
 
 @target(erlang)
@@ -80,7 +78,6 @@ type HourCycle {
 }
 
 @target(erlang)
-/// A pattern in the packed data.
 type Pattern {
   /// `tokens` are 16-bit numbers in the tokens table.
   Pattern(has_minute: Bool, has_second: Bool, tokens: BitArray)
@@ -89,14 +86,14 @@ type Pattern {
 @target(erlang)
 type Token {
   Literal(String)
-  /// Text in a glue pattern. In parts, it joins the literals next to it,
-  /// because ICU writes the glue, date and time as one pattern.
+  /// Text in a glue pattern. In parts it joins the literals next to it, because
+  /// ICU writes the glue, date and time as one pattern.
   GlueText(String)
-  /// A part written with ASCII digits, whatever the locale's digits are.
+  /// A part ICU writes with ASCII digits in every locale.
   AsciiDigits(Token)
-  /// `first` and `minus_first` are names for years 1 and -1, like 元, or "".
-  /// `min_digits` is the fewest digits a year shows, like ICU's `yyyy`
-  /// showing year 1 as "0001".
+  /// `first` and `minus_first` name years 1 and -1, like 元. They're `""` when
+  /// those years have no name. `min_digits` is the fewest digits a year shows, so
+  /// `yyyy` shows year 1 as "0001".
   Year(
     two_digit: Bool,
     min_digits: Int,
@@ -116,11 +113,11 @@ type Token {
   ExtendedYear(minus: String, two_digit: Bool)
   /// `pad` writes related years under ten with two digits.
   RelatedYear(pad: Bool)
-  /// The Chinese and Dangi era: which 60 year cycle the year is in.
+  /// The Chinese and Dangi era, which is the 60 year cycle the year is in.
   CycleEra
   YearName(Names)
-  /// `numeric` names are numbers in the locale's digits, like "10" for a
-  /// Hebrew month.
+  /// `numeric` names are numbers in the locale's digits, like "10" for a Hebrew
+  /// month.
   MonthName(names: Names, numeric: Bool)
   DayName(names: Names, numeric: Bool)
   Weekday(Names)
@@ -152,8 +149,8 @@ type Token {
 }
 
 @target(erlang)
-/// What a part of the text is, like `glintl.DateTimePart`, which this module can't
-/// use.
+/// The kind of a part. It mirrors the `Part` types in `glintl/date` and
+/// `glintl/date_time`, which this module can't import.
 pub type PartKind {
   EraPart
   YearPart
@@ -174,13 +171,13 @@ pub type PartKind {
 
 @target(erlang)
 /// Whether a zone token shows a named zone's name, like ICU's `z` and `zzzz`.
-/// Fixed offsets, and zones with no name in the locale, show the offset.
+/// Fixed offsets and zones the locale has no name for show the offset.
 type ZoneNameStyle {
   OnlyOffset
   ShortNames
   LongNames
-  /// Names without standard or summer time, like "PT" or "Pacific Time",
-  /// like ICU's `v` and `vvvv`.
+  /// Names without standard or summer time, like "PT" or "Pacific Time". These
+  /// are ICU's `v` and `vvvv`.
   ShortGenericNames
   LongGenericNames
 }
@@ -190,7 +187,6 @@ pub type Names =
   data.HomogenousUnknownLengthTuple(String)
 
 @target(erlang)
-/// A formatter's patterns, ready to render.
 pub opaque type Compiled {
   Compiled(
     main: Prepared,
@@ -202,15 +198,14 @@ pub opaque type Compiled {
 }
 
 @target(erlang)
-/// The digits a locale writes numbers with.
 type Digits {
   Ascii
-  /// The locale's ten digits, from zero to nine.
+  /// The locale's ten digits from zero to nine.
   Local(Names)
-  /// Digits other than the locale's own, set with a numbering system. Text
-  /// written in the locale's own digits, `own`, takes these too, and years
-  /// written with the locale's own minus sign take `minus`. Before
-  /// `ascii_years_before`, JavaScriptCore writes years in ASCII digits.
+  /// Digits from a numbering system other than the locale's default. Text written
+  /// in the digits in `own` swaps to these, and years written with `own_minus` use
+  /// `minus`. Before `ascii_years_before`, JavaScriptCore writes years in ASCII
+  /// digits.
   Swapped(
     digits: Digits,
     own: List(String),
@@ -223,10 +218,10 @@ type Digits {
 @target(erlang)
 /// How a formatter turns a day into a date.
 type Days {
-  /// The Gregorian calendar, which covers every day.
+  /// The Gregorian calendar covers every day.
   GregorianDays
-  /// Another calendar, which falls back to Gregorian for days outside its
-  /// years. glintl builds both when needed, so a copied formatter stays small.
+  /// Another calendar. Days outside its years use Gregorian. Both are built when
+  /// first needed, so a copied formatter stays small.
   OtherDays(math: fn() -> data.Math, gregorian: fn() -> Compiled)
 }
 
@@ -240,8 +235,8 @@ type Prepared {
     date: BitArray,
     time: BitArray,
   )
-  /// A pattern for fields, worked out when the formatter is compiled. Each
-  /// piece has its run's letter, or `""` for text.
+  /// A fields pattern worked out when the formatter is compiled. Each piece has
+  /// its run's letter, which is `""` for text.
   Listed(
     has_minute: Bool,
     has_second: Bool,
@@ -251,7 +246,7 @@ type Prepared {
 }
 
 @target(erlang)
-/// JavaScriptCore's era workaround, which `matcher.era_workaround` explains.
+/// JavaScriptCore's era workaround. `matcher.EraWorkaround` explains it.
 type Workaround {
   NoWorkaround
   /// Replace the last era and year before `before_ms`.
@@ -311,7 +306,7 @@ fn element(index: Int, tuple: data.HomogenousUnknownLengthTuple(a)) -> a
 fn tuple_size(tuple: data.HomogenousUnknownLengthTuple(a)) -> Int
 
 @target(erlang)
-/// The number at `index` in packed 16-bit numbers.
+/// Reads the 16-bit number at `index`.
 fn number_at(bits: BitArray, index: Int) -> Int {
   case bits {
     <<_:bytes-size(index * number_bytes), n:16, _:bits>> -> n
@@ -330,29 +325,29 @@ const formats_per_calendar = 5
 const entry_header = 2
 
 @target(erlang)
-/// The default hour cycle of a locale, as a position in `HOUR_CYCLES` in
+/// Returns a locale's default hour cycle as its position in `HOUR_CYCLES` in
 /// `codegen/patterns.ts`.
 pub fn default_hour_cycle(locale: Int) -> Int {
   number_at(element(locale, locales()), 1)
 }
 
 @target(erlang)
-/// The digits number of a locale's own numbering system.
+/// Returns where a locale's default digits are in the digits table.
 pub fn default_digits(locale: Int) -> Int {
   number_at(element(locale, locales()), 0)
 }
 
 @target(erlang)
-/// The name at `index` in names numbered from 0, or `""`.
+/// Returns the name at `index` from 0, or `""` if there's none.
 pub fn name_at(names: Names, index: Int) -> String {
   pick_or(names, index, "")
 }
 
 @target(erlang)
-/// A formatter that writes numbers with the digits at `number` in the digits
-/// table, and so does the Gregorian formatter it falls back to. Years written
-/// with the locale's own minus sign, `own_minus`, take `minus` instead. For
-/// the years JavaScriptCore flips, the calendar's `workaround` says when.
+/// Makes a formatter write numbers with the digits at `number` in the digits
+/// table, and its Gregorian fallback too. Years with the locale's default minus
+/// sign `own_minus` use `minus` instead, and the calendar's `workaround` says
+/// when JavaScriptCore writes years in ASCII.
 pub fn with_digits(
   compiled: Compiled,
   number: Int,
@@ -386,16 +381,16 @@ pub fn with_digits(
 }
 
 @target(erlang)
-/// A formatter for a locale's Gregorian formats. `cycle` is 0 for the
-/// locale's own hour cycle, or 1 more than a position in `HOUR_CYCLES`.
+/// Makes a formatter for a locale's Gregorian formats. `cycle` is 0 for the
+/// locale's default hour cycle, or else a position in `HOUR_CYCLES` plus 1.
 pub fn compile(locale: Int, cycle: Int, shown: Shown) -> Compiled {
   let entry = element(locale, locales())
   compile_formats(entry, 0, cycle, shown, GregorianDays)
 }
 
 @target(erlang)
-/// A formatter for the calendar at `position` in the locale's formats. It
-/// falls back to Gregorian outside the calendar's years.
+/// Makes a formatter for the calendar at `position` in the locale's formats.
+/// Days outside the calendar's years use Gregorian.
 pub fn compile_other(
   locale: Int,
   position: Int,
@@ -443,17 +438,17 @@ fn compile_formats(
 }
 
 @target(erlang)
-/// After every calendar's formats, each calendar has a number in `fields`.
+/// After every calendar's formats, each calendar has one number in `fields`.
 const fields_per_calendar = 1
 
 @target(erlang)
-/// How many fields there are. Texts hold the append items and display names
+/// There are this many fields. Texts hold the append items and display names
 /// for each field, the glues for each style, then the decimal separator.
 const field_count = 16
 
 @target(erlang)
-/// A formatter for fields in the calendar at `position`. Calendars other than
-/// Gregorian fall back to Gregorian outside their years.
+/// Makes a formatter for fields in the calendar at `position`. Days outside a
+/// non-Gregorian calendar's years use Gregorian.
 pub fn compile_fields(
   locale: Int,
   position: Int,
@@ -604,7 +599,7 @@ fn is_second(token: Token) -> Bool {
 }
 
 @target(erlang)
-/// The runs of a letter's field, from a fields entry's run numbers.
+/// Finds the runs for a letter's field in a fields entry.
 fn field_runs_for(runs: BitArray, letter: String) -> BitArray {
   case matcher.field_of(letter) {
     Ok(field) ->
@@ -618,8 +613,8 @@ fn field_runs_for(runs: BitArray, letter: String) -> BitArray {
 }
 
 @target(erlang)
-/// A run's token number. Runs are each a letter, a length and flags, then
-/// a 16-bit token number.
+/// Finds a run's token number. Each run is a letter, a length and flags, then a
+/// 16-bit token number.
 fn find_run(
   runs: BitArray,
   letter: Int,
@@ -635,8 +630,8 @@ fn find_run(
 }
 
 @target(erlang)
-/// Each stored pattern's skeleton and pattern numbers, then 1 if CLDR gave
-/// the skeleton.
+/// Each stored pattern is a skeleton number and a pattern number, then 1 if
+/// CLDR gave the skeleton.
 fn entries(bits: BitArray) -> List(matcher.Entry) {
   case bits {
     <<skeleton:16, pattern:16, specified, rest:bits>> -> [
@@ -704,7 +699,7 @@ fn split(bits: BitArray) -> #(BitArray, BitArray) {
 @target(erlang)
 /// `codegen/pack.ts` writes each era as its number, its date patterns, then a
 /// byte for how it joins dates to times. 0 uses the usual glues, 1 is followed
-/// by a pattern for each date and time style, and 2 by the era's own glues.
+/// by a pattern for each pair of styles, and 2 by the era's own glues.
 fn eras_of(
   bits: BitArray,
   count: Int,
@@ -827,8 +822,7 @@ pub fn render(
 }
 
 @target(erlang)
-/// Like `render`, but in parts, with the text that's the same for every date
-/// joined into one part.
+/// Like `render`, but in parts with Intl's part types.
 pub fn render_parts(
   compiled: Compiled,
   unix_seconds: Int,
@@ -939,9 +933,9 @@ fn add_part(
 }
 
 @target(erlang)
-/// A fields pattern's pieces, each with its run's letter, its kind and its
-/// text, after JavaScriptCore's era workaround. Then the parts the workaround
-/// adds to the end.
+/// Returns a fields pattern's pieces with their run letter, kind and text after
+/// JavaScriptCore's era workaround, then the parts the workaround adds to the
+/// end.
 fn listed_pieces(
   prepared: Prepared,
   local: data.Local,
@@ -966,7 +960,7 @@ fn listed_pieces(
 const milliseconds_per_second = 1000
 
 @target(erlang)
-/// Applies JavaScriptCore's era workaround to each piece's text.
+/// Applies JavaScriptCore's era workaround to the text of each piece.
 fn with_workaround(
   texts: List(#(String, String)),
   workaround: Workaround,
@@ -1008,8 +1002,8 @@ fn with_workaround(
 }
 
 @target(erlang)
-/// Applies JavaScriptCore's era workaround to the pieces, and gives the parts
-/// it adds to the end.
+/// Like `with_workaround`, for parts. It also returns the parts the workaround
+/// adds to the end.
 fn with_workaround_parts(
   pieces: List(#(String, PartKind, String)),
   workaround: Workaround,
@@ -1077,7 +1071,7 @@ fn last_part_index(
 }
 
 @target(erlang)
-/// JavaScriptCore writes 1 minus ICU's year, in ASCII digits.
+/// JavaScriptCore writes 1 minus ICU's year in ASCII digits.
 fn flipped_year(icu_year: Int, two_digit: Bool) -> String {
   let flipped = 1 - icu_year
   case two_digit {
@@ -1130,7 +1124,7 @@ fn walk(
 }
 
 @target(erlang)
-/// Like `walk`, but adds parts in reverse order. Literals stay apart, as
+/// Like `walk`, but adds parts in reverse order. Literals stay apart the way
 /// Intl gave them to the generator, except that glue text joins the literals
 /// next to it. `join` says the last part was glue text.
 fn walk_parts(
@@ -1172,7 +1166,7 @@ fn walk_parts(
 }
 
 @target(erlang)
-/// Which kind of part a token writes, like Intl's part types.
+/// Returns the kind of part a token writes.
 fn kind(token: Token) -> PartKind {
   case token {
     Literal(_) | GlueText(_) | GlueDate | GlueTime -> LiteralPart
@@ -1366,7 +1360,7 @@ fn text(
 }
 
 @target(erlang)
-/// A named zone's name in the locale, like "BST" or "British Summer Time".
+/// Returns a named zone's name in the locale.
 fn zone_name(style: ZoneNameStyle, m: data.Local) -> Result(String, Nil) {
   case style, m.names {
     OnlyOffset, _ | _, data.Unnamed -> Error(Nil)
@@ -1382,7 +1376,8 @@ fn zone_name(style: ZoneNameStyle, m: data.Local) -> Result(String, Nil) {
 }
 
 @target(erlang)
-/// The name at `index`, or `otherwise` as a number if there are too few names.
+/// Returns the name at `index`, or `otherwise` as a number if there are too few
+/// names.
 fn pick(names: Names, index: Int, otherwise: Int, digits: Digits) -> String {
   case index >= 0 && index < tuple_size(names) {
     True -> element(index + 1, names)
@@ -1425,7 +1420,7 @@ const milliseconds_per_tenth = 100
 const milliseconds_per_hundredth = 10
 
 @target(erlang)
-/// The first `shown` digits of a fraction of a second.
+/// Writes the first `shown` digits of a fraction of a second.
 fn fraction(milliseconds: Int, shown: Int, digits: Digits) -> String {
   case shown, milliseconds < milliseconds_per_hundredth {
     1, _ -> number(milliseconds / milliseconds_per_tenth, False, digits)
@@ -1446,7 +1441,7 @@ fn signed(n: Int, minus: String, digits: Digits) -> String {
 }
 
 @target(erlang)
-/// `n` with zeros in front to make at least `count` digits.
+/// Writes `n` with zeros in front to make at least `count` digits.
 fn padded(n: Int, count: Int, digits: Digits) -> String {
   case count - digit_count(n, 1) {
     missing if missing > 0 ->
@@ -1475,8 +1470,8 @@ fn zeros(count: Int, zero: String) -> String {
 const digit_count_in_table = 10
 
 @target(erlang)
-/// A locale's number in the digits table is 0 for ASCII digits. `Local`
-/// always has all ten digits, so `digit` can read them without checking.
+/// Number 0 in the digits table means ASCII. `Local` always has all ten
+/// digits, so `digit` can read them without checking.
 fn digits_of(number: Int) -> Digits {
   case number {
     0 -> Ascii
@@ -1491,7 +1486,7 @@ fn digits_of(number: Int) -> Digits {
 }
 
 @target(erlang)
-/// `n` in the locale's digits.
+/// Writes `n` in the locale's digits.
 fn number(n: Int, pad: Bool, digits: Digits) -> String {
   case digits, pad && n < ten {
     Ascii, False -> int.to_string(n)
@@ -1503,8 +1498,8 @@ fn number(n: Int, pad: Bool, digits: Digits) -> String {
 }
 
 @target(erlang)
-/// Text in the locale's own digits, in the digits set with a numbering system
-/// if `swap` is true.
+/// Swaps text from the locale's default digits to the numbering system's when
+/// `swap` is true.
 fn swapped(text: String, swap: Bool, digits: Digits) -> String {
   case swap, digits {
     True, Swapped(digits:, own:, ..) ->
@@ -1521,7 +1516,7 @@ fn swapped(text: String, swap: Bool, digits: Digits) -> String {
 }
 
 @target(erlang)
-/// A year's minus sign and digits in the numbering system set.
+/// Returns a year's minus sign and digits in the numbering system that's set.
 fn year_digits(
   minus: String,
   digits: Digits,
@@ -1608,8 +1603,9 @@ fn modulo(n: Int, by: Int) -> Int {
 // --- Calendars --------------------------------------------------------------
 
 @target(erlang)
-/// A day's era, year, extended year, related year, cycle year, month and day
-/// in a calendar, or `[]` if the calendar doesn't cover it. The tests use it.
+/// Returns a day's era, year, extended year, related year, cycle year, month
+/// and day in a calendar, or `[]` if the calendar doesn't cover it. The tests
+/// use this.
 @internal
 pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
   case local(math, epoch_day * seconds_per_day, 0, data.Unnamed) {
@@ -1619,7 +1615,8 @@ pub fn calendar_fields(math: data.Math, epoch_day: Int) -> List(Int) {
 }
 
 @target(erlang)
-/// The local date and time in the Gregorian calendar, which covers every day.
+/// Returns the local date and time in the Gregorian calendar. It covers every
+/// day, so this can't fail.
 fn gregorian_local(
   unix_seconds: Int,
   offset_seconds: Int,
@@ -1636,8 +1633,8 @@ fn gregorian_local(
 }
 
 @target(erlang)
-/// The local date and time in a calendar, or `Error(Nil)` if the calendar
-/// doesn't cover that day.
+/// Returns the local date and time in a calendar, or `Error(Nil)` for a day the
+/// calendar doesn't cover.
 fn local(
   math: data.Math,
   unix_seconds: Int,
@@ -1691,7 +1688,7 @@ fn local(
 }
 
 @target(erlang)
-/// The local day since 1970-01-01, and the hour, minute and second.
+/// Returns the local day since 1970-01-01 with the hour, minute and second.
 fn day_and_time(
   unix_seconds: Int,
   offset_seconds: Int,
@@ -1708,7 +1705,8 @@ fn day_and_time(
 }
 
 @target(erlang)
-/// The local date and time in a calendar with Gregorian or Julian months.
+/// Returns the local date and time in a calendar with Gregorian or Julian
+/// months.
 fn proleptic_local(
   newest: data.EraRule,
   older: List(data.EraRule),
@@ -1754,8 +1752,8 @@ fn proleptic_local(
 }
 
 @target(erlang)
-/// The era a day is in. Eras are newest first, and the oldest starts at the
-/// start of time.
+/// Finds the era a day is in. Eras are newest first, and the oldest starts at
+/// the start of time.
 fn era_rule(
   rule: data.EraRule,
   older: List(data.EraRule),

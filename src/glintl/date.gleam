@@ -1,5 +1,5 @@
-//// Format dates that have no time or time zone, like birthdays. For moments
-//// in time, use `glintl/date_time`.
+//// This module is for formatting birthdays and other dates that have no time or
+//// time zone. To format a moment in time, use `glintl/date_time`.
 ////
 //// ```gleam
 //// import gleam/time/calendar
@@ -12,8 +12,7 @@
 //// // -> "25 October 2026"
 //// ```
 ////
-//// You can also pick the parts to show, like the date options of
-//// `Intl.DateTimeFormat`:
+//// You can also pick which fields to show:
 ////
 //// ```gleam
 //// import glintl
@@ -28,21 +27,21 @@
 //// |> date.format(calendar.Date(2026, calendar.October, 25))
 //// // -> "Sunday 25 October"
 //// ```
-////
 
+import gleam/list
 import gleam/time/calendar
 import gleam/time/timestamp
-import glintl.{type DateTimePart, type Locale}
+import glintl.{type Locale}
 import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
 import glintl/internal/render
 import glintl/time_zone
 
-/// How much detail to show, from most to least.
+/// How much detail to show. `Full` shows the most and `Short` the least.
 ///
-/// These are the same as the `dateStyle` option of JavaScript's
-/// `Intl.DateTimeFormat`. In British English:
+/// These match Intl's `dateStyle` option. This is how they look in British
+/// English:
 ///
 /// | Style    | Date                    |
 /// | -------- | ----------------------- |
@@ -57,27 +56,28 @@ pub type Style {
   Short
 }
 
-/// Formats dates in one locale and style.
+/// A formatter for dates in one locale.
 ///
-/// Making a formatter does the lookup work once, so make one and reuse it.
+/// Creating a formatter takes some work, so create it once and reuse it.
 pub opaque type Formatter {
   Formatter(compiled: engine.Compiled)
 }
 
-/// The fields to show and how to write each one, like the `weekday`, `month`
-/// and `day` options of `Intl.DateTimeFormat`. Start with `new`, and make a
-/// formatter with `fields_formatter`. Setting a field again replaces it.
+/// The fields to show and how to write each one. Start with `new`, pick fields
+/// with the functions below, then create a formatter with `fields_formatter`.
+///
+/// Picking a field again replaces it.
 pub opaque type Fields {
   Fields(request: matcher.Request)
 }
 
-/// Format the date in a style.
+/// Create a formatter that shows a date in a style.
 pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
   Formatter(engine.styles(locale, render.DateOnly(internal_style(style))))
 }
 
-/// Format the fields you pick, like the `weekday`, `month` and `day` options
-/// of JavaScript's `Intl.DateTimeFormat`. Start picking them with `new`.
+/// Create a formatter that shows the fields you pick, like the `weekday`,
+/// `month` and `day` options of `Intl.DateTimeFormat`.
 ///
 /// ```gleam
 /// let fields =
@@ -90,13 +90,13 @@ pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
 /// // -> "25 Oct"
 /// ```
 ///
-/// Like Intl, the formatter shows a numeric year, month and day when you pick
-/// no year, month, day or weekday. It adds an era to that date.
+/// If you don't pick a year, month, day or weekday, the formatter shows a
+/// numeric date like Intl does. An era you pick goes with it.
 pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
   Formatter(engine.fields(locale, fields.request))
 }
 
-/// Start picking the fields to show.
+/// Start a set of fields with nothing picked.
 pub fn new() -> Fields {
   Fields(engine.no_fields)
 }
@@ -106,7 +106,7 @@ pub fn weekday(fields: Fields, width: glintl.Width) -> Fields {
   Fields(matcher.Request(..fields.request, weekday: engine.width(width)))
 }
 
-/// Show the era, like "AD".
+/// Show the era. In English, this is "AD" or "BC".
 pub fn era(fields: Fields, width: glintl.Width) -> Fields {
   Fields(matcher.Request(..fields.request, era: engine.width(width)))
 }
@@ -116,12 +116,14 @@ pub fn year(fields: Fields, digits: glintl.Digits) -> Fields {
   Fields(matcher.Request(..fields.request, year: engine.digits(digits)))
 }
 
-/// Show the month as a number, like "3". This replaces `month_name`.
+/// Show the month as a number. This replaces `month_name`, because a date only
+/// shows its month once.
 pub fn month(fields: Fields, digits: glintl.Digits) -> Fields {
   Fields(matcher.Request(..fields.request, month: engine.digits(digits)))
 }
 
-/// Show the month's name, like "March". This replaces `month`.
+/// Show the month's name. This replaces `month`, because a date only shows its
+/// month once.
 pub fn month_name(fields: Fields, width: glintl.Width) -> Fields {
   Fields(matcher.Request(..fields.request, month: engine.width(width)))
 }
@@ -131,28 +133,82 @@ pub fn day(fields: Fields, digits: glintl.Digits) -> Fields {
   Fields(matcher.Request(..fields.request, day: engine.digits(digits)))
 }
 
-/// Format a date. A date that doesn't exist rolls over, like gleam_time's
-/// `timestamp.from_calendar`, so 31 February 2026 is 3 March.
+/// Format a date.
+///
+/// A date that doesn't exist rolls over, so 31 February 2026 is formatted as
+/// 3 March.
 pub fn format(formatter: Formatter, date: calendar.Date) -> String {
   engine.format(formatter.compiled, seconds(date), 0, time_zone.utc)
 }
 
-/// Like `format`, but in parts, so you can style each one. Joining the parts'
-/// text gives what `format` returns.
+/// Format a date in parts so you can style each one.
 ///
 /// ```gleam
 /// date.date_formatter(en_gb.locale(), style: date.Long)
 /// |> date.format_to_parts(calendar.Date(2026, calendar.October, 25))
 /// // -> [
-/// //   glintl.Day("25"), glintl.Literal(" "), glintl.Month("October"),
-/// //   glintl.Literal(" "), glintl.Year("2026"),
+/// //   date.Day("25"), date.Literal(" "), date.Month("October"),
+/// //   date.Literal(" "), date.Year("2026"),
 /// // ]
 /// ```
+///
+/// Joining the text of every part gives the same as `format`.
 pub fn format_to_parts(
   formatter: Formatter,
   date: calendar.Date,
-) -> List(DateTimePart) {
+) -> List(Part) {
   engine.format_to_parts(formatter.compiled, seconds(date), 0, time_zone.utc)
+  |> list.map(fn(part) { to_part(part.0, part.1) })
+}
+
+/// A part of a formatted date.
+///
+/// ```gleam
+/// [Day("25"), Literal(" "), Month("October"), Literal(" "), Year("2026")]
+/// ```
+pub type Part {
+  Era(String)
+  Year(String)
+  /// The Gregorian year of a Chinese or Korean date.
+  RelatedYear(String)
+  /// The name of a Chinese or Korean year in the 60 year cycle.
+  YearName(String)
+  Month(String)
+  Day(String)
+  Weekday(String)
+  /// Text between fields such as spaces and punctuation.
+  Literal(String)
+  /// A field without a type of its own, like the week-based year.
+  Unknown(String)
+}
+
+/// Get the text of a part.
+pub fn part_text(part: Part) -> String {
+  case part {
+    Era(text)
+    | Year(text)
+    | RelatedYear(text)
+    | YearName(text)
+    | Month(text)
+    | Day(text)
+    | Weekday(text)
+    | Literal(text)
+    | Unknown(text) -> text
+  }
+}
+
+fn to_part(intl_type: String, text: String) -> Part {
+  case intl_type {
+    "era" -> Era(text)
+    "year" -> Year(text)
+    "relatedYear" -> RelatedYear(text)
+    "yearName" -> YearName(text)
+    "month" -> Month(text)
+    "day" -> Day(text)
+    "weekday" -> Weekday(text)
+    "literal" -> Literal(text)
+    _ -> Unknown(text)
+  }
 }
 
 fn seconds(date: calendar.Date) -> Int {

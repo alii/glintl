@@ -1,5 +1,7 @@
-//// A time zone says where to show a moment. It's either a place like London,
-//// whose offset changes with summer time, or a fixed offset from UTC.
+//// This module is for picking the time zone to show a moment in. A time zone is
+//// either a place like London or a fixed offset from UTC. A place's offset changes
+//// with summer time, and glintl works out the right one for each moment it
+//// formats.
 ////
 //// ```gleam
 //// import gleam/time/calendar
@@ -17,33 +19,41 @@ import gleam/time/duration.{type Duration}
 @target(erlang)
 import glintl/internal/zones
 
-/// Where to show times.
+/// Either a place like London or a fixed offset from UTC.
 pub opaque type TimeZone {
-  /// A whole number of minutes ahead of UTC, under 24 hours either way.
+  /// Minutes ahead of UTC. It's always less than a day either way.
   Offset(minutes: Int)
-  /// A zone from the IANA time zone database. On Erlang, `zone` is its rules'
-  /// number in glintl's data, and `key` its names'.
+  /// A zone from the IANA database. On Erlang, `zone` and `key` say where its
+  /// rules and names are in glintl's data.
   Named(name: String, zone: Int, key: Int)
 }
 
-/// UTC itself, with no offset.
+/// The UTC time zone.
 pub const utc = Offset(minutes: 0)
 
-/// A place's time zone by its IANA name, like `"Europe/London"` or
-/// `"America/New_York"`. Like Intl, it takes old names like `"GB"` too, in
-/// any case. glintl works out summer time for each moment you format.
+/// Get a place's time zone from its IANA name.
 ///
-/// It returns `Error(Nil)` for a name glintl has no data for.
+/// ```gleam
+/// time_zone.from_name("Europe/London")
+/// ```
+///
+/// Like Intl, it also accepts old names such as `"GB"`. It returns an error for a
+/// name glintl doesn't know.
+///
+/// ```gleam
+/// time_zone.from_name("Mars/Olympus_Mons")
+/// // -> Error(Nil)
+/// ```
 pub fn from_name(name: String) -> Result(TimeZone, Nil) {
   find(name)
 }
 
-/// The computer's own time zone, which Intl uses by default. In a browser,
-/// that's the user's zone.
+/// Get the computer's time zone. Intl uses this zone when you don't give one,
+/// and in a browser it's the user's zone.
 ///
-/// On Erlang, glintl reads the zone from the `TZ` setting, or else from
-/// `/etc/localtime` or `/etc/timezone`. It returns `Error(Nil)` when none of
-/// them names a zone glintl knows.
+/// On Erlang, glintl reads it from the `TZ` environment variable, or else from
+/// `/etc/localtime` or `/etc/timezone`. It returns an error if none of them name a
+/// zone glintl knows.
 pub fn local() -> Result(TimeZone, Nil) {
   case local_name() {
     Ok(name) -> from_name(name)
@@ -86,20 +96,29 @@ const minutes_per_hour = 60
 
 const hours_per_day = 24
 
-/// Why `offset` or `from_duration` returned an error.
+/// Why `offset` or `from_duration` couldn't make a time zone.
 pub type OffsetError {
-  /// `hours` and `minutes` have different signs, like
-  /// `offset(hours: -3, minutes: 30)`.
+  /// One of `hours` and `minutes` is negative and the other is positive.
   MixedSigns
   /// `minutes` is an hour or more either way.
   MinutesTooLarge
-  /// The offset is 24 hours or more either way.
+  /// The offset is a day or more either way.
   OffsetTooLarge
 }
 
-/// Makes a time zone `hours` and `minutes` ahead of UTC, like
-/// `offset(hours: 5, minutes: 30)` for India. Behind UTC both are negative,
-/// like `offset(hours: -3, minutes: -30)` for Newfoundland.
+/// Make a time zone that's a fixed number of hours and minutes ahead of UTC.
+/// For India, that's 5 hours and 30 minutes.
+///
+/// ```gleam
+/// time_zone.offset(hours: 5, minutes: 30)
+/// ```
+///
+/// For a zone behind UTC, make both numbers negative. Newfoundland is 3 hours
+/// and 30 minutes behind.
+///
+/// ```gleam
+/// time_zone.offset(hours: -3, minutes: -30)
+/// ```
 pub fn offset(
   hours hours: Int,
   minutes minutes: Int,
@@ -113,8 +132,14 @@ pub fn offset(
   }
 }
 
-/// Makes a time zone a `gleam_time` duration ahead of UTC, like
-/// `calendar.local_offset()`. It rounds down to whole minutes.
+/// Make a time zone that's a fixed duration ahead of UTC. This is useful with
+/// gleam_time's `calendar.local_offset`.
+///
+/// ```gleam
+/// time_zone.from_duration(calendar.local_offset())
+/// ```
+///
+/// The duration is rounded down to whole minutes.
 pub fn from_duration(duration: Duration) -> Result(TimeZone, OffsetError) {
   let #(seconds, _) = duration.to_seconds_and_nanoseconds(duration)
   let remainder =
@@ -130,9 +155,8 @@ fn from_minutes(minutes: Int) -> Result(TimeZone, OffsetError) {
 }
 
 @target(erlang)
-/// At a moment: how many seconds the time zone is ahead of UTC, its key in the
-/// names data or -1 for a fixed offset, its number in the rules, and whether
-/// it's on summer time.
+/// Returns the offset in seconds, the names key, the rules number and whether
+/// it's summer time. A fixed offset has -1 for both numbers.
 @internal
 pub fn at(zone: TimeZone, unix_seconds: Int) -> #(Int, Int, Int, Bool) {
   case zone {
@@ -144,8 +168,7 @@ pub fn at(zone: TimeZone, unix_seconds: Int) -> #(Int, Int, Int, Bool) {
   }
 }
 
-/// The time zone as Intl's `timeZone` option, like `"Europe/London"` or
-/// `"+05:30"`.
+/// Writes the zone as Intl's `timeZone` option, like `"+05:30"` for an offset.
 @internal
 pub fn intl_time_zone(zone: TimeZone) -> String {
   case zone {

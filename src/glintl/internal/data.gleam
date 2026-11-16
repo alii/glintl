@@ -1,5 +1,5 @@
-//// `codegen/generate.ts` writes each calendar's maths as Erlang terms of the
-//// types here, so keep the two in sync.
+//// The generator writes each calendar's maths as Erlang terms of the types in
+//// this module. If you change a type here, change `codegen/generate.ts` to match.
 ////
 //// This module also works out dates in calendars with their own months, ICU's
 //// week-based year and Julian dates.
@@ -9,7 +9,7 @@ import gleam/int
 @target(erlang)
 import gleam/list
 
-/// The same as `date_time.Style`, which this module can't use.
+/// A copy of `date_time.Style`, since this module can't import it.
 pub type Style {
   Full
   Long
@@ -18,60 +18,53 @@ pub type Style {
 }
 
 @target(erlang)
-/// How a calendar maps days to its own dates. It's the same for every locale.
+/// How a calendar turns days into dates. Every locale uses the same maths for a
+/// calendar.
 pub type Math {
-  /// Gregorian months, with eras and years from `eras`, newest first. Days
-  /// before `julian_before` use the Julian calendar, which ICU does by default
-  /// for every calendar but Gregorian.
+  /// Gregorian months with eras from `eras`, newest first. Days before
+  /// `julian_before` use the Julian calendar, as they do in ICU.
   Proleptic(eras: List(EraRule), julian_before: Int)
-  /// A table of whole years that the generator reads from ICU. Years are
-  /// numbered from 0.
+  /// Years the generator reads from ICU, numbered from 0.
   Table(
-    /// True for Chinese and Dangi, which have related years and a 60 year
-    /// cycle.
+    /// Chinese and Dangi years have related years and a 60 year cycle.
     cyclic: Bool,
-    /// The first day of the first year.
     first_day: Int,
-    /// The day after the last year.
+    /// The day after the last year in the table.
     end_day: Int,
-    /// How many numbers `starts` holds.
     start_count: Int,
     /// The first day of each year, then the day after the last year.
     starts: HomogenousUnknownLengthTuple(Int),
-    /// Each year's month layout.
+    /// Which month layout each year uses.
     layouts: HomogenousUnknownLengthTuple(Int),
-    /// Each layout has two bytes per month: its number, then its length in
-    /// days.
+    /// Each layout has two bytes per month: its number, then its length in days.
     months: HomogenousUnknownLengthTuple(BitArray),
     /// Year rules, newest first.
     years: List(YearRule),
-    /// Days that ICU calls day 0 of a month, as `#(day, month number)`.
-    /// ICU's Chinese calendar has a few of these where its astronomy goes
-    /// wrong.
+    /// ICU's Chinese calendar calls a few days day 0 of a month, where its astronomy
+    /// goes wrong. Each is `#(day, month number)`.
     day_zero: List(#(Int, Int)),
   )
 }
 
 @target(erlang)
-/// A day earlier than any glintl formats, in days since 1970-01-01. It
-/// stands in for the start of time, and the generator writes the same number.
+/// A day earlier than any glintl formats. It stands for the start of time, and
+/// the generator uses the same number.
 pub const start_of_time = -1_000_000_000_000
 
 @target(erlang)
-/// 1 January AD 1, in days since 1970-01-01.
+/// 1 January AD 1, in days since 1970.
 pub const first_day_of_ad = -719_162
 
 @target(erlang)
-/// The Gregorian calendar's eras, numbered newest first like generated eras.
+/// Eras are numbered newest first, so AD is 0.
 const anno_domini = 0
 
 @target(erlang)
 const before_christ = 1
 
 @target(erlang)
-/// The Gregorian calendar's maths. AD years are astronomical years, and BC
-/// years count back from 1 BC, which is astronomical year 0.
-/// `codegen/generate.ts` checks it against ICU.
+/// The Gregorian calendar's maths. AD years are astronomical years, and BC years
+/// count back from 1 BC, which is year 0.
 pub const gregorian =
   Proleptic(
     [gregorian_newest_era, gregorian_oldest_era],
@@ -90,16 +83,16 @@ pub const gregorian_oldest_era =
 pub const gregorian_older_eras = [gregorian_oldest_era]
 
 @target(erlang)
-/// From `start` until the next era, the year is `base + sign * y`, where `y`
-/// is the astronomical Gregorian year (1 BC is 0).
+/// From `start` until the next era, the year is `base + sign * y`, where `y` is
+/// the astronomical Gregorian year.
 pub type EraRule {
   EraRule(start: Int, era: Int, base: Int, sign: Int)
 }
 
 @target(erlang)
-/// From year `from` until the next rule, each year adds `year_step` to the
-/// year and 1 to the extended year. In cyclic calendars it also adds 1 to the
-/// related year and the cycle.
+/// From year `from` until the next rule, each year adds `year_step` to the year
+/// and 1 to the extended year. Cyclic calendars also add 1 to the related year
+/// and the cycle.
 pub type YearRule {
   YearRule(
     from: Int,
@@ -113,16 +106,16 @@ pub type YearRule {
 }
 
 @target(erlang)
-/// An Erlang tuple whose items all have the same type. Reading any position
-/// takes constant time.
+/// An Erlang tuple where every item has the same type, so any position can be
+/// read in constant time.
 pub type HomogenousUnknownLengthTuple(a)
 
 @target(erlang)
-/// What the zone of a moment can be called. A fixed offset is `Unnamed`.
+/// What a moment's zone can be called. Fixed offsets are `Unnamed`.
 pub type ZoneNames {
   Unnamed
-  /// `key` is the zone's key in the names data, `zone` its number in the
-  /// rules, and `chain` the locale's bundles of names, most specific first.
+  /// `zone` is the zone's rules number, `key` finds its names, and `chain` is the
+  /// locale's name bundles, most specific first.
   Named(
     key: Int,
     zone: Int,
@@ -133,10 +126,7 @@ pub type ZoneNames {
 }
 
 @target(erlang)
-/// What a locale needs for location names, like "Los Angeles Time":
-/// its bundles of country names, most specific first, its pattern for a
-/// location, like "{0} Time", its pattern for a partial location, like
-/// "{1} ({0})", and its region's number.
+/// What a locale needs for location names like "Los Angeles Time".
 pub type Location {
   Location(
     regions: List(Int),
@@ -147,12 +137,9 @@ pub type Location {
 }
 
 @target(erlang)
-/// A timestamp's local date and time in a calendar. Each format call makes
-/// one record to keep allocation down. `month` is an index into the
-/// calendar's month names.
-/// `year_start` and `next_year_start` are `start_of_time` until glintl needs
-/// them. Only calendars with Gregorian months leave them unset, and
-/// `week_year` works them out when it needs them.
+/// A moment's local date and time in a calendar. `month` counts from 0.
+/// Calendars with Gregorian months leave `year_start` and `next_year_start` as
+/// `start_of_time`, and `week_year` works them out when it needs them.
 pub type Local {
   Local(
     epoch_day: Int,
@@ -175,7 +162,6 @@ pub type Local {
 }
 
 @target(erlang)
-/// The Chinese and Dangi calendars name years in a cycle of this many.
 const years_in_cycle = 60
 
 @target(erlang)
@@ -183,9 +169,8 @@ const years_in_cycle = 60
 const cycle_epoch = 2637
 
 @target(erlang)
-/// Works out ICU's era in the Chinese and Dangi calendars from the related
-/// Gregorian year. The era is which 60 year cycle the year is in, counting
-/// from 1.
+/// ICU's era for a Chinese or Dangi date is the 60 year cycle it falls in,
+/// counting from 1.
 pub fn cycle_era(related: Int) -> Int {
   { related + cycle_epoch - 1 } / years_in_cycle + 1
 }
@@ -194,20 +179,19 @@ pub fn cycle_era(related: Int) -> Int {
 pub const days_per_week = 7
 
 @target(erlang)
-/// 1970-01-01 was a Thursday. Weekdays here are numbered from Monday, like
-/// ICU's week data.
+/// 1970-01-01 was a Thursday, and weekdays here count from Monday like ICU's
+/// week data.
 const thursday_from_monday = 4
 
 @target(erlang)
-/// Days from 0000-03-01 to 1970-01-01. Hinnant's algorithms count from
-/// 1 March, so leap days fall at the end of their years.
+/// Hinnant's algorithms count from 1 March so leap days come at the end of a
+/// year. This is the number of days from 0000-03-01 to 1970-01-01.
 pub const days_from_march_of_year_zero = 719_468
 
 @target(erlang)
 pub const days_per_400_years = 146_097
 
 @target(erlang)
-/// The Julian day number of 1970-01-01.
 const julian_day_of_unix_epoch = 2_440_588
 
 @target(erlang)
@@ -277,8 +261,7 @@ pub fn table_local(
 }
 
 @target(erlang)
-/// The rule for a table year. Rules are newest first, and the oldest starts
-/// at the first year.
+/// Rules are newest first, and the oldest starts at the first year.
 fn year_rule(rule: YearRule, older: List(YearRule), year: Int) -> YearRule {
   case older, rule.from <= year {
     [], _ | _, True -> rule
@@ -287,8 +270,8 @@ fn year_rule(rule: YearRule, older: List(YearRule), year: Int) -> YearRule {
 }
 
 @target(erlang)
-/// Steps from year `i` to the year holding `epoch_day`. Returns that year,
-/// its first day and the next year's first day.
+/// Steps from year `i` to the year that holds `epoch_day`. Returns that year
+/// with its first day and the next year's.
 fn find_year(
   starts: HomogenousUnknownLengthTuple(Int),
   i: Int,
@@ -304,7 +287,6 @@ fn find_year(
 }
 
 @target(erlang)
-/// The month and day of the month, `days` days into a year.
 fn month_and_day(layout: BitArray, days: Int) -> #(Int, Int) {
   case layout {
     <<month, length, others:bits>> ->
@@ -317,8 +299,8 @@ fn month_and_day(layout: BitArray, days: Int) -> #(Int, Int) {
 }
 
 @target(erlang)
-/// ICU's week-based year: weeks start on `first_day` (1 is Monday), and a
-/// year's first week is the first with at least `minimal_days` days in it.
+/// ICU's week-based year. Weeks start on `first_day`, where 1 is Monday, and a
+/// year's first week is the first one with at least `minimal_days` days in it.
 pub fn week_year(
   m: Local,
   first_day: Int,
@@ -358,15 +340,14 @@ pub fn week_year(
 }
 
 @target(erlang)
-/// A day's weekday, from 1 for Monday to 7 for Sunday.
+/// Weekdays count from 1 for Monday to 7 for Sunday.
 pub fn weekday(epoch_day: Int) -> Int {
   modulo(epoch_day + thursday_from_monday - 1, days_per_week) + 1
 }
 
 @target(erlang)
-/// A proleptic Gregorian date to days since 1970-01-01. From Howard
-/// Hinnant's `days_from_civil`, whose other numbers are part of the published
-/// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
+/// Howard Hinnant's `days_from_civil`. Its numbers come from the published algorithm
+/// at <https://howardhinnant.github.io/date_algorithms.html>.
 pub fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
   let year = case month <= 2 {
     True -> year - 1
@@ -384,9 +365,8 @@ pub fn days_from_civil(year: Int, month: Int, day: Int) -> Int {
 }
 
 @target(erlang)
-/// Days since 1970-01-01 to a proleptic Gregorian date. From Howard Hinnant's
-/// `civil_from_days`, whose other numbers are part of the published
-/// algorithm: <https://howardhinnant.github.io/date_algorithms.html>.
+/// Howard Hinnant's `civil_from_days`. Its numbers come from the published algorithm
+/// at <https://howardhinnant.github.io/date_algorithms.html>.
 pub fn civil_from_days(days: Int) -> #(Int, Int, Int) {
   let z = days + days_from_march_of_year_zero
   let era = floor_divide(z, days_per_400_years)
@@ -408,9 +388,9 @@ pub fn civil_from_days(days: Int) -> #(Int, Int, Int) {
 }
 
 @target(erlang)
-/// A Julian date, as `#(astronomical year, month, day)`, for days since
-/// 1970-01-01. From Richards' algorithm in the Explanatory Supplement to the
-/// Astronomical Almanac, whose other numbers are part of the algorithm.
+/// Converts days since 1970-01-01 to a Julian date, as `#(astronomical year,
+/// month, day)`. This is Richards' algorithm from the Explanatory Supplement to
+/// the Astronomical Almanac, which is where its numbers come from.
 pub fn julian_from_days(days: Int) -> #(Int, Int, Int) {
   let c = days + julian_day_of_unix_epoch + 32_082
   let d = floor_divide(4 * c + 3, 1461)
@@ -424,7 +404,7 @@ pub fn julian_from_days(days: Int) -> #(Int, Int, Int) {
 }
 
 @target(erlang)
-/// The inverse of `julian_from_days`, from the same algorithm.
+/// The reverse of `julian_from_days`.
 fn days_from_julian(year: Int, month: Int, day: Int) -> Int {
   let a = floor_divide(14 - month, 12)
   let y = year + 4800 - a
@@ -435,8 +415,8 @@ fn days_from_julian(year: Int, month: Int, day: Int) -> Int {
 }
 
 @target(erlang)
-/// The first day of a year and of the next, in a calendar that is Julian
-/// before `julian_before`.
+/// The first day of a year and of the next, in a calendar that's Julian before
+/// `julian_before`.
 pub fn year_bounds(year: Int, julian_before: Int) -> #(Int, Int) {
   #(new_year(year, julian_before), new_year(year + 1, julian_before))
 }
@@ -464,7 +444,7 @@ pub fn floor_divide(n: Int, by: Int) -> Int {
 }
 
 @target(erlang)
-/// The item at `index`, counting from 0. Erlang tuples count from 1.
+/// Counts from 0, while Erlang tuples count from 1.
 fn nth(tuple: HomogenousUnknownLengthTuple(a), index: Int) -> a {
   element(index + 1, tuple)
 }

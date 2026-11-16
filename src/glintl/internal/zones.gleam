@@ -1,6 +1,6 @@
-//// Finds a named time zone's offset and name at a moment on Erlang, the same
-//// way as ICU's `OlsonTimeZone` and `TimeZoneNames`. `codegen/zones.ts` writes
-//// the data.
+//// Works out a named zone's offset and name at a moment on Erlang, the way ICU's
+//// `OlsonTimeZone` and `TimeZoneNames` do. `codegen/zones.ts` writes the data it
+//// reads.
 
 @target(erlang)
 import gleam/result
@@ -10,29 +10,29 @@ import gleam/string
 import glintl/internal/data
 
 @target(erlang)
-/// When a zone's offset changes, and what it changes to.
+/// A zone's changes of offset over time.
 pub type Rules {
   Rules(
-    /// Seconds since 1970, 64 bits each.
+    /// The time of each change in seconds since 1970, as 64 bits.
     transitions: BitArray,
-    /// Standard and daylight saving seconds, 32 bits each. The first applies
-    /// before any transition.
+    /// Pairs of standard and summer time seconds, 32 bits each. The first pair
+    /// applies before any change.
     types: BitArray,
-    /// The type after each transition, a byte each.
+    /// The offset type after each change, as one byte.
     type_map: BitArray,
     final: Final,
   )
 }
 
 @target(erlang)
-/// The yearly rule after the last transition, from ICU's `finalRule`.
+/// The yearly rule ICU calls `finalRule`. It applies after the last change.
 pub type Final {
   NoFinal
-  /// `rule` is ICU's eleven numbers for a `SimpleTimeZone`, in seconds.
   Final(raw: Int, year: Int, rule: Rule)
 }
 
-/// ICU's eleven numbers for a yearly summer time rule, in seconds.
+/// The eleven numbers ICU's `SimpleTimeZone` uses for a yearly summer time
+/// rule. Times are in seconds.
 pub type Rule =
   #(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int)
 
@@ -40,8 +40,8 @@ pub type Rule =
 type Table
 
 @target(erlang)
-/// From a lowercase name: the name as ICU writes it, its zone's number, and
-/// its key in the names data.
+/// Looks up a lowercase zone name. Returns the name as ICU writes it, the
+/// zone's rules number and its names key.
 @external(erlang, "glintl_generated_time_zones", "zone")
 pub fn find(lowercase_name: String) -> Result(#(String, Int, Int), Nil)
 
@@ -72,8 +72,8 @@ const seconds_per_day = 86_400
 const days_per_week = 7
 
 @target(erlang)
-/// How many seconds the zone is ahead of UTC at a moment, and whether it's on
-/// summer time.
+/// Returns the zone's offset in seconds at a moment, and whether it's summer
+/// time.
 pub fn offset(zone: Int, unix_seconds: Int) -> #(Int, Bool) {
   let Rules(transitions:, types:, type_map:, final:) =
     element(zone + 1, table())
@@ -111,8 +111,8 @@ fn historical(
 }
 
 @target(erlang)
-/// The last transition at or before `seconds`, or -1 if there's none. It
-/// searches from `low` up to `high`, leaving out `high`.
+/// Binary searches for the last change at or before `seconds`, from `low` up to
+/// but not including `high`. Returns -1 if there's none.
 fn last_at_or_before(
   transitions: BitArray,
   seconds: Int,
@@ -165,7 +165,7 @@ type Mode {
 }
 
 @target(erlang)
-/// ICU's `SimpleTimeZone::TimeMode`.
+/// Two of the values of ICU's `SimpleTimeZone::TimeMode`.
 const utc_time = 2
 
 @target(erlang)
@@ -257,7 +257,7 @@ fn final_offset(raw: Int, rule: Rule, unix_seconds: Int) -> #(Int, Bool) {
 }
 
 @target(erlang)
-/// -1, 0 or 1 as the time is before, at or after the rule's moment in
+/// Returns -1, 0 or 1 as the time is before, at or after the rule's moment in
 /// `rule_month`.
 fn compare_to_rule(
   month: Int,
@@ -321,8 +321,8 @@ fn compare_to_rule(
 }
 
 @target(erlang)
-/// Moves a time that's past the end or before the start of its day into the
-/// next or previous day, like ICU's `compareToRule`.
+/// Moves a time past the end or before the start of its day into the next or
+/// previous day, like ICU's `compareToRule` does.
 fn roll(
   month: Int,
   length: Int,
@@ -365,8 +365,8 @@ fn roll(
 }
 
 @target(erlang)
-/// ICU's `SimpleTimeZone::decodeStartRule`: how a rule's day and weekday
-/// pick a day.
+/// This is ICU's `SimpleTimeZone::decodeStartRule`, which works out how a rule's
+/// day and weekday pick a day.
 fn decode(day: Int, weekday: Int) -> #(Mode, Int, Int) {
   case weekday {
     0 -> #(DayOfMonth, day, weekday)
@@ -379,7 +379,7 @@ fn decode(day: Int, weekday: Int) -> #(Mode, Int, Int) {
 // --- Gregorian dates ---------------------------------------------------------
 
 @target(erlang)
-/// Days in a month, from 0 for January. -1 is the December before.
+/// Months count from 0 for January, and -1 is the December before.
 fn month_length(year: Int, month: Int) -> Int {
   case month {
     -1 -> 31
@@ -415,7 +415,7 @@ type Metazones
 type Bundles
 
 @target(erlang)
-/// A locale's bundles of zone names, most specific first, by its tag.
+/// Looks up a locale's name bundles by its tag, most specific first.
 @external(erlang, "glintl_generated_time_zones", "name_chain")
 pub fn name_chain(tag: String) -> List(Int)
 
@@ -432,7 +432,7 @@ fn long_names() -> Bundles
 fn short_names() -> Bundles
 
 @target(erlang)
-/// A byte for each zone key: 1 if any bundle has the zone's own long names.
+/// One byte per zone key, set to 1 if any bundle has the zone's own long names.
 @external(erlang, "glintl_generated_time_zones", "own_long_names")
 fn own_long_names() -> BitArray
 
@@ -479,12 +479,11 @@ const start_bits = 24
 const time_bits = 64
 
 @target(erlang)
-/// Each entry in a bundle is a key, then name numbers for standard and
-/// daylight saving time.
+/// Each bundle entry is a key, then name numbers for standard and summer time.
 const entry_bits = 48
 
 @target(erlang)
-/// Name number 1 stops a locale from using its parent's name. Real names
+/// Name number 1 stops a locale from using its parent's name, so real names
 /// start at 2.
 const blocked = 1
 
@@ -492,9 +491,9 @@ const blocked = 1
 const first_name = 2
 
 @target(erlang)
-/// A zone's name at a moment in a locale, like ICU's
-/// `TimeZoneNames::getDisplayName`: its own name if the locale has one, or
-/// else its metazone's. `Error(Nil)` means ICU would show the offset.
+/// This is ICU's `TimeZoneNames::getDisplayName`. It returns the zone's own
+/// name if the locale has one, or else its metazone's. `Error(Nil)` means ICU
+/// would show the offset.
 pub fn name(
   chain: List(Int),
   key: Int,
@@ -526,8 +525,8 @@ pub fn name(
 }
 
 @target(erlang)
-/// The name number for a key in the first bundle that has one, like ICU's
-/// `ZNamesLoader`.
+/// Like ICU's `ZNamesLoader`, it returns the name number from the first bundle
+/// in the chain that has one.
 fn find_name(
   table: Bundles,
   chain: List(Int),
@@ -558,8 +557,8 @@ fn find_name(
 }
 
 @target(erlang)
-/// The standard and daylight saving names for `key` in a bundle's sorted
-/// entries, found by binary search between `low` and `high`.
+/// Binary searches a bundle's sorted entries for `key` between `low` and
+/// `high`.
 fn entry(
   entries: BitArray,
   key: Int,
@@ -587,7 +586,7 @@ fn entry(
 }
 
 @target(erlang)
-/// The metazone a key is in at a moment, like ICU's `getMetaZoneID`.
+/// Finds the metazone a key is in at a moment. ICU calls this `getMetaZoneID`.
 fn metazone_at(periods: BitArray, unix_seconds: Int) -> Result(Int, Nil) {
   case periods {
     <<
@@ -605,8 +604,8 @@ fn metazone_at(periods: BitArray, unix_seconds: Int) -> Result(Int, Nil) {
 }
 
 @target(erlang)
-/// Where item `i` starts and ends. The data stores each item's start, then
-/// where the last one ends.
+/// The data stores each item's start, then where the last one ends, so item `i`
+/// runs from start `i` to start `i + 1`.
 fn span(starts: BitArray, i: Int) -> #(Int, Int) {
   let assert <<
     _:bits-size(i * start_bits),
@@ -618,7 +617,7 @@ fn span(starts: BitArray, i: Int) -> #(Int, Int) {
 }
 
 @target(erlang)
-/// A name's text, joined from its words.
+/// Joins a name's words into its text.
 fn name_text(n: Int) -> String {
   let #(from, to) = span(name_starts(), n - first_name)
   // The generator writes the words, so they're always valid UTF-8.
@@ -658,7 +657,7 @@ fn long_generic_names() -> Bundles
 fn short_generic_names() -> Bundles
 
 @target(erlang)
-/// A byte for each zone key: 1 if any bundle has the zone's own long
+/// One byte per zone key, set to 1 if any bundle has the zone's own long
 /// generic name.
 @external(erlang, "glintl_generated_time_zones", "own_long_generic_names")
 fn own_long_generic_names() -> BitArray
@@ -681,18 +680,18 @@ fn region_names() -> Bundles
 fn region_codes() -> data.HomogenousUnknownLengthTuple(String)
 
 @target(erlang)
-/// For each zone key, its country as a region number plus 1, or 0 for none,
-/// then 1 if it's the country's main zone.
+/// For each zone key, a 16-bit region number plus 1 (0 for no country), then 1
+/// if it's the country's main zone.
 @external(erlang, "glintl_generated_time_zones", "countries")
 fn countries() -> BitArray
 
 @target(erlang)
-/// Each metazone's zone key in each region, sorted by region.
+/// For each metazone, its zone in each region, sorted by region.
 @external(erlang, "glintl_generated_time_zones", "golden_zones")
 fn golden_zones() -> data.HomogenousUnknownLengthTuple(BitArray)
 
 @target(erlang)
-/// Each zone key's number in the rules.
+/// The rules number of each zone key.
 @external(erlang, "glintl_generated_time_zones", "key_zones")
 fn key_zones() -> BitArray
 
@@ -723,18 +722,17 @@ fn code_of(
 ) -> String
 
 @target(erlang)
-/// What a locale needs for location names, by its tag.
+/// Looks up what a locale needs for location names by its tag.
 @external(erlang, "glintl_generated_time_zones", "location")
 pub fn location(tag: String) -> data.Location
 
 @target(erlang)
-/// ICU's `kDstCheckRange`: a zone uses standard names if it has no summer
+/// ICU's `kDstCheckRange`. A zone uses its standard name if it has no summer
 /// time this close to the moment.
 const dst_check_range = 15_897_600
 
 @target(erlang)
-/// Each entry in a generic name, city or country table is a key, then a
-/// name number.
+/// Generic name, city and country entries are a key, then a name number.
 const single_bits = 32
 
 @target(erlang)
@@ -745,9 +743,8 @@ const country_bytes = 3
 const key_zone_bytes = 2
 
 @target(erlang)
-/// A zone's generic name at a moment, like ICU's
-/// `TimeZoneGenericNames::getDisplayName`. `Error(Nil)` means ICU would show
-/// the offset.
+/// This is ICU's `TimeZoneGenericNames::getDisplayName`. `Error(Nil)` means ICU
+/// would show the offset.
 pub fn generic_name(
   chain: List(Int),
   location: data.Location,
@@ -763,7 +760,7 @@ pub fn generic_name(
 }
 
 @target(erlang)
-/// ICU's `formatGenericNonLocationName`.
+/// This is ICU's `formatGenericNonLocationName`.
 fn non_location_name(
   chain: List(Int),
   location: data.Location,
@@ -839,9 +836,9 @@ fn standard_name(
 }
 
 @target(erlang)
-/// The metazone's generic name, or a partial location name like "Pacific
-/// Time (Canada)" if the zone's offset differs from the metazone's zone for
-/// the locale's region at the same wall time.
+/// Returns the metazone's generic name. If the zone's offset differs from the
+/// metazone's zone for the locale's region at the same wall time, it returns a
+/// partial location name like "Pacific Time (Canada)" instead.
 fn metazone_name(
   chain: List(Int),
   location: data.Location,
@@ -866,8 +863,8 @@ fn metazone_name(
 }
 
 @target(erlang)
-/// ICU's `getPartialLocationName`: the country if the zone is the metazone's
-/// zone there, or else the city.
+/// This is ICU's `getPartialLocationName`. It uses the country if the zone is
+/// the metazone's zone there, and the city otherwise.
 fn partial_location_name(
   chain: List(Int),
   location: data.Location,
@@ -895,8 +892,8 @@ fn partial_location_name(
 }
 
 @target(erlang)
-/// ICU's `getGenericLocationName`: the country for its main zone, and the
-/// city for the others.
+/// This is ICU's `getGenericLocationName`. It uses the country for a country's
+/// main zone and the city for the others.
 fn location_name(
   chain: List(Int),
   location: data.Location,
@@ -914,7 +911,7 @@ fn location_name(
 }
 
 @target(erlang)
-/// A zone's country, and whether it's the country's main zone.
+/// Returns a zone's country and whether it's the country's main zone.
 fn country_of(key: Int) -> Result(#(Int, Bool), Nil) {
   let assert <<_:bytes-size(key * country_bytes), region:16, main, _:bits>> =
     countries()
@@ -925,8 +922,8 @@ fn country_of(key: Int) -> Result(#(Int, Bool), Nil) {
 }
 
 @target(erlang)
-/// A country's name, or its code where the locale has none, like ICU's
-/// `LocaleDisplayNames::regionDisplayName`.
+/// This is ICU's `LocaleDisplayNames::regionDisplayName`. It uses the region's
+/// code if the locale has no name for it.
 fn country_name(location: data.Location, region: Int) -> String {
   case find_single(region_names(), location.regions, region) {
     Ok(n) -> label_text(n)
@@ -948,8 +945,8 @@ fn label_text(n: Int) -> String {
 }
 
 @target(erlang)
-/// ICU's `getReferenceZoneID`: a metazone's zone in a region, or else its
-/// zone for the world.
+/// This is ICU's `getReferenceZoneID`. It falls back to the metazone's zone for
+/// the world.
 fn golden_for(metazone: Int, region: Int) -> Result(Int, Nil) {
   let zones = golden_of(metazone + 1, golden_zones())
   case golden_in(zones, region) {
@@ -977,7 +974,7 @@ fn key_zone(key: Int) -> Int {
 }
 
 @target(erlang)
-/// Like `find_name`, for tables with one name for each key.
+/// Like `find_name`, for tables with one name per key.
 fn find_single(table: Bundles, chain: List(Int), key: Int) -> Result(Int, Nil) {
   case chain {
     [] -> Error(Nil)
@@ -1020,7 +1017,7 @@ fn single(
 }
 
 @target(erlang)
-/// How many seconds of a zone's offset are standard time, then summer time.
+/// Splits a zone's offset at a moment into standard and summer time seconds.
 fn offset_parts(zone: Int, unix_seconds: Int) -> #(Int, Int) {
   let Rules(transitions:, types:, type_map:, final:) =
     element(zone + 1, table())
@@ -1038,13 +1035,13 @@ fn offset_parts(zone: Int, unix_seconds: Int) -> #(Int, Int) {
 }
 
 @target(erlang)
-/// ICU's longest offset either way, `MAX_OFFSET_SECONDS`.
+/// The most a zone can be ahead or behind, from ICU's `MAX_OFFSET_SECONDS`.
 const max_offset = 86_400
 
 @target(erlang)
-/// Like `offset_parts`, at a wall time, like ICU's `getOffset` with `local`
-/// true. A wall time that happens twice, or not at all, gets the offset after
-/// the change.
+/// Like `offset_parts` at a wall time, the way ICU's `getOffset` works with
+/// `local` set. A wall time that happens twice or not at all gets the offset
+/// after the change.
 fn offset_parts_at_wall(zone: Int, wall_seconds: Int) -> #(Int, Int) {
   let Rules(transitions:, types:, type_map:, final:) =
     element(zone + 1, table())
@@ -1073,8 +1070,9 @@ fn offset_parts_at_wall(zone: Int, wall_seconds: Int) -> #(Int, Int) {
 }
 
 @target(erlang)
-/// ICU's `getHistoricalOffset` with `kFormer` and `kLatter`: the last change
-/// whose wall time, with the offset after it, is at or before `wall_seconds`.
+/// This is ICU's `getHistoricalOffset` with `kFormer` and `kLatter`. It finds
+/// the last change at or before `wall_seconds`, reading each change's time with
+/// the offset after it.
 fn historical_parts_at_wall(
   transitions: BitArray,
   types: BitArray,
@@ -1133,9 +1131,9 @@ fn type_parts(types: BitArray, type_: Int) -> #(Int, Int) {
 }
 
 @target(erlang)
-/// Whether a zone changes to or from summer time within `dst_check_range` of
-/// the moment, like ICU's check with `getPreviousTransition` and
-/// `getNextTransition`.
+/// Checks whether a zone changes to or from summer time within
+/// `dst_check_range` of the moment. ICU checks this with `getPreviousTransition`
+/// and `getNextTransition`.
 fn dst_nearby(zone: Int, unix_seconds: Int) -> Bool {
   let Rules(transitions:, types:, type_map:, final:) =
     element(zone + 1, table())

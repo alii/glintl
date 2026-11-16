@@ -1,7 +1,7 @@
-//// This module copies ICU's DateTimePatternGenerator, which picks a pattern
-//// for some fields. It also copies the way JavaScriptCore calls it.
-//// `codegen/matcher.ts` does the same, and the generator checks both against
-//// Intl. The JavaScript target uses only `Request`.
+//// This module copies the way JavaScriptCore asks ICU's
+//// `DateTimePatternGenerator` for a pattern that shows some fields.
+//// `codegen/matcher.ts` has the same code, and the generator checks both against
+//// Intl. JavaScript uses this module's `Request` type.
 
 @target(erlang)
 import gleam/bit_array
@@ -12,7 +12,7 @@ import gleam/list
 @target(erlang)
 import gleam/string
 
-/// The fields to show, as `Intl.DateTimeFormat` options like `"short"` or
+/// The fields to show as `Intl.DateTimeFormat` options like `"short"` or
 /// `"2-digit"`. A field that isn't shown is `""`, and no fraction is 0.
 pub type Request {
   Request(
@@ -27,7 +27,7 @@ pub type Request {
     second: String,
     fractional_second_digits: Int,
     time_zone_name: String,
-    /// `"h11"` to `"h24"`, or `""` for the locale's own.
+    /// `""` means the locale's default.
     hour_cycle: String,
   )
 }
@@ -65,7 +65,7 @@ const fractional_second = 14
 const zone = 15
 
 @target(erlang)
-/// What each kind of difference between fields costs, from ICU's
+/// How much each kind of difference between fields counts, from ICU's
 /// `dtptngen_impl.h`.
 const none = 0
 
@@ -97,7 +97,7 @@ const delta = 0x10
 const fix_fractional_seconds = 1
 
 @target(erlang)
-/// Masks of fields, with one bit for each field.
+/// Field masks have one bit for each field.
 const all_fields = -1
 
 @target(erlang)
@@ -113,13 +113,13 @@ const fractional_mask = 0x4000
 const second_and_fractional_mask = 0x6000
 
 @target(erlang)
-/// A pattern letter's field and how it compares, from ICU's `dtTypes`.
+/// A pattern letter's field and how it compares. ICU calls these `dtTypes`.
 type Row {
   Row(field: Int, kind: Int, min_length: Int)
 }
 
 @target(erlang)
-/// Each letter's rows, from the shortest.
+/// Each letter's rows, shortest first.
 fn rows(letter: String) -> List(Row) {
   case letter {
     "G" -> [Row(era, short, 1), Row(era, long, 4), Row(era, narrow, 5)]
@@ -229,7 +229,7 @@ fn rows(letter: String) -> List(Row) {
 }
 
 @target(erlang)
-/// A pattern letter's field, like `era` or `month`.
+/// Returns the field number for a pattern letter.
 pub fn field_of(letter: String) -> Result(Int, Nil) {
   case rows(letter) {
     [Row(field:, ..), ..] -> Ok(field)
@@ -238,8 +238,8 @@ pub fn field_of(letter: String) -> Result(Int, Nil) {
 }
 
 @target(erlang)
-/// Like ICU's `getCanonicalIndex`: finds the longest row a run is long enough
-/// for.
+/// This is ICU's `getCanonicalIndex`. It finds the longest row a run is long
+/// enough for.
 fn row(run: String) -> Result(Row, Nil) {
   // Pattern letters are ASCII, so a run's length is its byte size.
   case <<run:utf8>> {
@@ -253,7 +253,7 @@ fn row(run: String) -> Result(Row, Nil) {
 }
 
 @target(erlang)
-/// Bytes from here up are part of a character that takes more than one byte.
+/// Bytes from here up belong to characters longer than one byte.
 const ascii_end = 0x80
 
 @target(erlang)
@@ -263,7 +263,7 @@ fn ascii(c: Int) -> String {
 }
 
 @target(erlang)
-/// Counts how many bytes at the start are `c`, and adds `n`.
+/// Counts the bytes at the start that are `c`, plus `n`.
 fn same_bytes(bits: BitArray, c: Int, n: Int) -> Int {
   case bits {
     <<d, rest:bits>> if d == c -> same_bytes(rest, c, n + 1)
@@ -301,7 +301,7 @@ fn items(pattern: String) -> List(String) {
 }
 
 @target(erlang)
-/// Like `runs`, but faster. It works only on ASCII text, like skeletons.
+/// A faster `runs` for ASCII text such as skeletons.
 fn ascii_runs(bits: BitArray, out: List(String)) -> Result(List(String), Nil) {
   case bits {
     <<c, _:bits>> if c < ascii_end -> {
@@ -391,8 +391,8 @@ fn is_letter(c: String) -> Bool {
 }
 
 @target(erlang)
-/// Like ICU's `getQuoteLiteral`: joins a quoted run, quotes and all, from a
-/// list starting at its opening quote. Returns it and the items after it.
+/// This is ICU's `getQuoteLiteral`. Given items starting at an opening quote, it
+/// joins the quoted run with its quotes and returns it with the items after it.
 fn quote_literal(list: List(String)) -> #(String, List(String)) {
   case list {
     [first, ..rest] -> quoted(rest, first)
@@ -411,8 +411,8 @@ fn quoted(list: List(String), text: String) -> #(String, List(String)) {
 }
 
 @target(erlang)
-/// Whether a field is only separators. Like ICU, it looks for a dot in the
-/// item at each character's index, not in the character itself.
+/// Checks whether a field is only separators. Like ICU, it looks for a dot in
+/// the item at each character's index rather than in the character.
 fn is_separator(field: String, all: List(String)) -> Bool {
   field
   |> characters
@@ -431,14 +431,13 @@ fn is_separator(field: String, all: List(String)) -> Bool {
 // --- Skeletons ---------------------------------------------------------------
 
 @target(erlang)
-/// A field in a skeleton. `kind` and `base_length` come from the letter's
-/// row.
+/// A field in a skeleton. `kind` and `base_length` come from the letter's row.
 type Field {
   Field(field: Int, letter: String, length: Int, kind: Int, base_length: Int)
 }
 
 @target(erlang)
-/// The fields a skeleton has, by field number.
+/// The fields in a skeleton by field number.
 type Skeleton =
   List(Field)
 
@@ -471,7 +470,7 @@ fn length(skeleton: Skeleton, field: Int) -> Int {
 }
 
 @target(erlang)
-/// Like ICU's `DateTimeMatcher::set`.
+/// This is ICU's `DateTimeMatcher::set`.
 fn skeleton(pattern: String) -> Skeleton {
   let parsed = parse(items(pattern), [])
   let has = fn(s, field) { result_is_ok(get(s, field)) }
@@ -595,20 +594,20 @@ fn field_mask(skeleton: Skeleton) -> Int {
 // --- Matching ----------------------------------------------------------------
 
 @target(erlang)
-/// A stored pattern and the skeleton it's stored under. `specified` is set
+/// A stored pattern and the skeleton it's stored under. `specified` is true
 /// when CLDR gave the skeleton.
 pub opaque type Entry {
   Entry(skeleton: Skeleton, pattern: String, specified: Bool)
 }
 
 @target(erlang)
-/// Makes an entry from a skeleton, like `"yMMMd"`, and its pattern.
+/// Makes an entry from a skeleton such as `"yMMMd"` and its pattern.
 pub fn entry(skeleton_text: String, pattern: String, specified: Bool) -> Entry {
   Entry(skeleton(skeleton_text), pattern, specified)
 }
 
 @target(erlang)
-/// A locale's patterns and what joins them, in one calendar.
+/// A locale's patterns in one calendar, and what joins them.
 pub type Matcher {
   Matcher(
     entries: List(Entry),
@@ -629,12 +628,11 @@ type Best {
 }
 
 @target(erlang)
-/// A two-digit year, like `yy`.
 const two_digits = 2
 
 @target(erlang)
-/// ICU's `yearLengthIsCompatible`: a pattern stored for a two-digit numeric
-/// year, like "MMM d, ’yy", only suits a request for a two-digit year.
+/// This is ICU's `yearLengthIsCompatible`. A pattern stored for a two-digit
+/// numeric year like "MMM d, ’yy" only suits a request for a two-digit year.
 fn year_length_fits(want: Skeleton, trial: Skeleton) -> Bool {
   case get(want, year), get(trial, year) {
     Ok(w), Ok(t) if w.kind > none && t.kind > none ->
@@ -644,8 +642,8 @@ fn year_length_fits(want: Skeleton, trial: Skeleton) -> Bool {
 }
 
 @target(erlang)
-/// Like ICU's `getBestRaw`: the closest pattern, preferring ones missing less
-/// significant fields.
+/// This is ICU's `getBestRaw`. It finds the closest pattern, preferring ones
+/// that miss less significant fields.
 fn best(m: Matcher, want: Skeleton, mask: Int) -> Result(Best, Nil) {
   closest(m.entries, want, mask, Error(Nil), 0)
 }
@@ -702,8 +700,8 @@ fn specified(b: Best) -> Result(Skeleton, Nil) {
 }
 
 @target(erlang)
-/// Like ICU's `adjustFieldTypes`: gives the pattern's fields the requested
-/// lengths. JavaScriptCore only asks for hour lengths to be kept.
+/// This is ICU's `adjustFieldTypes`, which gives the pattern's fields the
+/// lengths asked for. JavaScriptCore only asks it to keep hour lengths.
 fn adjust(
   m: Matcher,
   pattern: String,
@@ -822,7 +820,8 @@ fn hour_letter(locale: String, letter: String, wanted: String) -> String {
 }
 
 @target(erlang)
-/// Like ICU's `mapSkeletonMetacharacters`, for the `j` JavaScriptCore uses.
+/// This is ICU's `mapSkeletonMetacharacters`, for the `j` that JavaScriptCore
+/// uses.
 fn map_metacharacters(m: Matcher, form: String) -> String {
   form
   |> items
@@ -849,7 +848,7 @@ fn map_metacharacters(m: Matcher, form: String) -> String {
 }
 
 @target(erlang)
-/// The highest field in a mask, like ICU's `getTopBitNumber`.
+/// Finds the highest field in a mask. ICU calls this `getTopBitNumber`.
 fn top_bit(mask: Int, i: Int) -> Int {
   case mask > 1 {
     True -> top_bit(int.bitwise_shift_right(mask, 1), i + 1)
@@ -858,8 +857,8 @@ fn top_bit(mask: Int, i: Int) -> Int {
 }
 
 @target(erlang)
-/// Like ICU's `getBestAppending`: finds patterns for the fields in `mask`,
-/// joining any missing ones on with append items.
+/// This is ICU's `getBestAppending`. It finds patterns for the fields in `mask`
+/// and joins any missing fields on with append items.
 fn appending(m: Matcher, want: Skeleton, mask: Int) -> Result(String, Nil) {
   case mask {
     0 -> Ok("")
@@ -950,8 +949,8 @@ fn at(items: List(String), index: Int) -> String {
 }
 
 @target(erlang)
-/// Like ICU's `SimpleFormatter`: fills in `{0}` and so on. An apostrophe
-/// quotes braces, and two make one.
+/// This is ICU's `SimpleFormatter`, which fills in `{0}` and so on. An
+/// apostrophe quotes braces, and two apostrophes make one.
 pub fn simple_format(pattern: String, args: List(String)) -> String {
   fill(characters(pattern), args, False, "")
 }
@@ -1001,7 +1000,8 @@ fn base_length(skeleton: Skeleton, field: Int) -> Int {
 }
 
 @target(erlang)
-/// Like ICU's `getBestPattern`. It fails if ICU would read outside its data.
+/// This is ICU's `getBestPattern`. It fails where ICU would read outside its
+/// data.
 fn best_pattern(m: Matcher, form: String) -> Result(String, Nil) {
   let want = skeleton(map_metacharacters(m, form))
   use raw <- result_try(best(m, want, all_fields))
@@ -1089,7 +1089,7 @@ fn zone_letters(name: String) -> String {
 }
 
 @target(erlang)
-/// JavaScriptCore's `buildSkeleton`, without defaults.
+/// This is JavaScriptCore's `buildSkeleton`, without its defaults.
 fn jsc_skeleton(r: Request) -> String {
   let hour_letter = case r.hour_cycle {
     "" -> "j"
@@ -1117,8 +1117,9 @@ fn is_hour_letter(c: String) -> Bool {
 }
 
 @target(erlang)
-/// JavaScriptCore's `replaceHourCycleInPattern`: uses the hour cycle's
-/// letter, and makes a lone 12 hour letter two long for a 24 hour clock.
+/// This is JavaScriptCore's `replaceHourCycleInPattern`. It uses the hour
+/// cycle's letter, and makes a lone 12 hour letter two long for a 24 hour
+/// clock.
 fn replace_hour_cycle(pattern: String, cycle: String) -> String {
   case cycle {
     "" -> pattern
@@ -1182,7 +1183,7 @@ fn skip_quoted(chars: List(String), text: String) -> #(String, List(String)) {
 }
 
 @target(erlang)
-/// The pattern JavaScriptCore formats with for some fields.
+/// Returns the pattern JavaScriptCore formats with for some fields.
 pub fn pattern(m: Matcher, r: Request) -> Result(String, Nil) {
   use found <- result_try(best_pattern(m, jsc_skeleton(r)))
   Ok(replace_hour_cycle(found, r.hour_cycle))
@@ -1191,14 +1192,14 @@ pub fn pattern(m: Matcher, r: Request) -> Result(String, Nil) {
 // --- Pieces ------------------------------------------------------------------
 
 @target(erlang)
-/// A piece of a pattern: text, or a run of one letter like `MMM`.
+/// A piece of a pattern is text or a run of one letter like `MMM`.
 pub type Piece {
   Text(String)
   Run(letter: String, length: Int)
 }
 
 @target(erlang)
-/// Splits a pattern the way ICU's SimpleDateFormat reads it. Two apostrophes
+/// Splits a pattern the way ICU's `SimpleDateFormat` reads it. Two apostrophes
 /// make one, and text between apostrophes is quoted. JavaScriptCore writes
 /// narrow and thin spaces as plain ones.
 pub fn pieces(pattern: String) -> List(Piece) {
@@ -1249,8 +1250,8 @@ const has_era = 2
 const has_minutes = 4
 
 @target(erlang)
-/// The flags in a run's key, like `runKey` in `codegen/matcher.ts`, for
-/// tokens that depend on their pattern:
+/// Returns the flags in a run's key, like `runKey` in `codegen/matcher.ts`. They
+/// mark tokens that depend on their pattern:
 ///
 /// - ICU writes Japanese year 1 as 元 when the pattern has 年 anywhere.
 /// - JavaScriptCore changes years in some calendars when the pattern has an
@@ -1280,7 +1281,6 @@ pub fn run_flags(letter: String, pattern: String, pieces: List(Piece)) -> Int {
 }
 
 @target(erlang)
-/// Whether a pattern's pieces have an era.
 pub fn has_era_run(pieces: List(Piece)) -> Bool {
   has_run(pieces, fn(l) { l == "G" })
 }
@@ -1296,8 +1296,8 @@ fn has_run(pieces: List(Piece), letter: fn(String) -> Bool) -> Bool {
 }
 
 @target(erlang)
-/// Whether text ends in a character Unicode calls white space. JavaScriptCore
-/// checks this before it adds its own era.
+/// Checks whether text ends in a character Unicode calls white space.
+/// JavaScriptCore checks this before it adds its own era.
 pub fn ends_with_space(text: String) -> Bool {
   case list.last(characters(text)) {
     Ok(c) -> is_space(c)
@@ -1323,13 +1323,12 @@ fn is_space(c: String) -> Bool {
 }
 
 @target(erlang)
-/// JavaScriptCore's era workaround. Bun's JavaScriptCore writes its own era
-/// before a set instant, because ICU never picks that era. For Islamic
-/// calendars it replaces ICU's era and writes the year as 1 minus ICU's, in
-/// ASCII digits. Coptic's first era has no name in ICU, so JavaScriptCore adds
-/// its era to the end. JavaScriptCore applies the workaround only when the
-/// pattern has an era.
-/// `codegen/matcher.ts` does the same.
+/// Bun's JavaScriptCore writes its own era before a set moment, because ICU
+/// never picks that era. It only does this when the pattern has an era.
+///
+/// For the Islamic calendars, it replaces ICU's era and writes the year in ASCII
+/// digits as 1 minus ICU's year. Coptic's first era has no name in ICU, so it
+/// adds its era to the end. `codegen/matcher.ts` does the same.
 pub type EraWorkaround {
   NoEraWorkaround
   Replaces(before_ms: Int, text: String)
@@ -1337,8 +1336,7 @@ pub type EraWorkaround {
 }
 
 @target(erlang)
-/// Picks the era workaround for a calendar from ICU's name for it, like
-/// `"coptic"`.
+/// Picks a calendar's era workaround from ICU's name for the calendar.
 pub fn era_workaround(calendar: String) -> EraWorkaround {
   case calendar {
     "islamic-civil" | "islamic-umalqura" ->
@@ -1350,8 +1348,8 @@ pub fn era_workaround(calendar: String) -> EraWorkaround {
 }
 
 @target(erlang)
-/// Splits text into code points, like ICU, so an apostrophe with an accent on
-/// it still counts as an apostrophe.
+/// Splits text into code points like ICU does, so an apostrophe with an accent
+/// on it still counts as an apostrophe.
 fn characters(text: String) -> List(String) {
   text
   |> string.to_utf_codepoints

@@ -1,4 +1,4 @@
-//// Reads an `Accept-Language` header, like `"fr-CH, fr;q=0.9, en;q=0.8"`.
+//// Reads `Accept-Language` headers like `"fr-CH, fr;q=0.9, en;q=0.8"`.
 
 import gleam/float
 import gleam/int
@@ -6,11 +6,11 @@ import gleam/list
 import gleam/pair
 import gleam/string
 
-/// The highest weight, given to tags without a `q`.
+/// Tags without a `q` get the highest weight.
 const highest = 1.0
 
-/// The header's language tags, most wanted first. It leaves out `*` and any
-/// tag whose weight is 0 or less or isn't a number.
+/// Returns the header's tags, most wanted first. It skips `*` and tags whose
+/// weight is 0 or less or isn't a number.
 pub fn tags(header: String) -> List(String) {
   header
   |> string.split(",")
@@ -31,7 +31,6 @@ fn weighted(item: String) -> Result(#(String, Float), Nil) {
   }
 }
 
-/// The `q` parameter, or the highest weight if there isn't one.
 fn weight(parameters: List(String)) -> Result(Float, Nil) {
   case parameters {
     [] -> Ok(highest)

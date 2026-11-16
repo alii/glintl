@@ -57,8 +57,7 @@ pub fn fields_example_test() {
     == "Sunday 25 October"
 }
 
-/// Like Intl, with no date or time part a formatter shows a numeric date.
-/// The examples in the docs, at the moment they assume.
+/// These tests check the examples in the docs are correct.
 pub fn doc_examples_test() {
   let assert Ok(now) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
   let assert Ok(summer) = timestamp.parse_rfc3339("2026-07-25T22:40:58Z")
@@ -90,8 +89,17 @@ pub fn doc_examples_test() {
     |> date_time.date_formatter(style: date_time.Short)
     |> date_time.format(now, zone: utc)
     == "1405/8/3"
+  assert glintl.calendar_from_name("hebrew") == Ok(glintl.Hebrew)
   assert glintl.calendar_from_name("islamic") == Ok(glintl.IslamicTabular)
   assert glintl.calendar_name(glintl.Hebrew) == "hebrew"
+  assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
+  assert glintl.locale_hour_cycle(en.locale()) == glintl.H12
+  assert glintl.numbering_system("roman") == Error(Nil)
+  assert glintl.locale_tag(en_gb.locale()) == "en-GB"
+  let assert Ok(japanese) = locales.from_tag("ja-JP-u-ca-japanese")
+  assert glintl.locale_tag(japanese) == "ja"
+  // glintl/time_zone
+  assert time_zone.from_name("Mars/Olympus_Mons") == Error(Nil)
   // glintl/date_time
   assert date_time.date_time_formatter(
       en_gb.locale(),
@@ -123,11 +131,11 @@ pub fn doc_examples_test() {
     |> date_time.format(now, zone: utc)
     == "25 Oct"
   let long_parts = [
-    glintl.Day("25"),
-    glintl.Literal(" "),
-    glintl.Month("October"),
-    glintl.Literal(" "),
-    glintl.Year("2026"),
+    date_time.Day("25"),
+    date_time.Literal(" "),
+    date_time.Month("October"),
+    date_time.Literal(" "),
+    date_time.Year("2026"),
   ]
   assert date_time.date_formatter(en_gb.locale(), style: date_time.Long)
     |> date_time.format_to_parts(now, zone: utc)
@@ -141,7 +149,7 @@ pub fn doc_examples_test() {
     |> date_time.format_to_parts(summer, zone:)
     |> list.find_map(fn(part) {
       case part {
-        glintl.TimeZoneName(text) -> Ok(text)
+        date_time.TimeZoneName(text) -> Ok(text)
         _ -> Error(Nil)
       }
     })
@@ -165,8 +173,30 @@ pub fn doc_examples_test() {
       #(Ok("United Kingdom Time"), Ok("GMT+1")),
       #(Ok("British Time"), Ok("GMT+01:00")),
     ]
+  let assert Ok(late) = timestamp.parse_rfc3339("2026-10-25T22:40:58.98Z")
+  assert date_time.new()
+    |> date_time.second(glintl.Numeric)
+    |> date_time.fractional_second(date_time.Tenths)
+    |> date_time.fields_formatter(en.locale(), _)
+    |> date_time.format(late, zone: utc)
+    == "58.9"
+  let hour_and_words = fn(locale) {
+    date_time.new()
+    |> date_time.hour(glintl.Numeric)
+    |> date_time.day_period(glintl.Long)
+    |> date_time.fields_formatter(locale, _)
+    |> date_time.format(now, zone: utc)
+  }
+  assert hour_and_words(en.locale()) == "10 at night"
+  assert hour_and_words(en.locale() |> glintl.with_hour_cycle(glintl.H23))
+    == "22"
   // glintl/date
   let day = calendar.Date(2026, calendar.October, 25)
+  assert date.new()
+    |> date.era(glintl.Short)
+    |> date.fields_formatter(en.locale(), _)
+    |> date.format(day)
+    == "10/25/2026 AD"
   assert date.date_formatter(en_gb.locale(), style: date.Long)
     |> date.format(day)
     == "25 October 2026"
@@ -194,7 +224,13 @@ pub fn doc_examples_test() {
     == "25 Oct"
   assert date.date_formatter(en_gb.locale(), style: date.Long)
     |> date.format_to_parts(day)
-    == long_parts
+    == [
+      date.Day("25"),
+      date.Literal(" "),
+      date.Month("October"),
+      date.Literal(" "),
+      date.Year("2026"),
+    ]
   assert date.date_formatter(en_gb.locale(), style: date.Long)
     |> date.format(calendar.Date(2026, calendar.February, 31))
     == "3 March 2026"
@@ -212,17 +248,17 @@ pub fn parts_test() {
   let parts = date_time.format_to_parts(formatter, moment, zone:)
   assert parts
     == [
-      glintl.Day("25"),
-      glintl.Literal(" "),
-      glintl.Month("October"),
-      glintl.Literal(" "),
-      glintl.Year("2026"),
-      glintl.Literal(" at "),
-      glintl.Hour("23"),
-      glintl.Literal(":"),
-      glintl.Minute("40"),
+      date_time.Day("25"),
+      date_time.Literal(" "),
+      date_time.Month("October"),
+      date_time.Literal(" "),
+      date_time.Year("2026"),
+      date_time.Literal(" at "),
+      date_time.Hour("23"),
+      date_time.Literal(":"),
+      date_time.Minute("40"),
     ]
-  assert string.concat(list.map(parts, glintl.part_text))
+  assert string.concat(list.map(parts, date_time.part_text))
     == date_time.format(formatter, moment, zone:)
 }
 
@@ -236,7 +272,7 @@ pub fn date_parts_test() {
       _,
     )
   assert date.format_to_parts(formatter, calendar.Date(2019, calendar.May, 1))
-    == [glintl.Era("令和"), glintl.Year("元"), glintl.Literal("年")]
+    == [date.Era("令和"), date.Year("元"), date.Literal("年")]
 }
 
 pub fn numbering_system_test() {
@@ -290,6 +326,7 @@ pub fn tag_settings_test() {
   assert glintl.locale_calendar(negotiated) == glintl.Buddhist
 }
 
+/// Like Intl, a formatter with no date or time fields shows a numeric date.
 pub fn default_fields_test() {
   let midday = timestamp.from_unix_seconds(1_792_929_600)
   let format = fn(fields) {
@@ -420,7 +457,7 @@ pub fn local_test() {
 }
 
 @target(erlang)
-/// On Erlang, `TZ` wins over the system's settings, as a name or a path.
+/// On Erlang, `TZ` beats the system's settings. It can be a name or a path.
 pub fn local_from_tz_test() {
   assert with_tz("Asia/Tokyo", time_zone.local)
     == time_zone.from_name("Asia/Tokyo")
@@ -433,8 +470,7 @@ pub fn local_from_tz_test() {
 @external(erlang, "glintl_test_ffi", "with_tz")
 fn with_tz(value: String, run: fn() -> a) -> a
 
-/// A named zone's offset follows summer time and old local mean time. Local
-/// mean time offsets can include seconds.
+/// Old local mean time offsets can include seconds.
 pub fn named_zone_test() {
   let time = fn(zone_name, rfc3339) {
     let assert Ok(zone) = time_zone.from_name(zone_name)
@@ -454,8 +490,7 @@ pub fn named_zone_test() {
   assert time("Asia/Kolkata", "2026-07-15T00:00:00Z") == "05:30:00"
 }
 
-/// Named zones show their names in the locale. Fixed offsets, and zones the
-/// locale has no name for, show the offset.
+/// Fixed offsets and zones the locale has no name for show the offset.
 pub fn zone_names_test() {
   let assert Ok(summer) = timestamp.parse_rfc3339("2026-07-15T12:00:00Z")
   let assert Ok(winter) = timestamp.parse_rfc3339("2026-01-15T12:00:00Z")
@@ -486,8 +521,7 @@ pub fn zone_names_test() {
     == "13:00:00 GMT+01:00"
 }
 
-/// Offsets must be under 24 hours either way, because that's all JavaScript's
-/// `Intl` allows.
+/// Intl only allows offsets under 24 hours either way.
 pub fn offset_test() {
   assert time_zone.offset(hours: 5, minutes: 30) |> result.is_ok
   assert time_zone.offset(hours: -3, minutes: -30) |> result.is_ok
@@ -509,7 +543,7 @@ pub fn offset_test() {
     == Error(time_zone.OffsetTooLarge)
 }
 
-/// Locales can be compared and used as `Dict` keys on both targets.
+/// Locales need to work as `Dict` keys on both targets.
 pub fn locale_equality_test() {
   let hebrew = glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
   assert en_gb.locale() == en_gb.locale()
@@ -544,8 +578,8 @@ pub fn calendar_test() {
     == "2025乙巳年闰六月8"
 }
 
-/// On Erlang, calendars with their own months cover the years 1 to 4000.
-/// glintl writes other days in the Gregorian calendar.
+/// On Erlang, calendars with their own months only cover the years 1 to 4000.
+/// Other days are written in the Gregorian calendar.
 pub fn outside_calendar_tables_test() {
   let assert Ok(year_5000) = timestamp.parse_rfc3339("5000-01-01T12:00:00Z")
   let hebrew =
@@ -656,7 +690,6 @@ pub fn field_fixtures_test() {
   assert list.take(failures, 30) == []
 }
 
-/// Reads fields from a fixture, like `day=numeric,month=short`.
 fn parse_fields(text: String) -> date_time.Fields {
   text
   |> string.split(",")
@@ -711,8 +744,7 @@ fn digits(value: String) -> glintl.Digits {
 }
 
 @target(erlang)
-/// Checks the Erlang calendar maths field by field. JavaScript uses `Intl`
-/// for this, so only Erlang needs the check.
+/// JavaScript uses Intl for calendar maths, so only Erlang needs this.
 pub fn calendar_fields_test() {
   let failures =
     calendar_fixtures.cases()
@@ -745,7 +777,6 @@ fn result_tag(result: Result(glintl.Locale, Nil)) -> Result(String, Nil) {
   }
 }
 
-/// The calendar for an ICU calendar name, which the fixtures use.
 fn calendar_from_id(id: String) -> glintl.Calendar {
   case id {
     "gregory" -> glintl.Gregorian
@@ -768,7 +799,7 @@ fn calendar_from_id(id: String) -> glintl.Calendar {
   }
 }
 
-/// Reads a style from a fixture, where 1 is full and 4 is short.
+/// Fixtures number styles from 1 for full to 4 for short.
 fn style(index: Int) -> date_time.Style {
   case index {
     1 -> date_time.Full

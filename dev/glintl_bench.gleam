@@ -1,7 +1,6 @@
-//// Measures how much formatting allocates, how long it takes, and how many
-//// reductions it uses. Reductions count the work Erlang does, so they stay
-//// the same from run to run. The bench measures memory and reductions only on
-//// Erlang.
+//// Measures how much formatting allocates, how long it takes and how many
+//// reductions it uses. A reduction is a unit of work in Erlang, so the count is
+//// the same on every run. Memory and reductions are only measured on Erlang.
 ////
 ////   gleam run -m glintl_bench
 
@@ -17,14 +16,14 @@ import glintl/locale/fa
 import glintl/locale/ja
 import glintl/time_zone
 
-/// The first date is 14 November 2023, and the rest follow a week apart.
+/// 14 November 2023. The other dates follow a week apart.
 const first_date = 1_700_000_000
 
 const seconds_per_week = 604_800
 
 const dates_per_run = 90
 
-/// How many runs to time, because one run is too quick to time well.
+/// One run is too quick to time well.
 const timed_runs = 1000
 
 const microseconds_per_millisecond = 1000.0
@@ -140,8 +139,7 @@ fn formatter() -> date_time.Formatter {
   )
 }
 
-/// Shows the same fields as `formatter`, so the two timings compare like with
-/// like.
+/// Shows the same fields as `formatter`, so the two timings are fair to compare.
 fn fields_formatter() -> date_time.Formatter {
   date_time.new()
   |> date_time.day(glintl.Numeric)
@@ -160,7 +158,6 @@ fn per(micros: Int, count: Int) -> String {
   <> " µs"
 }
 
-/// Formats the dates, `times` times over, with one formatter.
 fn format_dates(times: Int) -> Nil {
   format_dates_in(formatter(), times, zone())
 }

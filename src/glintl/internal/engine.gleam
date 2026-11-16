@@ -1,12 +1,12 @@
-//// The engine behind `glintl/date` and `glintl/date_time`. It turns picked
-//// fields or styles into a formatter, and formats with it.
+//// The shared code behind `glintl/date` and `glintl/date_time`.
 
+@target(erlang)
 import gleam/list
 @target(erlang)
 import gleam/option.{type Option, None, Some}
 @target(erlang)
 import gleam/result
-import glintl.{type DateTimePart, type Locale}
+import glintl.{type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
@@ -15,17 +15,14 @@ import glintl/internal/zones
 import glintl/time_zone.{type TimeZone}
 
 @target(erlang)
-/// A compiled formatter, the locale's bundles of zone names, and what it
-/// needs for location names.
 pub type Compiled {
   Compiled(rendered: render.Compiled, names: List(Int), location: data.Location)
 }
 
 @target(javascript)
-/// An `Intl.DateTimeFormat` for each time zone.
+/// Holds an `Intl.DateTimeFormat` for each time zone it has formatted in.
 pub type Compiled
 
-/// No fields picked yet.
 pub const no_fields =
   matcher.Request(
     weekday: "",
@@ -42,7 +39,6 @@ pub const no_fields =
     hour_cycle: "",
   )
 
-/// Intl's value for a number with as many digits as it needs.
 const numeric = "numeric"
 
 pub fn width(width: glintl.Width) -> String {
@@ -60,13 +56,11 @@ pub fn digits(digits: glintl.Digits) -> String {
   }
 }
 
-/// A formatter for a date style, a time style or both.
 pub fn styles(locale: Locale, shown: render.Shown) -> Compiled {
   compile(locale, shown)
 }
 
-/// A formatter for fields. Like Intl, it shows a numeric year, month and day
-/// when no date or time field is picked.
+/// Like Intl, a request with no date or time field shows a numeric date.
 pub fn fields(locale: Locale, request: matcher.Request) -> Compiled {
   let request =
     matcher.Request(
@@ -106,7 +100,6 @@ fn any_set(options: List(String)) -> Bool {
   }
 }
 
-/// Formats a moment as the clocks in `zone` show it.
 pub fn format(
   compiled: Compiled,
   seconds: Int,
@@ -116,13 +109,14 @@ pub fn format(
   do_format(compiled, seconds, nanoseconds, zone)
 }
 
-/// Like `format`, in parts.
+/// Parts come back as Intl's name for their type and their text, such as
+/// `#("weekday", "Sunday")`.
 pub fn format_to_parts(
   compiled: Compiled,
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DateTimePart) {
+) -> List(#(String, String)) {
   do_format_to_parts(compiled, seconds, nanoseconds, zone)
 }
 
@@ -150,8 +144,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
 }
 
 @target(erlang)
-/// The decimal separator for the numbering system set on the locale, where it
-/// isn't the locale's own, like "٫" with Arabic digits.
+/// `None` means the locale's default decimal separator.
 fn decimal(locale: Locale) -> Option(String) {
   case glintl.numbering_system_number(locale) {
     None -> None
@@ -162,8 +155,7 @@ fn decimal(locale: Locale) -> Option(String) {
 }
 
 @target(erlang)
-/// A locale's decimal separators that change with the numbering system, by
-/// digits number.
+/// Decimal separators that differ from the locale's default, by digits number.
 @external(erlang, "glintl_generated_data", "decimals")
 fn decimals(tag: String) -> List(#(Int, String))
 
@@ -191,8 +183,7 @@ fn with_numbering_system(
 }
 
 @target(erlang)
-/// A locale's own minus sign, then the ones that change with the numbering
-/// system, by digits number.
+/// The locale's default minus sign, then the ones that differ, by digits number.
 @external(erlang, "glintl_generated_data", "minus_signs")
 fn minus_signs(tag: String) -> #(String, List(#(Int, String)))
 
@@ -252,7 +243,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
 }
 
 @target(javascript)
-/// An empty style, `""`, leaves that part out.
+/// Pass `""` for a style to leave it out.
 @external(javascript, "../../glintl_ffi.mjs", "formatter")
 fn intl_formatter(
   tag: String,
@@ -264,7 +255,6 @@ fn intl_formatter(
 ) -> Compiled
 
 @target(javascript)
-/// `dateStyle` and `timeStyle` for `Intl.DateTimeFormat`.
 fn intl_style(style: data.Style) -> String {
   case style {
     data.Full -> "full"
@@ -275,7 +265,6 @@ fn intl_style(style: data.Style) -> String {
 }
 
 @target(erlang)
-/// How a calendar maps days to its own dates.
 pub fn calendar_math(calendar: glintl.Calendar) -> data.Math {
   case calendar {
     glintl.Gregorian -> data.gregorian
@@ -396,7 +385,7 @@ fn do_format_to_parts(
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DateTimePart) {
+) -> List(#(String, String)) {
   let #(offset, names) = zone_at(compiled, zone, seconds)
   render.render_parts(
     compiled.rendered,
@@ -405,11 +394,10 @@ fn do_format_to_parts(
     offset,
     names,
   )
-  |> list.map(fn(part) { date_time_part(part.0, part.1) })
+  |> list.map(fn(part) { #(intl_type(part.0), part.1) })
 }
 
 @target(erlang)
-/// The zone's offset at a moment, and where to find its name.
 fn zone_at(
   compiled: Compiled,
   zone: TimeZone,
@@ -432,23 +420,23 @@ fn zone_at(
 }
 
 @target(erlang)
-fn date_time_part(kind: render.PartKind, text: String) -> DateTimePart {
+fn intl_type(kind: render.PartKind) -> String {
   case kind {
-    render.EraPart -> glintl.Era(text)
-    render.YearPart -> glintl.Year(text)
-    render.RelatedYearPart -> glintl.RelatedYear(text)
-    render.YearNamePart -> glintl.YearName(text)
-    render.MonthPart -> glintl.Month(text)
-    render.DayPart -> glintl.Day(text)
-    render.WeekdayPart -> glintl.Weekday(text)
-    render.DayPeriodPart -> glintl.DayPeriod(text)
-    render.HourPart -> glintl.Hour(text)
-    render.MinutePart -> glintl.Minute(text)
-    render.SecondPart -> glintl.Second(text)
-    render.FractionalSecondPart -> glintl.FractionalSecond(text)
-    render.TimeZoneNamePart -> glintl.TimeZoneName(text)
-    render.LiteralPart -> glintl.Literal(text)
-    render.UnknownPart -> glintl.Unknown(text)
+    render.EraPart -> "era"
+    render.YearPart -> "year"
+    render.RelatedYearPart -> "relatedYear"
+    render.YearNamePart -> "yearName"
+    render.MonthPart -> "month"
+    render.DayPart -> "day"
+    render.WeekdayPart -> "weekday"
+    render.DayPeriodPart -> "dayPeriod"
+    render.HourPart -> "hour"
+    render.MinutePart -> "minute"
+    render.SecondPart -> "second"
+    render.FractionalSecondPart -> "fractionalSecond"
+    render.TimeZoneNamePart -> "timeZoneName"
+    render.LiteralPart -> "literal"
+    render.UnknownPart -> "unknown"
   }
 }
 
@@ -468,36 +456,13 @@ fn do_format_to_parts(
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DateTimePart) {
+) -> List(#(String, String)) {
   intl_format_to_parts(
     compiled,
     seconds,
     nanoseconds,
     time_zone.intl_time_zone(zone),
   )
-  |> list.map(fn(part) { intl_part(part.0, part.1) })
-}
-
-@target(javascript)
-/// A part from Intl's `formatToParts`, by its type.
-fn intl_part(kind: String, text: String) -> DateTimePart {
-  case kind {
-    "era" -> glintl.Era(text)
-    "year" -> glintl.Year(text)
-    "relatedYear" -> glintl.RelatedYear(text)
-    "yearName" -> glintl.YearName(text)
-    "month" -> glintl.Month(text)
-    "day" -> glintl.Day(text)
-    "weekday" -> glintl.Weekday(text)
-    "dayPeriod" -> glintl.DayPeriod(text)
-    "hour" -> glintl.Hour(text)
-    "minute" -> glintl.Minute(text)
-    "second" -> glintl.Second(text)
-    "fractionalSecond" -> glintl.FractionalSecond(text)
-    "timeZoneName" -> glintl.TimeZoneName(text)
-    "literal" -> glintl.Literal(text)
-    _ -> glintl.Unknown(text)
-  }
 }
 
 @target(javascript)

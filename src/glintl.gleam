@@ -1,6 +1,6 @@
-//// Pick the language, calendar, hour cycle and digits that glintl formats in.
-////
-//// Format dates and times with `glintl/date_time`.
+//// This module is for choosing how a locale formats dates and times. You can
+//// change its calendar, switch to a 24 hour clock or write numbers with other
+//// digits.
 ////
 //// ```gleam
 //// import glintl
@@ -18,25 +18,21 @@ import gleam/string
 import glintl/internal/render
 
 @target(erlang)
-/// A language and region to format for, such as British English.
+/// A language and region to format dates and times for.
 ///
-/// Get one from a locale module, like `glintl/locale/en_gb`, or by tag from
-/// `glintl/locales`.
+/// Each locale has its own module in `glintl/locale`. To pick one while your
+/// program is running, use `glintl/locales`.
 pub opaque type Locale {
   Locale(
     tag: String,
     calendar: Calendar,
-    /// `None` for the locale's own hour cycle.
     hour_cycle: Option(HourCycle),
-    /// `None` for the locale's own numbering system.
     numbering_system: Option(NumberingSystem),
-    /// The locale's number in glintl's packed data.
     data: Int,
   )
 }
 
 @target(javascript)
-/// On JavaScript a locale holds no data, because `Intl.DateTimeFormat` has it.
 pub opaque type Locale {
   Locale(
     tag: String,
@@ -47,112 +43,70 @@ pub opaque type Locale {
 }
 
 @target(erlang)
-/// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, data: Int) -> Locale {
   Locale(tag:, calendar:, hour_cycle: None, numbering_system: None, data:)
 }
 
 @target(javascript)
-/// Make a locale. Used by the generated locale modules.
 @internal
 pub fn new_locale(tag: String, calendar: Calendar, _data: Int) -> Locale {
   Locale(tag:, calendar:, hour_cycle: None, numbering_system: None)
 }
 
-/// The BCP 47 tag of a locale, such as `"en-GB"`.
+/// Get the BCP 47 tag of a locale.
+///
+/// ```gleam
+/// glintl.locale_tag(en_gb.locale())
+/// // -> "en-GB"
+/// ```
+///
+/// The tag leaves out settings like the calendar. A locale from
+/// `"ja-JP-u-ca-japanese"` has the tag `"ja"`.
 pub fn locale_tag(locale: Locale) -> String {
   locale.tag
 }
 
-/// How wide a name is, like Intl's `"narrow"`, `"short"` and `"long"`. In
-/// British English, a weekday is `Narrow` "S", `Short` "Sun" or `Long`
-/// "Sunday".
+/// How long a name is.
+///
+/// Sunday in British English is "S" when `Narrow`, "Sun" when `Short` and
+/// "Sunday" when `Long`.
 pub type Width {
   Narrow
   Short
   Long
 }
 
-/// How a number is written, like Intl's `"numeric"` and `"2-digit"`.
-/// `Numeric` has as many digits as it needs, and `TwoDigit` always has two,
-/// like "05", or a year's last two, like "26".
+/// How many digits to write a number with.
+///
+/// `Numeric` uses as many digits as the number needs. `TwoDigit` pads a number
+/// to two digits, so 5 becomes "05". For years, it keeps the last two digits, so
+/// 2026 becomes "26".
 pub type Digits {
   Numeric
   TwoDigit
 }
 
-/// A piece of a formatted date or time, like Intl's `formatToParts`. Each
-/// piece has its text, so you can style one kind, like bold weekdays.
+/// A calendar system for numbering years, months and days.
 ///
-/// ```gleam
-/// [Day("25"), Literal(" "), Month("October"), Literal(" "), Year("2026")]
-/// ```
-pub type DateTimePart {
-  Era(String)
-  Year(String)
-  /// The Gregorian year in a calendar with cyclic years, like 2026 in the
-  /// Chinese calendar.
-  RelatedYear(String)
-  /// A cyclic year's name, like 丙午 in the Chinese calendar.
-  YearName(String)
-  Month(String)
-  Day(String)
-  Weekday(String)
-  /// Like "am" or "in the morning".
-  DayPeriod(String)
-  Hour(String)
-  Minute(String)
-  Second(String)
-  FractionalSecond(String)
-  TimeZoneName(String)
-  /// Text that's the same for every date, like spaces and commas.
-  Literal(String)
-  /// A field Intl has no kind for, like the week-based year.
-  Unknown(String)
-}
-
-/// The text of a part.
-pub fn part_text(part: DateTimePart) -> String {
-  case part {
-    Era(text)
-    | Year(text)
-    | RelatedYear(text)
-    | YearName(text)
-    | Month(text)
-    | Day(text)
-    | Weekday(text)
-    | DayPeriod(text)
-    | Hour(text)
-    | Minute(text)
-    | Second(text)
-    | FractionalSecond(text)
-    | TimeZoneName(text)
-    | Literal(text)
-    | Unknown(text) -> text
-  }
-}
-
-/// The calendars glintl can format dates in.
+/// Most locales use the Gregorian calendar, but some use another one by default.
+/// For example, Thai uses the Buddhist calendar and Persian uses the Persian
+/// calendar.
 ///
-/// Each locale has its own calendar. Most use `Gregorian`. Thai uses
-/// `Buddhist`, and Persian uses `Persian`.
-///
-/// On Erlang, calendars with their own months cover the Gregorian years 1 to
-/// 4000. glintl writes dates outside that range in the Gregorian calendar.
-/// Every calendar has its own months except `Gregorian`, `Iso8601`,
-/// `Buddhist`, `Japanese` and `RepublicOfChina`.
+/// On Erlang, glintl can write Hebrew, Persian and other calendars with their
+/// own months for the years 1 to 4000. Outside that range, it writes dates in the
+/// Gregorian calendar instead.
 pub type Calendar {
   Gregorian
-  /// The Gregorian calendar, with ISO 8601 rules for weeks and patterns.
+  /// The Gregorian calendar with ISO 8601 weeks and dates like 2026-10-25.
   Iso8601
-  /// The Thai solar calendar, which is Gregorian with years counted from
-  /// 543 BC.
+  /// The Thai calendar. It counts years from 543 BC, so 2026 is 2569.
   Buddhist
-  /// The Gregorian calendar with years counted in Japanese eras.
+  /// The Gregorian calendar with years counted in Japanese eras, so 2026 is
+  /// Reiwa 8.
   Japanese
-  /// The Minguo calendar used in Taiwan, which is Gregorian with years
-  /// counted from 1912.
+  /// The Minguo calendar used in Taiwan. It counts years from 1912, so 2026 is
+  /// 115.
   RepublicOfChina
   /// The Solar Hijri calendar used in Iran and Afghanistan.
   Persian
@@ -160,29 +114,34 @@ pub type Calendar {
   Indian
   Hebrew
   Chinese
-  /// The Korean calendar.
+  /// The Korean lunisolar calendar.
   Dangi
   Coptic
-  /// The Ethiopian calendar, with years counted in the Amete Mihret era.
+  /// The Ethiopian calendar with years in the Amete Mihret era.
   Ethiopic
-  /// The Ethiopian calendar, with years counted in the Amete Alem era.
+  /// The Ethiopian calendar with years in the Amete Alem era.
   EthiopicAmeteAlem
-  /// The tabular Islamic calendar that civil tables use. It counts from
-  /// 16 July 622 in the Julian calendar.
+  /// The tabular Islamic calendar counted from Friday 16 July 622 in the Julian
+  /// calendar.
   IslamicCivil
-  /// The tabular Islamic calendar with the astronomical start. It counts
-  /// from 15 July 622 in the Julian calendar.
+  /// The tabular Islamic calendar counted from Thursday 15 July 622 in the Julian
+  /// calendar.
   IslamicTabular
   /// The Umm al-Qura calendar used in Saudi Arabia.
   IslamicUmmAlQura
 }
 
-/// The calendar a locale formats dates in.
+/// Get the calendar a locale writes dates in.
+///
+/// ```gleam
+/// glintl.locale_calendar(th.locale())
+/// // -> glintl.Buddhist
+/// ```
 pub fn locale_calendar(locale: Locale) -> Calendar {
   locale.calendar
 }
 
-/// Format dates in another calendar.
+/// Change the calendar a locale writes dates in.
 ///
 /// ```gleam
 /// en_gb.locale()
@@ -195,19 +154,17 @@ pub fn with_calendar(locale: Locale, calendar: Calendar) -> Locale {
   Locale(..locale, calendar:)
 }
 
-/// Which hours a clock shows, like the `hourCycle` option of JavaScript's
-/// `Intl.DateTimeFormat`. British English shows a quarter past midnight and a
-/// quarter to midnight like this in each hour cycle:
+/// How a clock counts the hours of the day.
+///
+/// This is how a quarter past midnight and a quarter to midnight look in British
+/// English:
 ///
 /// | Hour cycle | Hours    | Times              |
 /// | ---------- | -------- | ------------------ |
-/// | `H11`      | 0 to 11  | 0:15 am, 11:45 pm  |
+/// | `H11`      | 0 to 11  | 00:15 am, 11:45 pm |
 /// | `H12`      | 1 to 12  | 12:15 am, 11:45 pm |
 /// | `H23`      | 0 to 23  | 00:15, 23:45       |
 /// | `H24`      | 1 to 24  | 24:15, 23:45       |
-///
-/// With `H11` and `H12`, each locale uses its own words for morning and
-/// evening. Those words can move or change the rest of the time.
 pub type HourCycle {
   H11
   H12
@@ -215,7 +172,7 @@ pub type HourCycle {
   H24
 }
 
-/// Show hours in another hour cycle, like 24 hour time in American English.
+/// Change the hour cycle a locale writes times in.
 ///
 /// ```gleam
 /// en.locale()
@@ -228,8 +185,12 @@ pub fn with_hour_cycle(locale: Locale, hour_cycle: HourCycle) -> Locale {
   Locale(..locale, hour_cycle: Some(hour_cycle))
 }
 
-/// The hour cycle a locale shows. That's the one you set with
-/// `with_hour_cycle`, or else the locale's own.
+/// Get the hour cycle a locale writes times in.
+///
+/// ```gleam
+/// glintl.locale_hour_cycle(en.locale())
+/// // -> glintl.H12
+/// ```
 pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
   case locale.hour_cycle {
     Some(hour_cycle) -> hour_cycle
@@ -237,18 +198,25 @@ pub fn locale_hour_cycle(locale: Locale) -> HourCycle {
   }
 }
 
-/// The digits a locale writes numbers with, like the `numberingSystem` option
-/// of JavaScript's `Intl.DateTimeFormat`. Most locales use `"latn"`, the
-/// digits 0 to 9. Persian uses `"arabext"`, like ۱۴۰۵.
+/// The digits a locale writes numbers with.
 ///
-/// Names and words stay the same. Only the digits change.
+/// Most locales write numbers with the digits 0 to 9. That's the `"latn"`
+/// numbering system. Persian uses `"arabext"` and writes 1405 as ۱۴۰۵.
+///
+/// A numbering system only changes the digits. Words such as month names stay
+/// the same.
 pub opaque type NumberingSystem {
   NumberingSystem(name: String)
 }
 
-/// A numbering system by its Unicode name, like `"latn"` or `"arab"`, in any
-/// case. It returns `Error(Nil)` for a name glintl doesn't support. glintl
-/// supports the numbering systems with their own ten digits.
+/// Get a numbering system from its Unicode name.
+///
+/// ```gleam
+/// let assert Ok(arabic) = glintl.numbering_system("arab")
+/// ```
+///
+/// Only numbering systems with ten digits of their own are supported, so
+/// `"roman"` returns an error.
 pub fn numbering_system(name: String) -> Result(NumberingSystem, Nil) {
   let name = string.lowercase(name)
   case is_numbering_system(name) {
@@ -257,12 +225,12 @@ pub fn numbering_system(name: String) -> Result(NumberingSystem, Nil) {
   }
 }
 
-/// The Unicode name of a numbering system, like `"arab"`.
+/// Get the Unicode name of a numbering system.
 pub fn numbering_system_name(numbering_system: NumberingSystem) -> String {
   numbering_system.name
 }
 
-/// Write numbers with other digits, like Persian with the digits 0 to 9.
+/// Change the digits a locale writes numbers with.
 ///
 /// ```gleam
 /// let assert Ok(latin) = glintl.numbering_system("latn")
@@ -280,8 +248,7 @@ pub fn with_numbering_system(
   Locale(..locale, numbering_system: Some(numbering_system))
 }
 
-/// The numbering system a locale writes numbers with. That's the one you set
-/// with `with_numbering_system`, or else the locale's own.
+/// Get the numbering system a locale writes numbers with.
 pub fn locale_numbering_system(locale: Locale) -> NumberingSystem {
   case locale.numbering_system {
     Some(numbering_system) -> numbering_system
@@ -298,12 +265,10 @@ fn is_numbering_system(name: String) -> Bool {
 }
 
 @target(erlang)
-/// A numbering system's digits number in the packed data, by its name.
 @external(erlang, "glintl_generated_data", "numbering_system")
 fn numbering_system_digits(name: String) -> Result(Int, Nil)
 
 @target(erlang)
-/// Numbering system names by their digits number, plus 1.
 @external(erlang, "glintl_generated_data", "numbering_system_names")
 fn numbering_system_names() -> render.Names
 
@@ -326,8 +291,6 @@ fn default_numbering_system(locale: Locale) -> String {
 fn intl_numbering_system(tag: String, calendar: String) -> String
 
 @target(erlang)
-/// The packed data's digits number for the numbering system set with
-/// `with_numbering_system`, or `None` for the locale's own.
 @internal
 pub fn numbering_system_number(locale: Locale) -> Option(Int) {
   case locale.numbering_system {
@@ -340,8 +303,6 @@ pub fn numbering_system_number(locale: Locale) -> Option(Int) {
   }
 }
 
-/// The `numberingSystem` option of `Intl.DateTimeFormat`, or `""` for the
-/// locale's own.
 @internal
 pub fn intl_numbering_system_option(locale: Locale) -> String {
   case locale.numbering_system {
@@ -351,7 +312,6 @@ pub fn intl_numbering_system_option(locale: Locale) -> String {
 }
 
 @target(erlang)
-/// Hour cycles in the order the packed data numbers them.
 @external(erlang, "glintl_generated_data", "hour_cycles")
 fn hour_cycles() -> List(HourCycle)
 
@@ -384,15 +344,14 @@ fn default_hour_cycle(locale: Locale) -> HourCycle {
 fn intl_hour_cycle(tag: String, calendar: String) -> String
 
 @target(erlang)
-/// The locale's number in glintl's packed data.
 @internal
 pub fn locale_data(locale: Locale) -> Int {
   locale.data
 }
 
 @target(erlang)
-/// 0 if the locale uses its own hour cycle. Otherwise, the packed data's
-/// position for the cycle set with `with_hour_cycle`, plus 1.
+/// The packed data numbers hour cycles from 1, and uses 0 for the locale's
+/// default.
 @internal
 pub fn hour_cycle_number(locale: Locale) -> Int {
   case locale.hour_cycle {
@@ -402,14 +361,12 @@ pub fn hour_cycle_number(locale: Locale) -> Int {
 }
 
 @target(erlang)
-/// A calendar's position in each locale's formats in the packed data.
 @internal
 pub fn calendar_position(calendar: Calendar) -> Int {
   position(calendars(), calendar, 0)
 }
 
 @target(erlang)
-/// Calendars in the order of each locale's formats in the packed data.
 @external(erlang, "glintl_generated_data", "calendars")
 fn calendars() -> List(Calendar)
 
@@ -422,8 +379,6 @@ fn position(items: List(a), item: a, index: Int) -> Int {
   }
 }
 
-/// The `hourCycle` option of `Intl.DateTimeFormat`, or `""` for the
-/// locale's own.
 @internal
 pub fn intl_hour_cycle_option(locale: Locale) -> String {
   case locale.hour_cycle {
@@ -435,11 +390,14 @@ pub fn intl_hour_cycle_option(locale: Locale) -> String {
   }
 }
 
-/// A calendar by its Unicode name, like `"hebrew"` or `"islamic-civil"`, in
-/// any case. Like Intl, it also takes the old names `"islamic"`, `"islamicc"`
-/// and `"ethiopic-amete-alem"`, and gives `Gregorian` for `"islamic-rgsa"`,
-/// which ICU doesn't have. It returns `Error(Nil)` for a name Intl doesn't
-/// know.
+/// Get a calendar from its Unicode name. These are the same names Intl uses.
+///
+/// ```gleam
+/// glintl.calendar_from_name("hebrew")
+/// // -> Ok(glintl.Hebrew)
+/// ```
+///
+/// Old names such as `"islamic"` work too.
 pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
   case string.lowercase(name) {
     "gregory" -> Ok(Gregorian)
@@ -463,7 +421,12 @@ pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
   }
 }
 
-/// The Unicode name of a calendar, like `"hebrew"`, which Intl calls it too.
+/// Get the Unicode name of a calendar.
+///
+/// ```gleam
+/// glintl.calendar_name(glintl.Hebrew)
+/// // -> "hebrew"
+/// ```
 pub fn calendar_name(calendar: Calendar) -> String {
   case calendar {
     Gregorian -> "gregory"

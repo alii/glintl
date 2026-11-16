@@ -1,22 +1,19 @@
-//// Formats cases read from standard input, for `codegen/conformance.ts` to
-//// compare with `Intl.DateTimeFormat`. Each line holds these values,
-//// separated by tabs:
+//// Formats cases from standard input so `codegen/conformance.ts` can compare
+//// them with `Intl.DateTimeFormat`. Each line has these values, split by tabs:
 ////
 //// - a locale tag
-//// - an ICU calendar name, or empty for the locale's own
-//// - a date style and a time style, each 0 for none or 1 to 4 for full to
-////   short
-//// - an ICU hour cycle, or empty for the locale's own
-//// - fields as Intl options like `day=numeric,month=short`, or empty for
-////   styles
+//// - an ICU calendar name, or nothing for the locale's default
+//// - a date style and a time style, each 0 for none or 1 to 4 for full to short
+//// - an ICU hour cycle, or nothing for the locale's default
+//// - fields as Intl options like `day=numeric,month=short`, or nothing to use
+////   the styles
 //// - Unix seconds, then milliseconds
 //// - a time zone, as an offset in minutes or a name like `Europe/London`
 ////
-//// Cases that share a formatter come one after another, so the loop keeps
-//// only the last formatter.
+//// Cases that share a formatter come one after another, so the loop only keeps
+//// the last formatter.
 ////
-//// The module only runs on Erlang, because on JavaScript glintl calls `Intl`
-//// directly.
+//// This only runs on Erlang. On JavaScript, glintl calls Intl directly.
 
 import gleam/int
 import gleam/io
@@ -213,33 +210,31 @@ fn read_line() -> Result(String, Nil) {
   panic as "only used on Erlang"
 }
 
-/// Between parts, and between each part's type and text, like
-/// `PART_SEPARATOR` in `codegen/conformance.ts`.
+/// This must match `PART_SEPARATOR` in `codegen/conformance.ts`.
 const part_separator = "\u{1f}"
 
-fn written_parts(parts: List(glintl.DateTimePart)) -> String {
+fn written_parts(parts: List(date_time.Part)) -> String {
   parts
-  |> list.map(fn(part) { intl_type(part) <> "=" <> glintl.part_text(part) })
+  |> list.map(fn(part) { intl_type(part) <> "=" <> date_time.part_text(part) })
   |> string.join(part_separator)
 }
 
-/// Intl's name for a part's type.
-fn intl_type(part: glintl.DateTimePart) -> String {
+fn intl_type(part: date_time.Part) -> String {
   case part {
-    glintl.Era(_) -> "era"
-    glintl.Year(_) -> "year"
-    glintl.RelatedYear(_) -> "relatedYear"
-    glintl.YearName(_) -> "yearName"
-    glintl.Month(_) -> "month"
-    glintl.Day(_) -> "day"
-    glintl.Weekday(_) -> "weekday"
-    glintl.DayPeriod(_) -> "dayPeriod"
-    glintl.Hour(_) -> "hour"
-    glintl.Minute(_) -> "minute"
-    glintl.Second(_) -> "second"
-    glintl.FractionalSecond(_) -> "fractionalSecond"
-    glintl.TimeZoneName(_) -> "timeZoneName"
-    glintl.Literal(_) -> "literal"
-    glintl.Unknown(_) -> "unknown"
+    date_time.Era(_) -> "era"
+    date_time.Year(_) -> "year"
+    date_time.RelatedYear(_) -> "relatedYear"
+    date_time.YearName(_) -> "yearName"
+    date_time.Month(_) -> "month"
+    date_time.Day(_) -> "day"
+    date_time.Weekday(_) -> "weekday"
+    date_time.DayPeriod(_) -> "dayPeriod"
+    date_time.Hour(_) -> "hour"
+    date_time.Minute(_) -> "minute"
+    date_time.Second(_) -> "second"
+    date_time.FractionalSecond(_) -> "fractionalSecond"
+    date_time.TimeZoneName(_) -> "timeZoneName"
+    date_time.Literal(_) -> "literal"
+    date_time.Unknown(_) -> "unknown"
   }
 }

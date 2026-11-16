@@ -1,20 +1,19 @@
-//// Reads the settings in a tag's Unicode extension, like the calendar in
-//// `"ja-JP-u-ca-japanese"`, the way Intl does.
+//// Reads settings from a tag's Unicode extension the same way Intl does. In
+//// `"ja-JP-u-ca-japanese"`, that's the Japanese calendar.
 
 import gleam/list
 import gleam/string
 import glintl.{type Locale}
 
-/// Splits a lowercase tag into the part before its extensions and its `u`
-/// extension's keywords, like `#("ja-jp", [#("ca", "japanese")])`.
+/// Splits a lowercase tag into its base and its `u` keywords, so
+/// `"ja-jp-u-ca-japanese"` gives `#("ja-jp", [#("ca", "japanese")])`.
 pub fn split(tag: String) -> #(String, List(#(String, String))) {
   let subtags = string.split(tag, "-")
   let base = list.take_while(subtags, fn(subtag) { !is_singleton(subtag) })
   #(string.join(base, "-"), keywords(u_extension(subtags)))
 }
 
-/// Sets what the keywords ask for. Like Intl, it ignores values it doesn't
-/// know.
+/// Like Intl, unknown values are ignored.
 pub fn apply(locale: Locale, keywords: List(#(String, String))) -> Locale {
   list.fold(keywords, locale, fn(locale, keyword) {
     case keyword {
@@ -39,12 +38,12 @@ pub fn apply(locale: Locale, keywords: List(#(String, String))) -> Locale {
   })
 }
 
-/// One letter starts an extension, like `u`, or private use, `x`.
+/// A single letter starts an extension or private use.
 fn is_singleton(subtag: String) -> Bool {
   string.length(subtag) == 1
 }
 
-/// The subtags of the `u` extension. Everything after `x` is private use.
+/// Everything after `x` is private use, so it's ignored.
 fn u_extension(subtags: List(String)) -> List(String) {
   case subtags {
     [] | ["x", ..] -> []
@@ -53,8 +52,8 @@ fn u_extension(subtags: List(String)) -> List(String) {
   }
 }
 
-/// Each two letter key with its value, like `#("ca", "islamic-civil")`.
-/// Attributes come before the first key, and the first of each key counts.
+/// Attributes come before the first key. Like Intl, the first value for a key
+/// wins.
 fn keywords(subtags: List(String)) -> List(#(String, String)) {
   case subtags {
     [] -> []
