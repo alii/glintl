@@ -1211,9 +1211,11 @@ fn text(
       sign <> number(int.absolute_value(m.year) % two_digit_years, True, digits)
     }
     Year(two_digit: False, min_digits:, minus:, first:, minus_first:) -> {
-      let #(minus, digits) = case digits {
-        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
-        _ -> #(minus, digits)
+      let #(minus, digits) = case digits, first {
+        // ICU's `jpanyear` rules name year 1 and write other years in ASCII.
+        Swapped(..), "" -> year_digits(minus, digits, p, m, milliseconds)
+        Swapped(..), _ -> #(minus, Ascii)
+        _, _ -> #(minus, digits)
       }
       // Year 1 and -1 can have a name, like 元.
       let named = case m.year {

@@ -294,6 +294,14 @@ pub fn numbering_system_test() {
   assert short(fa.locale() |> glintl.with_numbering_system(latin)) == "1405/8/4"
   assert short(en.locale() |> glintl.with_numbering_system(arabic))
     == "١٠/٢٦/٢٦"
+  // ICU writes Japanese years with 年 in ASCII digits.
+  let assert Ok(thai) = glintl.numbering_system("thai")
+  assert ja.locale()
+    |> glintl.with_calendar(glintl.Japanese)
+    |> glintl.with_numbering_system(thai)
+    |> date_time.date_formatter(style: date_time.Full)
+    |> date_time.format(moment, zone: time_zone.utc)
+    == "令和8年๑๐月๒๖日月曜日"
   // Arabic digits have their own decimal separator.
   assert date_time.new()
     |> date_time.second(glintl.Numeric)
