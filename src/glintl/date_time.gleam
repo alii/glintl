@@ -25,7 +25,7 @@
 //// runtimes.
 
 import gleam/time/timestamp.{type Timestamp}
-import glintl.{type DatePart, type Locale}
+import glintl.{type DateTimePart, type Locale}
 import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
@@ -55,49 +55,6 @@ pub type Style {
 /// Making a formatter does the lookup work once, so make one and reuse it.
 pub opaque type Formatter {
   Formatter(compiled: engine.Compiled)
-}
-
-/// Format only the date.
-pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
-  Formatter(engine.styles(locale, render.DateOnly(internal_style(style))))
-}
-
-/// Format only the time.
-pub fn time_formatter(locale: Locale, style style: Style) -> Formatter {
-  Formatter(engine.styles(locale, render.TimeOnly(internal_style(style))))
-}
-
-/// Format both the date and the time.
-pub fn date_time_formatter(
-  locale: Locale,
-  date date: Style,
-  time time: Style,
-) -> Formatter {
-  Formatter(engine.styles(
-    locale,
-    render.DateAndTime(date: internal_style(date), time: internal_style(time)),
-  ))
-}
-
-/// Format the fields you pick, like the `weekday`, `month` and `hour`
-/// options of JavaScript's `Intl.DateTimeFormat`. Start picking them with
-/// `new`.
-///
-/// ```gleam
-/// let options =
-///   date_time.new()
-///   |> date_time.day(glintl.Numeric)
-///   |> date_time.month_name(glintl.Short)
-///
-/// date_time.fields_formatter(en_gb.locale(), options)
-/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
-/// // -> "25 Oct"
-/// ```
-///
-/// Like Intl, the formatter shows a numeric year, month and day when you pick
-/// no date or time part. It adds an era or a time zone's name to that date.
-pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
-  Formatter(engine.fields(locale, fields.request))
 }
 
 /// The fields to show and how to write each one, like the `weekday`, `month`
@@ -140,75 +97,118 @@ pub type TimeZoneName {
   LongGeneric
 }
 
+/// Format only the date.
+pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
+  Formatter(engine.styles(locale, render.DateOnly(internal_style(style))))
+}
+
+/// Format only the time.
+pub fn time_formatter(locale: Locale, style style: Style) -> Formatter {
+  Formatter(engine.styles(locale, render.TimeOnly(internal_style(style))))
+}
+
+/// Format both the date and the time.
+pub fn date_time_formatter(
+  locale: Locale,
+  date date: Style,
+  time time: Style,
+) -> Formatter {
+  Formatter(engine.styles(
+    locale,
+    render.DateAndTime(date: internal_style(date), time: internal_style(time)),
+  ))
+}
+
+/// Format the fields you pick, like the `weekday`, `month` and `hour`
+/// options of JavaScript's `Intl.DateTimeFormat`. Start picking them with
+/// `new`.
+///
+/// ```gleam
+/// let fields =
+///   date_time.new()
+///   |> date_time.day(glintl.Numeric)
+///   |> date_time.month_name(glintl.Short)
+///
+/// date_time.fields_formatter(en_gb.locale(), fields)
+/// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
+/// // -> "25 Oct"
+/// ```
+///
+/// Like Intl, the formatter shows a numeric year, month and day when you pick
+/// no date or time part. It adds an era or a time zone's name to that date.
+pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
+  Formatter(engine.fields(locale, fields.request))
+}
+
 /// Start picking the fields to show.
 pub fn new() -> Fields {
   Fields(engine.no_fields)
 }
 
 /// Show the day of the week.
-pub fn weekday(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, weekday: engine.width(width)))
+pub fn weekday(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, weekday: engine.width(width)))
 }
 
 /// Show the era, like "AD".
-pub fn era(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, era: engine.width(width)))
+pub fn era(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, era: engine.width(width)))
 }
 
 /// Show the year.
-pub fn year(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, year: engine.digits(digits)))
+pub fn year(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, year: engine.digits(digits)))
 }
 
 /// Show the month as a number, like "3". This replaces `month_name`.
-pub fn month(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, month: engine.digits(digits)))
+pub fn month(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, month: engine.digits(digits)))
 }
 
 /// Show the month's name, like "March". This replaces `month`.
-pub fn month_name(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, month: engine.width(width)))
+pub fn month_name(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, month: engine.width(width)))
 }
 
 /// Show the day of the month.
-pub fn day(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, day: engine.digits(digits)))
+pub fn day(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, day: engine.digits(digits)))
 }
 
 /// Show the time of day in words, like "in the morning", where the locale
 /// has them. Next to an hour, the words show on a 12 hour clock only.
-pub fn day_period(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, day_period: engine.width(width)))
+pub fn day_period(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, day_period: engine.width(width)))
 }
 
 /// Show the hour, in the locale's hour cycle. Change it with
 /// `glintl.with_hour_cycle`.
-pub fn hour(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, hour: engine.digits(digits)))
+pub fn hour(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, hour: engine.digits(digits)))
 }
 
 /// Show the minute.
-pub fn minute(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, minute: engine.digits(digits)))
+pub fn minute(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, minute: engine.digits(digits)))
 }
 
 /// Show the second.
-pub fn second(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, second: engine.digits(digits)))
+pub fn second(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, second: engine.digits(digits)))
 }
 
 /// Show the fraction of a second.
-pub fn fraction(options: Fields, fraction: Fraction) -> Fields {
+pub fn fractional_second(fields: Fields, fraction: Fraction) -> Fields {
   let digits = case fraction {
     Tenths -> 1
     Hundredths -> 2
     Thousandths -> 3
   }
-  Fields(matcher.Request(..options.request, fractional_second_digits: digits))
+  Fields(matcher.Request(..fields.request, fractional_second_digits: digits))
 }
 
 /// Show the time zone.
-pub fn time_zone_name(options: Fields, name: TimeZoneName) -> Fields {
+pub fn time_zone_name(fields: Fields, name: TimeZoneName) -> Fields {
   let name = case name {
     ShortName -> "short"
     LongName -> "long"
@@ -217,7 +217,7 @@ pub fn time_zone_name(options: Fields, name: TimeZoneName) -> Fields {
     ShortGeneric -> "shortGeneric"
     LongGeneric -> "longGeneric"
   }
-  Fields(matcher.Request(..options.request, time_zone_name: name))
+  Fields(matcher.Request(..fields.request, time_zone_name: name))
 }
 
 /// Format a moment as the clocks in `zone` show it.
@@ -238,9 +238,9 @@ pub fn format(
 ///
 /// ```gleam
 /// date_time.date_formatter(en_gb.locale(), style: date_time.Long)
-/// |> date_time.format_to_parts(moment, zone: time_zone.utc)
+/// |> date_time.format_to_parts(timestamp.system_time(), zone: time_zone.utc)
 /// // -> [
-/// //   glintl.Day("26"), glintl.Literal(" "), glintl.Month("October"),
+/// //   glintl.Day("25"), glintl.Literal(" "), glintl.Month("October"),
 /// //   glintl.Literal(" "), glintl.Year("2026"),
 /// // ]
 /// ```
@@ -248,7 +248,7 @@ pub fn format_to_parts(
   formatter: Formatter,
   timestamp: Timestamp,
   zone zone: TimeZone,
-) -> List(DatePart) {
+) -> List(DateTimePart) {
   let #(seconds, nanoseconds) =
     timestamp.to_unix_seconds_and_nanoseconds(timestamp)
   engine.format_to_parts(formatter.compiled, seconds, nanoseconds, zone)

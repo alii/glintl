@@ -19,7 +19,7 @@ pub fn apply(locale: Locale, keywords: List(#(String, String))) -> Locale {
   list.fold(keywords, locale, fn(locale, keyword) {
     case keyword {
       #("ca", name) ->
-        case calendar(name) {
+        case glintl.calendar_from_name(name) {
           Ok(calendar) -> glintl.with_calendar(locale, calendar)
           Error(Nil) -> locale
         }
@@ -69,31 +69,6 @@ fn keywords(subtags: List(String)) -> List(#(String, String)) {
         }
         _ -> keywords(rest)
       }
-  }
-}
-
-/// A calendar by its Unicode name, with the aliases Intl takes.
-fn calendar(name: String) -> Result(glintl.Calendar, Nil) {
-  case name {
-    "gregory" -> Ok(glintl.Gregorian)
-    "iso8601" -> Ok(glintl.Iso8601)
-    "buddhist" -> Ok(glintl.Buddhist)
-    "japanese" -> Ok(glintl.Japanese)
-    "roc" -> Ok(glintl.RepublicOfChina)
-    "persian" -> Ok(glintl.Persian)
-    "indian" -> Ok(glintl.Indian)
-    "hebrew" -> Ok(glintl.Hebrew)
-    "chinese" -> Ok(glintl.Chinese)
-    "dangi" -> Ok(glintl.Dangi)
-    "coptic" -> Ok(glintl.Coptic)
-    "ethiopic" -> Ok(glintl.Ethiopic)
-    "ethioaa" | "ethiopic-amete-alem" -> Ok(glintl.EthiopicAmeteAlem)
-    "islamic-civil" | "islamicc" -> Ok(glintl.IslamicCivil)
-    "islamic-tbla" | "islamic" -> Ok(glintl.IslamicTabular)
-    "islamic-umalqura" -> Ok(glintl.IslamicUmmAlQura)
-    // ICU has no Saudi sighting calendar, so it uses Gregorian.
-    "islamic-rgsa" -> Ok(glintl.Gregorian)
-    _ -> Error(Nil)
   }
 }
 

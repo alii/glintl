@@ -58,6 +58,148 @@ pub fn fields_example_test() {
 }
 
 /// Like Intl, with no date or time part a formatter shows a numeric date.
+/// The examples in the docs, at the moment they assume.
+pub fn doc_examples_test() {
+  let assert Ok(now) = timestamp.parse_rfc3339("2026-10-25T22:40:58Z")
+  let assert Ok(summer) = timestamp.parse_rfc3339("2026-07-25T22:40:58Z")
+  let assert Ok(plus_one) = time_zone.offset(hours: 1, minutes: 0)
+  let utc = time_zone.utc
+  // README
+  assert date_time.new()
+    |> date_time.day(glintl.Numeric)
+    |> date_time.month_name(glintl.Short)
+    |> date_time.hour(glintl.TwoDigit)
+    |> date_time.minute(glintl.TwoDigit)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+    |> date_time.format(now, zone: plus_one)
+    == "25 Oct, 23:40"
+  // glintl
+  assert en.locale()
+    |> glintl.with_hour_cycle(glintl.H23)
+    |> date_time.time_formatter(style: date_time.Short)
+    |> date_time.format(now, zone: utc)
+    == "22:40"
+  assert en_gb.locale()
+    |> glintl.with_calendar(glintl.Hebrew)
+    |> date_time.date_formatter(style: date_time.Long)
+    |> date_time.format(now, zone: utc)
+    == "14 Heshvan 5787"
+  let assert Ok(latin) = glintl.numbering_system("latn")
+  assert fa.locale()
+    |> glintl.with_numbering_system(latin)
+    |> date_time.date_formatter(style: date_time.Short)
+    |> date_time.format(now, zone: utc)
+    == "1405/8/3"
+  assert glintl.calendar_from_name("islamic") == Ok(glintl.IslamicTabular)
+  assert glintl.calendar_name(glintl.Hebrew) == "hebrew"
+  // glintl/date_time
+  assert date_time.date_time_formatter(
+      en_gb.locale(),
+      date: date_time.Long,
+      time: date_time.Short,
+    )
+    |> date_time.format(now, zone: plus_one)
+    == "25 October 2026 at 23:40"
+  let style = fn(formatter) { date_time.format(formatter, now, zone: plus_one) }
+  assert list.map(
+      [date_time.Full, date_time.Long, date_time.Medium, date_time.Short],
+      fn(s) {
+        #(
+          style(date_time.date_formatter(en_gb.locale(), style: s)),
+          style(date_time.time_formatter(en_gb.locale(), style: s)),
+        )
+      },
+    )
+    == [
+      #("Sunday, 25 October 2026", "23:40:58 GMT+01:00"),
+      #("25 October 2026", "23:40:58 GMT+1"),
+      #("25 Oct 2026", "23:40:58"),
+      #("25/10/2026", "23:40"),
+    ]
+  assert date_time.new()
+    |> date_time.day(glintl.Numeric)
+    |> date_time.month_name(glintl.Short)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+    |> date_time.format(now, zone: utc)
+    == "25 Oct"
+  let long_parts = [
+    glintl.Day("25"),
+    glintl.Literal(" "),
+    glintl.Month("October"),
+    glintl.Literal(" "),
+    glintl.Year("2026"),
+  ]
+  assert date_time.date_formatter(en_gb.locale(), style: date_time.Long)
+    |> date_time.format_to_parts(now, zone: utc)
+    == long_parts
+  let assert Ok(london) = time_zone.from_name("Europe/London")
+  let zone_name = fn(name, zone) {
+    date_time.new()
+    |> date_time.time_zone_name(name)
+    |> date_time.hour(glintl.Numeric)
+    |> date_time.fields_formatter(en_gb.locale(), _)
+    |> date_time.format_to_parts(summer, zone:)
+    |> list.find_map(fn(part) {
+      case part {
+        glintl.TimeZoneName(text) -> Ok(text)
+        _ -> Error(Nil)
+      }
+    })
+  }
+  assert list.map(
+      [
+        date_time.ShortName,
+        date_time.LongName,
+        date_time.ShortOffset,
+        date_time.LongOffset,
+        date_time.ShortGeneric,
+        date_time.LongGeneric,
+      ],
+      fn(name) { #(zone_name(name, london), zone_name(name, plus_one)) },
+    )
+    == [
+      #(Ok("BST"), Ok("GMT+1")),
+      #(Ok("British Summer Time"), Ok("GMT+01:00")),
+      #(Ok("GMT+1"), Ok("GMT+1")),
+      #(Ok("GMT+01:00"), Ok("GMT+01:00")),
+      #(Ok("United Kingdom Time"), Ok("GMT+1")),
+      #(Ok("British Time"), Ok("GMT+01:00")),
+    ]
+  // glintl/date
+  let day = calendar.Date(2026, calendar.October, 25)
+  assert date.date_formatter(en_gb.locale(), style: date.Long)
+    |> date.format(day)
+    == "25 October 2026"
+  assert list.map([date.Full, date.Long, date.Medium, date.Short], fn(s) {
+      date.date_formatter(en_gb.locale(), style: s) |> date.format(day)
+    })
+    == [
+      "Sunday, 25 October 2026",
+      "25 October 2026",
+      "25 Oct 2026",
+      "25/10/2026",
+    ]
+  assert date.new()
+    |> date.weekday(glintl.Long)
+    |> date.day(glintl.Numeric)
+    |> date.month_name(glintl.Long)
+    |> date.fields_formatter(en_gb.locale(), _)
+    |> date.format(day)
+    == "Sunday 25 October"
+  assert date.new()
+    |> date.day(glintl.Numeric)
+    |> date.month_name(glintl.Short)
+    |> date.fields_formatter(en_gb.locale(), _)
+    |> date.format(day)
+    == "25 Oct"
+  assert date.date_formatter(en_gb.locale(), style: date.Long)
+    |> date.format_to_parts(day)
+    == long_parts
+  assert date.date_formatter(en_gb.locale(), style: date.Long)
+    |> date.format(calendar.Date(2026, calendar.February, 31))
+    == "3 March 2026"
+}
+
 pub fn parts_test() {
   let formatter =
     date_time.date_time_formatter(
@@ -119,7 +261,7 @@ pub fn numbering_system_test() {
   // Arabic digits have their own decimal separator.
   assert date_time.new()
     |> date_time.second(glintl.Numeric)
-    |> date_time.fraction(date_time.Tenths)
+    |> date_time.fractional_second(date_time.Tenths)
     |> date_time.fields_formatter(
       en.locale() |> glintl.with_numbering_system(arabic),
       _,
@@ -163,7 +305,7 @@ pub fn fraction_test() {
   let formatter =
     date_time.new()
     |> date_time.second(glintl.Numeric)
-    |> date_time.fraction(date_time.Hundredths)
+    |> date_time.fractional_second(date_time.Hundredths)
     |> date_time.fields_formatter(en_gb.locale(), _)
   let moment =
     timestamp.from_unix_seconds(1_792_929_604)
@@ -532,11 +674,12 @@ fn parse_fields(text: String) -> date_time.Fields {
       "hour", _ -> date_time.hour(f, digits(value))
       "minute", _ -> date_time.minute(f, digits(value))
       "second", _ -> date_time.second(f, digits(value))
-      "fractionalSecondDigits", "1" -> date_time.fraction(f, date_time.Tenths)
+      "fractionalSecondDigits", "1" ->
+        date_time.fractional_second(f, date_time.Tenths)
       "fractionalSecondDigits", "2" ->
-        date_time.fraction(f, date_time.Hundredths)
+        date_time.fractional_second(f, date_time.Hundredths)
       "fractionalSecondDigits", _ ->
-        date_time.fraction(f, date_time.Thousandths)
+        date_time.fractional_second(f, date_time.Thousandths)
       "timeZoneName", "short" ->
         date_time.time_zone_name(f, date_time.ShortName)
       "timeZoneName", "long" -> date_time.time_zone_name(f, date_time.LongName)

@@ -152,7 +152,7 @@ type Token {
 }
 
 @target(erlang)
-/// What a part of the text is, like `glintl.DatePart`, which this module can't
+/// What a part of the text is, like `glintl.DateTimePart`, which this module can't
 /// use.
 pub type PartKind {
   EraPart

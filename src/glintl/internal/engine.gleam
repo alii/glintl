@@ -6,7 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 @target(erlang)
 import gleam/result
-import glintl.{type DatePart, type Locale}
+import glintl.{type DateTimePart, type Locale}
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
@@ -122,7 +122,7 @@ pub fn format_to_parts(
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DatePart) {
+) -> List(DateTimePart) {
   do_format_to_parts(compiled, seconds, nanoseconds, zone)
 }
 
@@ -183,7 +183,7 @@ fn with_numbering_system(
         own_minus,
         minus,
         matcher.era_workaround(
-          glintl.icu_calendar(glintl.locale_calendar(locale)),
+          glintl.calendar_name(glintl.locale_calendar(locale)),
         ),
       )
     }
@@ -204,7 +204,7 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
       glintl.locale_data(locale),
       glintl.calendar_position(calendar),
       request,
-      glintl.icu_calendar(calendar),
+      glintl.calendar_name(calendar),
       fn() { calendar_math(calendar) },
       decimal(locale),
     )
@@ -219,7 +219,7 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
 fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
   intl_fields_formatter(
     glintl.locale_tag(locale),
-    glintl.icu_calendar(glintl.locale_calendar(locale)),
+    glintl.calendar_name(glintl.locale_calendar(locale)),
     request,
     glintl.intl_numbering_system_option(locale),
   )
@@ -243,7 +243,7 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
   }
   intl_formatter(
     glintl.locale_tag(locale),
-    glintl.icu_calendar(glintl.locale_calendar(locale)),
+    glintl.calendar_name(glintl.locale_calendar(locale)),
     date_style,
     time_style,
     glintl.intl_hour_cycle_option(locale),
@@ -396,7 +396,7 @@ fn do_format_to_parts(
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DatePart) {
+) -> List(DateTimePart) {
   let #(offset, names) = zone_at(compiled, zone, seconds)
   render.render_parts(
     compiled.rendered,
@@ -405,7 +405,7 @@ fn do_format_to_parts(
     offset,
     names,
   )
-  |> list.map(fn(part) { date_part(part.0, part.1) })
+  |> list.map(fn(part) { date_time_part(part.0, part.1) })
 }
 
 @target(erlang)
@@ -432,7 +432,7 @@ fn zone_at(
 }
 
 @target(erlang)
-fn date_part(kind: render.PartKind, text: String) -> DatePart {
+fn date_time_part(kind: render.PartKind, text: String) -> DateTimePart {
   case kind {
     render.EraPart -> glintl.Era(text)
     render.YearPart -> glintl.Year(text)
@@ -468,7 +468,7 @@ fn do_format_to_parts(
   seconds: Int,
   nanoseconds: Int,
   zone: TimeZone,
-) -> List(DatePart) {
+) -> List(DateTimePart) {
   intl_format_to_parts(
     compiled,
     seconds,
@@ -480,7 +480,7 @@ fn do_format_to_parts(
 
 @target(javascript)
 /// A part from Intl's `formatToParts`, by its type.
-fn intl_part(kind: String, text: String) -> DatePart {
+fn intl_part(kind: String, text: String) -> DateTimePart {
   case kind {
     "era" -> glintl.Era(text)
     "year" -> glintl.Year(text)

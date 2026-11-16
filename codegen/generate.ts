@@ -457,6 +457,7 @@ import glintl/internal/accept_language
 import glintl/internal/unicode_extension
 ${imports}
 
+/// Every locale glintl has, one for each module in \`glintl/locale/\`.
 pub fn all() -> List(Locale) {
   [${list}]
 }

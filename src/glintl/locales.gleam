@@ -675,6 +675,7 @@ import glintl/locale/zh_hant_my
 import glintl/locale/zh_latn
 import glintl/locale/zu
 
+/// Every locale glintl has, one for each module in `glintl/locale/`.
 pub fn all() -> List(Locale) {
   [
     af.locale(),

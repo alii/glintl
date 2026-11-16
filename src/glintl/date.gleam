@@ -8,8 +8,8 @@
 ////
 //// let formatter = date.date_formatter(en_gb.locale(), style: date.Long)
 ////
-//// date.format(formatter, calendar.Date(2026, calendar.October, 26))
-//// // -> "26 October 2026"
+//// date.format(formatter, calendar.Date(2026, calendar.October, 25))
+//// // -> "25 October 2026"
 //// ```
 ////
 //// You can also pick the parts to show, like the date options of
@@ -18,23 +18,21 @@
 //// ```gleam
 //// import glintl
 ////
-//// let options =
+//// let fields =
 ////   date.new()
 ////   |> date.weekday(glintl.Long)
 ////   |> date.day(glintl.Numeric)
 ////   |> date.month_name(glintl.Long)
 ////
-//// date.fields_formatter(en_gb.locale(), options)
-//// |> date.format(calendar.Date(2026, calendar.October, 26))
-//// // -> "Monday 26 October"
+//// date.fields_formatter(en_gb.locale(), fields)
+//// |> date.format(calendar.Date(2026, calendar.October, 25))
+//// // -> "Sunday 25 October"
 //// ```
 ////
-//// Like Intl, a formatter shows a numeric date when you pick no year, month,
-//// day or weekday.
 
 import gleam/time/calendar
 import gleam/time/timestamp
-import glintl.{type DatePart, type Locale}
+import glintl.{type DateTimePart, type Locale}
 import glintl/internal/data
 import glintl/internal/engine
 import glintl/internal/matcher
@@ -48,10 +46,10 @@ import glintl/time_zone
 ///
 /// | Style    | Date                    |
 /// | -------- | ----------------------- |
-/// | `Full`   | Monday, 26 October 2026 |
-/// | `Long`   | 26 October 2026         |
-/// | `Medium` | 26 Oct 2026             |
-/// | `Short`  | 26/10/2026              |
+/// | `Full`   | Sunday, 25 October 2026 |
+/// | `Long`   | 25 October 2026         |
+/// | `Medium` | 25 Oct 2026             |
+/// | `Short`  | 25/10/2026              |
 pub type Style {
   Full
   Long
@@ -66,31 +64,75 @@ pub opaque type Formatter {
   Formatter(compiled: engine.Compiled)
 }
 
-/// The fields of a date to show and how to write each one, like the
-/// `weekday`, `month` and `day` options of `Intl.DateTimeFormat`. Start with
-/// `new`, and make a formatter with `fields_formatter`. Setting a field again
-/// replaces it.
+/// The fields to show and how to write each one, like the `weekday`, `month`
+/// and `day` options of `Intl.DateTimeFormat`. Start with `new`, and make a
+/// formatter with `fields_formatter`. Setting a field again replaces it.
 pub opaque type Fields {
   Fields(request: matcher.Request)
 }
 
 /// Format the date in a style.
 pub fn date_formatter(locale: Locale, style style: Style) -> Formatter {
-  let style = case style {
-    Full -> data.Full
-    Long -> data.Long
-    Medium -> data.Medium
-    Short -> data.Short
-  }
-  Formatter(engine.styles(locale, render.DateOnly(style)))
+  Formatter(engine.styles(locale, render.DateOnly(internal_style(style))))
 }
 
-/// Format the fields you pick. Start picking them with `new`.
+/// Format the fields you pick, like the `weekday`, `month` and `day` options
+/// of JavaScript's `Intl.DateTimeFormat`. Start picking them with `new`.
+///
+/// ```gleam
+/// let fields =
+///   date.new()
+///   |> date.day(glintl.Numeric)
+///   |> date.month_name(glintl.Short)
+///
+/// date.fields_formatter(en_gb.locale(), fields)
+/// |> date.format(calendar.Date(2026, calendar.October, 25))
+/// // -> "25 Oct"
+/// ```
+///
+/// Like Intl, the formatter shows a numeric year, month and day when you pick
+/// no year, month, day or weekday. It adds an era to that date.
 pub fn fields_formatter(locale: Locale, fields: Fields) -> Formatter {
   Formatter(engine.fields(locale, fields.request))
 }
 
-/// Format a date.
+/// Start picking the fields to show.
+pub fn new() -> Fields {
+  Fields(engine.no_fields)
+}
+
+/// Show the day of the week.
+pub fn weekday(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, weekday: engine.width(width)))
+}
+
+/// Show the era, like "AD".
+pub fn era(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, era: engine.width(width)))
+}
+
+/// Show the year.
+pub fn year(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, year: engine.digits(digits)))
+}
+
+/// Show the month as a number, like "3". This replaces `month_name`.
+pub fn month(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, month: engine.digits(digits)))
+}
+
+/// Show the month's name, like "March". This replaces `month`.
+pub fn month_name(fields: Fields, width: glintl.Width) -> Fields {
+  Fields(matcher.Request(..fields.request, month: engine.width(width)))
+}
+
+/// Show the day of the month.
+pub fn day(fields: Fields, digits: glintl.Digits) -> Fields {
+  Fields(matcher.Request(..fields.request, day: engine.digits(digits)))
+}
+
+/// Format a date. A date that doesn't exist rolls over, like gleam_time's
+/// `timestamp.from_calendar`, so 31 February 2026 is 3 March.
 pub fn format(formatter: Formatter, date: calendar.Date) -> String {
   engine.format(formatter.compiled, seconds(date), 0, time_zone.utc)
 }
@@ -100,16 +142,16 @@ pub fn format(formatter: Formatter, date: calendar.Date) -> String {
 ///
 /// ```gleam
 /// date.date_formatter(en_gb.locale(), style: date.Long)
-/// |> date.format_to_parts(calendar.Date(2026, calendar.October, 26))
+/// |> date.format_to_parts(calendar.Date(2026, calendar.October, 25))
 /// // -> [
-/// //   glintl.Day("26"), glintl.Literal(" "), glintl.Month("October"),
+/// //   glintl.Day("25"), glintl.Literal(" "), glintl.Month("October"),
 /// //   glintl.Literal(" "), glintl.Year("2026"),
 /// // ]
 /// ```
 pub fn format_to_parts(
   formatter: Formatter,
   date: calendar.Date,
-) -> List(DatePart) {
+) -> List(DateTimePart) {
   engine.format_to_parts(formatter.compiled, seconds(date), 0, time_zone.utc)
 }
 
@@ -125,37 +167,11 @@ fn seconds(date: calendar.Date) -> Int {
   seconds
 }
 
-/// Start picking the fields to show.
-pub fn new() -> Fields {
-  Fields(engine.no_fields)
-}
-
-/// Show the day of the week.
-pub fn weekday(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, weekday: engine.width(width)))
-}
-
-/// Show the era, like "AD".
-pub fn era(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, era: engine.width(width)))
-}
-
-/// Show the year.
-pub fn year(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, year: engine.digits(digits)))
-}
-
-/// Show the month as a number, like "3". This replaces `month_name`.
-pub fn month(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, month: engine.digits(digits)))
-}
-
-/// Show the month's name, like "March". This replaces `month`.
-pub fn month_name(options: Fields, width: glintl.Width) -> Fields {
-  Fields(matcher.Request(..options.request, month: engine.width(width)))
-}
-
-/// Show the day of the month.
-pub fn day(options: Fields, digits: glintl.Digits) -> Fields {
-  Fields(matcher.Request(..options.request, day: engine.digits(digits)))
+fn internal_style(style: Style) -> data.Style {
+  case style {
+    Full -> data.Full
+    Long -> data.Long
+    Medium -> data.Medium
+    Short -> data.Short
+  }
 }

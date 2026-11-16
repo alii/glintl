@@ -124,7 +124,7 @@ fn parse_fields(text: String) -> date_time.Fields {
       "minute" -> date_time.minute(f, digits(value))
       "second" -> date_time.second(f, digits(value))
       "fractionalSecondDigits" ->
-        date_time.fraction(f, case value {
+        date_time.fractional_second(f, case value {
           "1" -> date_time.Tenths
           "2" -> date_time.Hundredths
           _ -> date_time.Thousandths
@@ -217,14 +217,14 @@ fn read_line() -> Result(String, Nil) {
 /// `PART_SEPARATOR` in `codegen/conformance.ts`.
 const part_separator = "\u{1f}"
 
-fn written_parts(parts: List(glintl.DatePart)) -> String {
+fn written_parts(parts: List(glintl.DateTimePart)) -> String {
   parts
   |> list.map(fn(part) { intl_type(part) <> "=" <> glintl.part_text(part) })
   |> string.join(part_separator)
 }
 
 /// Intl's name for a part's type.
-fn intl_type(part: glintl.DatePart) -> String {
+fn intl_type(part: glintl.DateTimePart) -> String {
   case part {
     glintl.Era(_) -> "era"
     glintl.Year(_) -> "year"

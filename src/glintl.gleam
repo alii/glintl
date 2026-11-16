@@ -1,4 +1,4 @@
-//// Pick the language, calendar and hour cycle that glintl formats in.
+//// Pick the language, calendar, hour cycle and digits that glintl formats in.
 ////
 //// Format dates and times with `glintl/date_time`.
 ////
@@ -82,13 +82,13 @@ pub type Digits {
   TwoDigit
 }
 
-/// A piece of a formatted date, like Intl's `formatToParts`. Each piece has
-/// its text, so you can style one kind, like bold weekdays.
+/// A piece of a formatted date or time, like Intl's `formatToParts`. Each
+/// piece has its text, so you can style one kind, like bold weekdays.
 ///
 /// ```gleam
-/// [Day("26"), Literal(" "), Month("October"), Literal(" "), Year("2026")]
+/// [Day("25"), Literal(" "), Month("October"), Literal(" "), Year("2026")]
 /// ```
-pub type DatePart {
+pub type DateTimePart {
   Era(String)
   Year(String)
   /// The Gregorian year in a calendar with cyclic years, like 2026 in the
@@ -113,7 +113,7 @@ pub type DatePart {
 }
 
 /// The text of a part.
-pub fn part_text(part: DatePart) -> String {
+pub fn part_text(part: DateTimePart) -> String {
   case part {
     Era(text)
     | Year(text)
@@ -136,8 +136,7 @@ pub fn part_text(part: DatePart) -> String {
 /// The calendars glintl can format dates in.
 ///
 /// Each locale has its own calendar. Most use `Gregorian`. Thai uses
-/// `Buddhist`, Persian uses `Persian`, and Saudi Arabic uses
-/// `IslamicUmmAlQura`.
+/// `Buddhist`, and Persian uses `Persian`.
 ///
 /// On Erlang, calendars with their own months cover the Gregorian years 1 to
 /// 4000. glintl writes dates outside that range in the Gregorian calendar.
@@ -248,7 +247,8 @@ pub opaque type NumberingSystem {
 }
 
 /// A numbering system by its Unicode name, like `"latn"` or `"arab"`, in any
-/// case. It returns `Error(Nil)` for a name Intl doesn't support.
+/// case. It returns `Error(Nil)` for a name glintl doesn't support. glintl
+/// supports the numbering systems with their own ten digits.
 pub fn numbering_system(name: String) -> Result(NumberingSystem, Nil) {
   let name = string.lowercase(name)
   case is_numbering_system(name) {
@@ -262,7 +262,7 @@ pub fn numbering_system_name(numbering_system: NumberingSystem) -> String {
   numbering_system.name
 }
 
-/// Write numbers with other digits, like Arabic with the digits 0 to 9.
+/// Write numbers with other digits, like Persian with the digits 0 to 9.
 ///
 /// ```gleam
 /// let assert Ok(latin) = glintl.numbering_system("latn")
@@ -271,7 +271,7 @@ pub fn numbering_system_name(numbering_system: NumberingSystem) -> String {
 /// |> glintl.with_numbering_system(latin)
 /// |> date_time.date_formatter(style: date_time.Short)
 /// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
-/// // -> "1405/8/4"
+/// // -> "1405/8/3"
 /// ```
 pub fn with_numbering_system(
   locale: Locale,
@@ -318,7 +318,7 @@ fn is_numbering_system(name: String) -> Bool
 
 @target(javascript)
 fn default_numbering_system(locale: Locale) -> String {
-  intl_numbering_system(locale.tag, icu_calendar(locale.calendar))
+  intl_numbering_system(locale.tag, calendar_name(locale.calendar))
 }
 
 @target(javascript)
@@ -371,7 +371,7 @@ fn at(items: List(a), index: Int, otherwise: a) -> a {
 
 @target(javascript)
 fn default_hour_cycle(locale: Locale) -> HourCycle {
-  case intl_hour_cycle(locale.tag, icu_calendar(locale.calendar)) {
+  case intl_hour_cycle(locale.tag, calendar_name(locale.calendar)) {
     "h11" -> H11
     "h12" -> H12
     "h24" -> H24
@@ -435,9 +435,36 @@ pub fn intl_hour_cycle_option(locale: Locale) -> String {
   }
 }
 
-/// ICU's name for a calendar.
-@internal
-pub fn icu_calendar(calendar: Calendar) -> String {
+/// A calendar by its Unicode name, like `"hebrew"` or `"islamic-civil"`, in
+/// any case. Like Intl, it also takes the old names `"islamic"`, `"islamicc"`
+/// and `"ethiopic-amete-alem"`, and gives `Gregorian` for `"islamic-rgsa"`,
+/// which ICU doesn't have. It returns `Error(Nil)` for a name Intl doesn't
+/// know.
+pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
+  case string.lowercase(name) {
+    "gregory" -> Ok(Gregorian)
+    "iso8601" -> Ok(Iso8601)
+    "buddhist" -> Ok(Buddhist)
+    "japanese" -> Ok(Japanese)
+    "roc" -> Ok(RepublicOfChina)
+    "persian" -> Ok(Persian)
+    "indian" -> Ok(Indian)
+    "hebrew" -> Ok(Hebrew)
+    "chinese" -> Ok(Chinese)
+    "dangi" -> Ok(Dangi)
+    "coptic" -> Ok(Coptic)
+    "ethiopic" -> Ok(Ethiopic)
+    "ethioaa" | "ethiopic-amete-alem" -> Ok(EthiopicAmeteAlem)
+    "islamic-civil" | "islamicc" -> Ok(IslamicCivil)
+    "islamic-tbla" | "islamic" -> Ok(IslamicTabular)
+    "islamic-umalqura" -> Ok(IslamicUmmAlQura)
+    "islamic-rgsa" -> Ok(Gregorian)
+    _ -> Error(Nil)
+  }
+}
+
+/// The Unicode name of a calendar, like `"hebrew"`, which Intl calls it too.
+pub fn calendar_name(calendar: Calendar) -> String {
   case calendar {
     Gregorian -> "gregory"
     Iso8601 -> "iso8601"
