@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Asturian.
 pub fn locale() -> Locale {
-  glintl.new_locale("ast", glintl.Gregorian, 19)
+  glintl.new_locale("ast", glintl.gregorian, 19)
 }

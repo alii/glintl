@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Cantonese.
 pub fn locale() -> Locale {
-  glintl.new_locale("yue", glintl.Gregorian, 373)
+  glintl.new_locale("yue", glintl.gregorian, 373)
 }

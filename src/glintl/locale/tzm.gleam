@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Central Atlas Tamazight.
 pub fn locale() -> Locale {
-  glintl.new_locale("tzm", glintl.Gregorian, 349)
+  glintl.new_locale("tzm", glintl.gregorian, 349)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Chuvash.
 pub fn locale() -> Locale {
-  glintl.new_locale("cv", glintl.Gregorian, 51)
+  glintl.new_locale("cv", glintl.gregorian, 51)
 }

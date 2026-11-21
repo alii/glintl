@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Pakistan).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-PK", glintl.Gregorian, 94)
+  glintl.new_locale("en-PK", glintl.gregorian, 94)
 }

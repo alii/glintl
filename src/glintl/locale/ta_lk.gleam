@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tamil (Sri Lanka).
 pub fn locale() -> Locale {
-  glintl.new_locale("ta-LK", glintl.Gregorian, 333)
+  glintl.new_locale("ta-LK", glintl.gregorian, 333)
 }

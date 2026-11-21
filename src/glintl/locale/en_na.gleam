@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Namibia).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-NA", glintl.Gregorian, 71)
+  glintl.new_locale("en-NA", glintl.gregorian, 71)
 }

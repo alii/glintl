@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Vunjo.
 pub fn locale() -> Locale {
-  glintl.new_locale("vun", glintl.Gregorian, 175)
+  glintl.new_locale("vun", glintl.gregorian, 175)
 }

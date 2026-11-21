@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Cherokee.
 pub fn locale() -> Locale {
-  glintl.new_locale("chr", glintl.Gregorian, 46)
+  glintl.new_locale("chr", glintl.gregorian, 46)
 }

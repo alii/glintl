@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for French (Wallis & Futuna).
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-WF", glintl.Gregorian, 134)
+  glintl.new_locale("fr-WF", glintl.gregorian, 134)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Arabic (Comoros).
 pub fn locale() -> Locale {
-  glintl.new_locale("ar-KM", glintl.Gregorian, 12)
+  glintl.new_locale("ar-KM", glintl.gregorian, 12)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Friulian.
 pub fn locale() -> Locale {
-  glintl.new_locale("fur", glintl.Gregorian, 144)
+  glintl.new_locale("fur", glintl.gregorian, 144)
 }

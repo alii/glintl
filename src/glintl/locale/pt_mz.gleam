@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Portuguese (Mozambique).
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-MZ", glintl.Gregorian, 274)
+  glintl.new_locale("pt-MZ", glintl.gregorian, 274)
 }

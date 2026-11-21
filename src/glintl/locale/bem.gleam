@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bemba.
 pub fn locale() -> Locale {
-  glintl.new_locale("bem", glintl.Gregorian, 25)
+  glintl.new_locale("bem", glintl.gregorian, 25)
 }

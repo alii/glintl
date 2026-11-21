@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Walser.
 pub fn locale() -> Locale {
-  glintl.new_locale("wae", glintl.Gregorian, 362)
+  glintl.new_locale("wae", glintl.gregorian, 362)
 }

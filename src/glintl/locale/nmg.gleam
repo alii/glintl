@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kwasio.
 pub fn locale() -> Locale {
-  glintl.new_locale("nmg", glintl.Gregorian, 252)
+  glintl.new_locale("nmg", glintl.gregorian, 252)
 }

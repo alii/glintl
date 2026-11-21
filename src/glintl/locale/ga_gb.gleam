@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Irish (United Kingdom).
 pub fn locale() -> Locale {
-  glintl.new_locale("ga-GB", glintl.Gregorian, 146)
+  glintl.new_locale("ga-GB", glintl.gregorian, 146)
 }

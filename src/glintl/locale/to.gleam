@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tongan.
 pub fn locale() -> Locale {
-  glintl.new_locale("to", glintl.Gregorian, 342)
+  glintl.new_locale("to", glintl.gregorian, 342)
 }

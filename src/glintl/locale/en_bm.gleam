@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Bermuda).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-BM", glintl.Gregorian, 71)
+  glintl.new_locale("en-BM", glintl.gregorian, 71)
 }

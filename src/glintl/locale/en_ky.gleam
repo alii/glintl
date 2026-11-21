@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Cayman Islands).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-KY", glintl.Gregorian, 71)
+  glintl.new_locale("en-KY", glintl.gregorian, 71)
 }

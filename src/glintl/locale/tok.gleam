@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Toki Pona.
 pub fn locale() -> Locale {
-  glintl.new_locale("tok", glintl.Gregorian, 343)
+  glintl.new_locale("tok", glintl.gregorian, 343)
 }

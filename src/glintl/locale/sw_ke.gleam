@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Swahili (Kenya).
 pub fn locale() -> Locale {
-  glintl.new_locale("sw-KE", glintl.Gregorian, 329)
+  glintl.new_locale("sw-KE", glintl.gregorian, 329)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bena.
 pub fn locale() -> Locale {
-  glintl.new_locale("bez", glintl.Gregorian, 26)
+  glintl.new_locale("bez", glintl.gregorian, 26)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Czech.
 pub fn locale() -> Locale {
-  glintl.new_locale("cs", glintl.Gregorian, 49)
+  glintl.new_locale("cs", glintl.gregorian, 49)
 }

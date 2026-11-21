@@ -79,7 +79,7 @@ pub fn doc_examples_test() {
     |> date_time.format(now, zone: utc)
     == "22:40"
   assert en_gb.locale()
-    |> glintl.with_calendar(glintl.Hebrew)
+    |> glintl.with_calendar(glintl.hebrew)
     |> date_time.date_formatter(style: date_time.Long)
     |> date_time.format(now, zone: utc)
     == "14 Heshvan 5787"
@@ -89,10 +89,10 @@ pub fn doc_examples_test() {
     |> date_time.date_formatter(style: date_time.Short)
     |> date_time.format(now, zone: utc)
     == "1405/8/3"
-  assert glintl.calendar_from_name("hebrew") == Ok(glintl.Hebrew)
-  assert glintl.calendar_from_name("islamic") == Ok(glintl.IslamicTabular)
-  assert glintl.calendar_name(glintl.Hebrew) == "hebrew"
-  assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
+  assert glintl.calendar_from_name("hebrew") == Ok(glintl.hebrew)
+  assert glintl.calendar_from_name("islamic") == Ok(glintl.islamic_tabular)
+  assert glintl.calendar_name(glintl.hebrew) == "hebrew"
+  assert glintl.locale_calendar(th.locale()) == glintl.buddhist
   assert glintl.locale_hour_cycle(en.locale()) == glintl.H12
   assert glintl.numbering_system("roman") == Error(Nil)
   assert glintl.locale_tag(en_gb.locale()) == "en-GB"
@@ -268,7 +268,7 @@ pub fn date_parts_test() {
     |> date.year(glintl.Numeric)
     |> date.era(glintl.Short)
     |> date.fields_formatter(
-      ja.locale() |> glintl.with_calendar(glintl.Japanese),
+      ja.locale() |> glintl.with_calendar(glintl.japanese),
       _,
     )
   assert date.format_to_parts(formatter, calendar.Date(2019, calendar.May, 1))
@@ -297,7 +297,7 @@ pub fn numbering_system_test() {
   // ICU writes Japanese years with 年 in ASCII digits.
   let assert Ok(thai) = glintl.numbering_system("thai")
   assert ja.locale()
-    |> glintl.with_calendar(glintl.Japanese)
+    |> glintl.with_calendar(glintl.japanese)
     |> glintl.with_numbering_system(thai)
     |> date_time.date_formatter(style: date_time.Full)
     |> date_time.format(moment, zone: time_zone.utc)
@@ -316,7 +316,7 @@ pub fn numbering_system_test() {
 
 pub fn tag_settings_test() {
   let assert Ok(japanese) = locales.from_tag("ja-JP-u-ca-japanese")
-  assert glintl.locale_calendar(japanese) == glintl.Japanese
+  assert glintl.locale_calendar(japanese) == glintl.japanese
   let assert Ok(clock) = locales.from_tag("en-u-hc-h23")
   assert glintl.locale_hour_cycle(clock) == glintl.H23
   let assert Ok(digits) = locales.from_tag("EN_u_nu_arab")
@@ -324,14 +324,14 @@ pub fn tag_settings_test() {
     == "arab"
   // Like Intl, it takes aliases and ignores values it doesn't know.
   let assert Ok(islamic) = locales.from_tag("en-u-ca-islamic-hc-h99")
-  assert glintl.locale_calendar(islamic) == glintl.IslamicTabular
+  assert glintl.locale_calendar(islamic) == glintl.islamic_tabular
   assert glintl.locale_hour_cycle(islamic) == glintl.H12
   // Everything after -x- is private.
   let assert Ok(private) = locales.from_tag("en-x-u-ca-japanese")
-  assert glintl.locale_calendar(private) == glintl.Gregorian
+  assert glintl.locale_calendar(private) == glintl.gregorian
   let assert Ok(negotiated) =
     locales.negotiate("en-AU-u-ca-buddhist", among: [en.locale()])
-  assert glintl.locale_calendar(negotiated) == glintl.Buddhist
+  assert glintl.locale_calendar(negotiated) == glintl.buddhist
 }
 
 /// Like Intl, a formatter with no date or time fields shows a numeric date.
@@ -385,7 +385,7 @@ pub fn accept_language_test() {
   assert locales.negotiate("ja-JP, en", among: supported) |> tag == Ok("ja")
   assert locales.negotiate("zh-TW", among: supported) |> tag == Ok("zh")
   assert locales.negotiate("de, fr", among: supported) == Error(Nil)
-  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.hebrew)
   assert locales.negotiate("en-GB", among: [hebrew]) == Ok(hebrew)
 }
 
@@ -443,7 +443,7 @@ pub fn date_test() {
     == "26/10/2026 Anno Domini"
 
   assert en_gb.locale()
-    |> glintl.with_calendar(glintl.Hebrew)
+    |> glintl.with_calendar(glintl.hebrew)
     |> date.date_formatter(style: date.Long)
     |> date.format(birthday)
     == "15 Heshvan 5787"
@@ -553,10 +553,10 @@ pub fn offset_test() {
 
 /// Locales need to work as `Dict` keys on both targets.
 pub fn locale_equality_test() {
-  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  let hebrew = glintl.with_calendar(en_gb.locale(), glintl.hebrew)
   assert en_gb.locale() == en_gb.locale()
   assert locales.from_tag("en-GB") == Ok(en_gb.locale())
-  assert hebrew == glintl.with_calendar(en_gb.locale(), glintl.Hebrew)
+  assert hebrew == glintl.with_calendar(en_gb.locale(), glintl.hebrew)
   assert hebrew != en_gb.locale()
   assert en_gb.locale() != ja.locale()
 }
@@ -567,21 +567,21 @@ pub fn calendar_test() {
     date_time.date_formatter(locale, style: date_time.Long)
     |> date_time.format(moment, zone: hours(1))
   }
-  assert glintl.locale_calendar(en_gb.locale()) == glintl.Gregorian
-  assert glintl.locale_calendar(th.locale()) == glintl.Buddhist
+  assert glintl.locale_calendar(en_gb.locale()) == glintl.gregorian
+  assert glintl.locale_calendar(th.locale()) == glintl.buddhist
   assert format(th.locale(), moment) == "25 ตุลาคม 2569"
   assert en_gb.locale()
-    |> glintl.with_calendar(glintl.Hebrew)
+    |> glintl.with_calendar(glintl.hebrew)
     |> format(moment)
     == "14 Heshvan 5787"
   let assert Ok(reiwa) = timestamp.parse_rfc3339("2019-05-01T12:00:00Z")
   assert ja.locale()
-    |> glintl.with_calendar(glintl.Japanese)
+    |> glintl.with_calendar(glintl.japanese)
     |> format(reiwa)
     == "令和元年5月1日"
   let assert Ok(leap_month) = timestamp.parse_rfc3339("2025-08-01T12:00:00Z")
   assert zh.locale()
-    |> glintl.with_calendar(glintl.Chinese)
+    |> glintl.with_calendar(glintl.chinese)
     |> format(leap_month)
     == "2025乙巳年闰六月8"
 }
@@ -592,7 +592,7 @@ pub fn outside_calendar_tables_test() {
   let assert Ok(year_5000) = timestamp.parse_rfc3339("5000-01-01T12:00:00Z")
   let hebrew =
     en_gb.locale()
-    |> glintl.with_calendar(glintl.Hebrew)
+    |> glintl.with_calendar(glintl.hebrew)
     |> date_time.date_formatter(style: date_time.Long)
     |> date_time.format(year_5000, zone: time_zone.utc)
   let expected = case on_erlang() {
@@ -759,7 +759,7 @@ pub fn calendar_fields_test() {
     |> list.filter(fn(case_) {
       let #(calendar, day, expected) = case_
       render.calendar_fields(
-        engine.calendar_math(calendar_from_id(calendar)),
+        engine.calendar_math(calendar_from_id(calendar))(),
         day,
       )
       != expected
@@ -786,24 +786,9 @@ fn result_tag(result: Result(glintl.Locale, Nil)) -> Result(String, Nil) {
 }
 
 fn calendar_from_id(id: String) -> glintl.Calendar {
-  case id {
-    "gregory" -> glintl.Gregorian
-    "iso8601" -> glintl.Iso8601
-    "buddhist" -> glintl.Buddhist
-    "japanese" -> glintl.Japanese
-    "roc" -> glintl.RepublicOfChina
-    "persian" -> glintl.Persian
-    "indian" -> glintl.Indian
-    "hebrew" -> glintl.Hebrew
-    "chinese" -> glintl.Chinese
-    "dangi" -> glintl.Dangi
-    "coptic" -> glintl.Coptic
-    "ethiopic" -> glintl.Ethiopic
-    "ethioaa" -> glintl.EthiopicAmeteAlem
-    "islamic-civil" -> glintl.IslamicCivil
-    "islamic-tbla" -> glintl.IslamicTabular
-    "islamic-umalqura" -> glintl.IslamicUmmAlQura
-    _ -> panic as { "unknown calendar in the fixtures: " <> id }
+  case glintl.calendar_from_name(id) {
+    Ok(calendar) -> calendar
+    Error(Nil) -> panic as { "unknown calendar in the fixtures: " <> id }
   }
 }
 

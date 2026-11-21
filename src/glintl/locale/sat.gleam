@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Santali.
 pub fn locale() -> Locale {
-  glintl.new_locale("sat", glintl.Gregorian, 290)
+  glintl.new_locale("sat", glintl.gregorian, 290)
 }

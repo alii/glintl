@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (US Virgin Islands).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-VI", glintl.Gregorian, 70)
+  glintl.new_locale("en-VI", glintl.gregorian, 70)
 }

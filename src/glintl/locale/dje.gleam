@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Zarma.
 pub fn locale() -> Locale {
-  glintl.new_locale("dje", glintl.Gregorian, 60)
+  glintl.new_locale("dje", glintl.gregorian, 60)
 }

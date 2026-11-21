@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Meru.
 pub fn locale() -> Locale {
-  glintl.new_locale("mer", glintl.Gregorian, 226)
+  glintl.new_locale("mer", glintl.gregorian, 226)
 }

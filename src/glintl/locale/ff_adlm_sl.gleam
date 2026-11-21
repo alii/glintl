@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Fulah (Adlam, Sierra Leone).
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Adlm-SL", glintl.Gregorian, 129)
+  glintl.new_locale("ff-Adlm-SL", glintl.gregorian, 129)
 }

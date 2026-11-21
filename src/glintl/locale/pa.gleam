@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Punjabi.
 pub fn locale() -> Locale {
-  glintl.new_locale("pa", glintl.Gregorian, 265)
+  glintl.new_locale("pa", glintl.gregorian, 265)
 }

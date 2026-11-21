@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Tanzania).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-TZ", glintl.Gregorian, 72)
+  glintl.new_locale("en-TZ", glintl.gregorian, 72)
 }

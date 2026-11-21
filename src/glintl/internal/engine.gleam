@@ -125,14 +125,14 @@ fn compile(locale: Locale, shown: render.Shown) -> Compiled {
   let calendar = glintl.locale_calendar(locale)
   let data = glintl.locale_data(locale)
   let cycle = glintl.hour_cycle_number(locale)
-  let rendered = case calendar {
-    glintl.Gregorian -> render.compile(data, cycle, shown)
-    _ ->
+  let rendered = case calendar == glintl.gregorian {
+    True -> render.compile(data, cycle, shown)
+    False ->
       render.compile_other(
         data,
         glintl.calendar_position(calendar),
         cycle,
-        fn() { calendar_math(calendar) },
+        calendar_math(calendar),
         shown,
       )
   }
@@ -196,7 +196,7 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
       glintl.calendar_position(calendar),
       request,
       glintl.calendar_name(calendar),
-      fn() { calendar_math(calendar) },
+      calendar_math(calendar),
       decimal(locale),
     )
   Compiled(
@@ -265,24 +265,24 @@ fn intl_style(style: data.Style) -> String {
 }
 
 @target(erlang)
-pub fn calendar_math(calendar: glintl.Calendar) -> data.Math {
-  case calendar {
-    glintl.Gregorian -> data.gregorian
-    glintl.Iso8601 -> iso8601_math()
-    glintl.Buddhist -> buddhist_math()
-    glintl.Japanese -> japanese_math()
-    glintl.RepublicOfChina -> republic_of_china_math()
-    glintl.Persian -> persian_math()
-    glintl.Indian -> indian_math()
-    glintl.Hebrew -> hebrew_math()
-    glintl.Chinese -> chinese_math()
-    glintl.Dangi -> dangi_math()
-    glintl.Coptic -> coptic_math()
-    glintl.Ethiopic -> ethiopic_math()
-    glintl.EthiopicAmeteAlem -> ethiopic_amete_alem_math()
-    glintl.IslamicCivil -> islamic_civil_math()
-    glintl.IslamicTabular -> islamic_tabular_math()
-    glintl.IslamicUmmAlQura -> islamic_umm_al_qura_math()
+pub fn calendar_math(calendar: glintl.Calendar) -> fn() -> data.Math {
+  case glintl.calendar_name(calendar) {
+    "gregory" -> fn() { data.gregorian }
+    "iso8601" -> iso8601_math
+    "buddhist" -> buddhist_math
+    "japanese" -> japanese_math
+    "roc" -> republic_of_china_math
+    "persian" -> persian_math
+    "indian" -> indian_math
+    "hebrew" -> hebrew_math
+    "chinese" -> chinese_math
+    "dangi" -> dangi_math
+    "coptic" -> coptic_math
+    "ethiopic" -> ethiopic_math
+    "ethioaa" -> ethiopic_amete_alem_math
+    "islamic-civil" -> islamic_civil_math
+    "islamic-tbla" -> islamic_tabular_math
+    _ -> islamic_umm_al_qura_math
   }
 }
 

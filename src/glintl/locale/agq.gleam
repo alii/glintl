@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Aghem.
 pub fn locale() -> Locale {
-  glintl.new_locale("agq", glintl.Gregorian, 3)
+  glintl.new_locale("agq", glintl.gregorian, 3)
 }

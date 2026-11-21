@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Lithuanian.
 pub fn locale() -> Locale {
-  glintl.new_locale("lt", glintl.Gregorian, 219)
+  glintl.new_locale("lt", glintl.gregorian, 219)
 }

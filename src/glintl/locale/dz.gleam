@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Dzongkha.
 pub fn locale() -> Locale {
-  glintl.new_locale("dz", glintl.Gregorian, 65)
+  glintl.new_locale("dz", glintl.gregorian, 65)
 }

@@ -96,46 +96,66 @@ pub type Digits {
 /// On Erlang, glintl can write Hebrew, Persian and other calendars with their
 /// own months for the years 1 to 4000. Outside that range, it writes dates in the
 /// Gregorian calendar instead.
-pub type Calendar {
-  Gregorian
-  /// The Gregorian calendar with ISO 8601 weeks and dates like 2026-10-25.
-  Iso8601
-  /// The Thai calendar. It counts years from 543 BC, so 2026 is 2569.
-  Buddhist
-  /// The Gregorian calendar with years counted in Japanese eras, so 2026 is
-  /// Reiwa 8.
-  Japanese
-  /// The Minguo calendar used in Taiwan. It counts years from 1912, so 2026 is
-  /// 115.
-  RepublicOfChina
-  /// The Solar Hijri calendar used in Iran and Afghanistan.
-  Persian
-  /// The Indian national calendar.
-  Indian
-  Hebrew
-  Chinese
-  /// The Korean lunisolar calendar.
-  Dangi
-  Coptic
-  /// The Ethiopian calendar with years in the Amete Mihret era.
-  Ethiopic
-  /// The Ethiopian calendar with years in the Amete Alem era.
-  EthiopicAmeteAlem
-  /// The tabular Islamic calendar counted from Friday 16 July 622 in the Julian
-  /// calendar.
-  IslamicCivil
-  /// The tabular Islamic calendar counted from Thursday 15 July 622 in the Julian
-  /// calendar.
-  IslamicTabular
-  /// The Umm al-Qura calendar used in Saudi Arabia.
-  IslamicUmmAlQura
+///
+/// Use a constant like `glintl.hebrew`, or get a calendar by name with
+/// `calendar_from_name`.
+pub opaque type Calendar {
+  Calendar(name: String)
 }
+
+pub const gregorian = Calendar("gregory")
+
+/// The Gregorian calendar with ISO 8601 weeks and dates like 2026-10-25.
+pub const iso8601 = Calendar("iso8601")
+
+/// The Thai calendar. It counts years from 543 BC, so 2026 is 2569.
+pub const buddhist = Calendar("buddhist")
+
+/// The Gregorian calendar with years counted in Japanese eras, so 2026 is
+/// Reiwa 8.
+pub const japanese = Calendar("japanese")
+
+/// The Minguo calendar used in Taiwan. It counts years from 1912, so 2026 is
+/// 115.
+pub const republic_of_china = Calendar("roc")
+
+/// The Solar Hijri calendar used in Iran and Afghanistan.
+pub const persian = Calendar("persian")
+
+/// The Indian national calendar.
+pub const indian = Calendar("indian")
+
+pub const hebrew = Calendar("hebrew")
+
+pub const chinese = Calendar("chinese")
+
+/// The Korean lunisolar calendar.
+pub const dangi = Calendar("dangi")
+
+pub const coptic = Calendar("coptic")
+
+/// The Ethiopian calendar with years in the Amete Mihret era.
+pub const ethiopic = Calendar("ethiopic")
+
+/// The Ethiopian calendar with years in the Amete Alem era.
+pub const ethiopic_amete_alem = Calendar("ethioaa")
+
+/// The tabular Islamic calendar counted from Friday 16 July 622 in the Julian
+/// calendar.
+pub const islamic_civil = Calendar("islamic-civil")
+
+/// The tabular Islamic calendar counted from Thursday 15 July 622 in the Julian
+/// calendar.
+pub const islamic_tabular = Calendar("islamic-tbla")
+
+/// The Umm al-Qura calendar used in Saudi Arabia.
+pub const islamic_umm_al_qura = Calendar("islamic-umalqura")
 
 /// Get the calendar a locale writes dates in.
 ///
 /// ```gleam
 /// glintl.locale_calendar(th.locale())
-/// // -> glintl.Buddhist
+/// // -> glintl.buddhist
 /// ```
 pub fn locale_calendar(locale: Locale) -> Calendar {
   locale.calendar
@@ -145,7 +165,7 @@ pub fn locale_calendar(locale: Locale) -> Calendar {
 ///
 /// ```gleam
 /// en_gb.locale()
-/// |> glintl.with_calendar(glintl.Hebrew)
+/// |> glintl.with_calendar(glintl.hebrew)
 /// |> date_time.date_formatter(style: date_time.Long)
 /// |> date_time.format(timestamp.system_time(), zone: time_zone.utc)
 /// // -> "14 Heshvan 5787"
@@ -363,12 +383,12 @@ pub fn hour_cycle_number(locale: Locale) -> Int {
 @target(erlang)
 @internal
 pub fn calendar_position(calendar: Calendar) -> Int {
-  position(calendars(), calendar, 0)
+  position(calendars(), calendar.name, 0)
 }
 
 @target(erlang)
 @external(erlang, "glintl_generated_data", "calendars")
-fn calendars() -> List(Calendar)
+fn calendars() -> List(String)
 
 @target(erlang)
 fn position(items: List(a), item: a, index: Int) -> Int {
@@ -394,29 +414,33 @@ pub fn intl_hour_cycle_option(locale: Locale) -> String {
 ///
 /// ```gleam
 /// glintl.calendar_from_name("hebrew")
-/// // -> Ok(glintl.Hebrew)
+/// // -> Ok(glintl.hebrew)
 /// ```
 ///
 /// Old names such as `"islamic"` work too.
 pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
-  case string.lowercase(name) {
-    "gregory" -> Ok(Gregorian)
-    "iso8601" -> Ok(Iso8601)
-    "buddhist" -> Ok(Buddhist)
-    "japanese" -> Ok(Japanese)
-    "roc" -> Ok(RepublicOfChina)
-    "persian" -> Ok(Persian)
-    "indian" -> Ok(Indian)
-    "hebrew" -> Ok(Hebrew)
-    "chinese" -> Ok(Chinese)
-    "dangi" -> Ok(Dangi)
-    "coptic" -> Ok(Coptic)
-    "ethiopic" -> Ok(Ethiopic)
-    "ethioaa" | "ethiopic-amete-alem" -> Ok(EthiopicAmeteAlem)
-    "islamic-civil" | "islamicc" -> Ok(IslamicCivil)
-    "islamic-tbla" | "islamic" -> Ok(IslamicTabular)
-    "islamic-umalqura" -> Ok(IslamicUmmAlQura)
-    "islamic-rgsa" -> Ok(Gregorian)
+  let name = string.lowercase(name)
+  case name {
+    "ethiopic-amete-alem" -> Ok(ethiopic_amete_alem)
+    "islamicc" -> Ok(islamic_civil)
+    "islamic" -> Ok(islamic_tabular)
+    "islamic-rgsa" -> Ok(gregorian)
+    "gregory"
+    | "iso8601"
+    | "buddhist"
+    | "japanese"
+    | "roc"
+    | "persian"
+    | "indian"
+    | "hebrew"
+    | "chinese"
+    | "dangi"
+    | "coptic"
+    | "ethiopic"
+    | "ethioaa"
+    | "islamic-civil"
+    | "islamic-tbla"
+    | "islamic-umalqura" -> Ok(Calendar(name))
     _ -> Error(Nil)
   }
 }
@@ -424,26 +448,9 @@ pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
 /// Get the Unicode name of a calendar.
 ///
 /// ```gleam
-/// glintl.calendar_name(glintl.Hebrew)
+/// glintl.calendar_name(glintl.hebrew)
 /// // -> "hebrew"
 /// ```
 pub fn calendar_name(calendar: Calendar) -> String {
-  case calendar {
-    Gregorian -> "gregory"
-    Iso8601 -> "iso8601"
-    Buddhist -> "buddhist"
-    Japanese -> "japanese"
-    RepublicOfChina -> "roc"
-    Persian -> "persian"
-    Indian -> "indian"
-    Hebrew -> "hebrew"
-    Chinese -> "chinese"
-    Dangi -> "dangi"
-    Coptic -> "coptic"
-    Ethiopic -> "ethiopic"
-    EthiopicAmeteAlem -> "ethioaa"
-    IslamicCivil -> "islamic-civil"
-    IslamicTabular -> "islamic-tbla"
-    IslamicUmmAlQura -> "islamic-umalqura"
-  }
+  calendar.name
 }

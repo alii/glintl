@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Upper Sorbian.
 pub fn locale() -> Locale {
-  glintl.new_locale("hsb", glintl.Gregorian, 162)
+  glintl.new_locale("hsb", glintl.gregorian, 162)
 }

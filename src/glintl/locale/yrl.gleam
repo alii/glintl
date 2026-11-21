@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Nheengatu.
 pub fn locale() -> Locale {
-  glintl.new_locale("yrl", glintl.Gregorian, 371)
+  glintl.new_locale("yrl", glintl.gregorian, 371)
 }

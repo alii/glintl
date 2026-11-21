@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Dari.
 pub fn locale() -> Locale {
-  glintl.new_locale("fa-AF", glintl.Persian, 126)
+  glintl.new_locale("fa-AF", glintl.persian, 126)
 }

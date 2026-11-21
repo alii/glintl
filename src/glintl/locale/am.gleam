@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Amharic.
 pub fn locale() -> Locale {
-  glintl.new_locale("am", glintl.Gregorian, 5)
+  glintl.new_locale("am", glintl.gregorian, 5)
 }

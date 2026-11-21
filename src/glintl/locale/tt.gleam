@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tatar.
 pub fn locale() -> Locale {
-  glintl.new_locale("tt", glintl.Gregorian, 346)
+  glintl.new_locale("tt", glintl.gregorian, 346)
 }

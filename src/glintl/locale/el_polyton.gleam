@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Greek (Polytonic).
 pub fn locale() -> Locale {
-  glintl.new_locale("el-polyton", glintl.Gregorian, 69)
+  glintl.new_locale("el-polyton", glintl.gregorian, 69)
 }

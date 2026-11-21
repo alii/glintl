@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for French (Côte d’Ivoire).
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-CI", glintl.Gregorian, 134)
+  glintl.new_locale("fr-CI", glintl.gregorian, 134)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Spanish (Guatemala).
 pub fn locale() -> Locale {
-  glintl.new_locale("es-GT", glintl.Gregorian, 109)
+  glintl.new_locale("es-GT", glintl.gregorian, 109)
 }

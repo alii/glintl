@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Afrikaans (Namibia).
 pub fn locale() -> Locale {
-  glintl.new_locale("af-NA", glintl.Gregorian, 2)
+  glintl.new_locale("af-NA", glintl.gregorian, 2)
 }

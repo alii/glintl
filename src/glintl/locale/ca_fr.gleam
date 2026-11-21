@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Catalan (France).
 pub fn locale() -> Locale {
-  glintl.new_locale("ca-FR", glintl.Gregorian, 41)
+  glintl.new_locale("ca-FR", glintl.gregorian, 41)
 }

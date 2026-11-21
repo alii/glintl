@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Southern Sotho.
 pub fn locale() -> Locale {
-  glintl.new_locale("st", glintl.Gregorian, 321)
+  glintl.new_locale("st", glintl.gregorian, 321)
 }

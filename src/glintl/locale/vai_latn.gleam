@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Vai (Latin).
 pub fn locale() -> Locale {
-  glintl.new_locale("vai-Latn", glintl.Gregorian, 358)
+  glintl.new_locale("vai-Latn", glintl.gregorian, 358)
 }

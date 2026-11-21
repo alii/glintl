@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Japanese.
 pub fn locale() -> Locale {
-  glintl.new_locale("ja", glintl.Gregorian, 173)
+  glintl.new_locale("ja", glintl.gregorian, 173)
 }

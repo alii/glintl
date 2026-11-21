@@ -83,7 +83,7 @@ export type CalendarId =
   | "islamic-tbla"
   | "islamic-umalqura";
 
-// `CALENDARS` follows the order of the Gleam `Calendar` type. Calendars with
+// `gleam` is each calendar's constant in `glintl.gleam`. Calendars with
 // Gregorian months only differ in eras and years, so a few rules cover them
 // with no date limits. The rest use a table of years.
 export const CALENDARS: {
@@ -91,22 +91,22 @@ export const CALENDARS: {
   gleam: string;
   kind: "proleptic" | "table";
 }[] = [
-  { id: "gregory", gleam: "Gregorian", kind: "proleptic" },
-  { id: "iso8601", gleam: "Iso8601", kind: "proleptic" },
-  { id: "buddhist", gleam: "Buddhist", kind: "proleptic" },
-  { id: "japanese", gleam: "Japanese", kind: "proleptic" },
-  { id: "roc", gleam: "RepublicOfChina", kind: "proleptic" },
-  { id: "persian", gleam: "Persian", kind: "table" },
-  { id: "indian", gleam: "Indian", kind: "table" },
-  { id: "hebrew", gleam: "Hebrew", kind: "table" },
-  { id: "chinese", gleam: "Chinese", kind: "table" },
-  { id: "dangi", gleam: "Dangi", kind: "table" },
-  { id: "coptic", gleam: "Coptic", kind: "table" },
-  { id: "ethiopic", gleam: "Ethiopic", kind: "table" },
-  { id: "ethioaa", gleam: "EthiopicAmeteAlem", kind: "table" },
-  { id: "islamic-civil", gleam: "IslamicCivil", kind: "table" },
-  { id: "islamic-tbla", gleam: "IslamicTabular", kind: "table" },
-  { id: "islamic-umalqura", gleam: "IslamicUmmAlQura", kind: "table" },
+  { id: "gregory", gleam: "gregorian", kind: "proleptic" },
+  { id: "iso8601", gleam: "iso8601", kind: "proleptic" },
+  { id: "buddhist", gleam: "buddhist", kind: "proleptic" },
+  { id: "japanese", gleam: "japanese", kind: "proleptic" },
+  { id: "roc", gleam: "republic_of_china", kind: "proleptic" },
+  { id: "persian", gleam: "persian", kind: "table" },
+  { id: "indian", gleam: "indian", kind: "table" },
+  { id: "hebrew", gleam: "hebrew", kind: "table" },
+  { id: "chinese", gleam: "chinese", kind: "table" },
+  { id: "dangi", gleam: "dangi", kind: "table" },
+  { id: "coptic", gleam: "coptic", kind: "table" },
+  { id: "ethiopic", gleam: "ethiopic", kind: "table" },
+  { id: "ethioaa", gleam: "ethiopic_amete_alem", kind: "table" },
+  { id: "islamic-civil", gleam: "islamic_civil", kind: "table" },
+  { id: "islamic-tbla", gleam: "islamic_tabular", kind: "table" },
+  { id: "islamic-umalqura", gleam: "islamic_umm_al_qura", kind: "table" },
 ];
 
 export function day(year: number, month: number, dayOfMonth: number): number {

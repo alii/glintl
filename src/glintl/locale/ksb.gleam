@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Shambala.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksb", glintl.Gregorian, 198)
+  glintl.new_locale("ksb", glintl.gregorian, 198)
 }

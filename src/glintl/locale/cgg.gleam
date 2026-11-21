@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Chiga.
 pub fn locale() -> Locale {
-  glintl.new_locale("cgg", glintl.Gregorian, 45)
+  glintl.new_locale("cgg", glintl.gregorian, 45)
 }

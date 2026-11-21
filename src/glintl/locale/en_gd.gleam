@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Grenada).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-GD", glintl.Gregorian, 71)
+  glintl.new_locale("en-GD", glintl.gregorian, 71)
 }

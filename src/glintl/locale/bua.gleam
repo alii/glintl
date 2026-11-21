@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Buriat.
 pub fn locale() -> Locale {
-  glintl.new_locale("bua", glintl.Gregorian, 40)
+  glintl.new_locale("bua", glintl.gregorian, 40)
 }

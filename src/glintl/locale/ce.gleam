@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Chechen.
 pub fn locale() -> Locale {
-  glintl.new_locale("ce", glintl.Gregorian, 43)
+  glintl.new_locale("ce", glintl.gregorian, 43)
 }

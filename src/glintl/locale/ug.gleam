@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Uyghur.
 pub fn locale() -> Locale {
-  glintl.new_locale("ug", glintl.Gregorian, 350)
+  glintl.new_locale("ug", glintl.gregorian, 350)
 }

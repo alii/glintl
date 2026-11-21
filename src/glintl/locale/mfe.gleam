@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Morisyen.
 pub fn locale() -> Locale {
-  glintl.new_locale("mfe", glintl.Gregorian, 227)
+  glintl.new_locale("mfe", glintl.gregorian, 227)
 }

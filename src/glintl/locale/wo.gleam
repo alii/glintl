@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Wolof.
 pub fn locale() -> Locale {
-  glintl.new_locale("wo", glintl.Gregorian, 363)
+  glintl.new_locale("wo", glintl.gregorian, 363)
 }

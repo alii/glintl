@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Arabic (Saudi Arabia).
 pub fn locale() -> Locale {
-  glintl.new_locale("ar-SA", glintl.Gregorian, 16)
+  glintl.new_locale("ar-SA", glintl.gregorian, 16)
 }

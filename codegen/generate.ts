@@ -267,10 +267,10 @@ const DATA_TABLES = [
   "field_strings",
 ] as const;
 
-// Lists Gleam's `Calendar` and `HourCycle` values in the order the packed
+// Lists the calendar names and `HourCycle` values in the order the packed
 // data numbers them, so `glintl.gleam` doesn't need its own copy.
 const ORDERS = [
-  ["calendars", CALENDARS.map(({ gleam }) => erlang.atom(gleam))],
+  ["calendars", CALENDARS.map(({ id }) => erlang.string(id))],
   ["hour_cycles", HOUR_CYCLES.map((cycle) => erlang.atom(cycle))],
 ] as const;
 

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Belarusian.
 pub fn locale() -> Locale {
-  glintl.new_locale("be", glintl.Gregorian, 24)
+  glintl.new_locale("be", glintl.gregorian, 24)
 }

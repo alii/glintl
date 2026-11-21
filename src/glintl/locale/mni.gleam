@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Manipuri.
 pub fn locale() -> Locale {
-  glintl.new_locale("mni", glintl.Gregorian, 235)
+  glintl.new_locale("mni", glintl.gregorian, 235)
 }

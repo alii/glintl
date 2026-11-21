@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Chinese (Simplified, Singapore).
 pub fn locale() -> Locale {
-  glintl.new_locale("zh-Hans-SG", glintl.Gregorian, 382)
+  glintl.new_locale("zh-Hans-SG", glintl.gregorian, 382)
 }

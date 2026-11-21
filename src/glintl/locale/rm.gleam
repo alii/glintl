@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Romansh.
 pub fn locale() -> Locale {
-  glintl.new_locale("rm", glintl.Gregorian, 279)
+  glintl.new_locale("rm", glintl.gregorian, 279)
 }

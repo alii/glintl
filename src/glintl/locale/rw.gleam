@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kinyarwanda.
 pub fn locale() -> Locale {
-  glintl.new_locale("rw", glintl.Gregorian, 286)
+  glintl.new_locale("rw", glintl.gregorian, 286)
 }

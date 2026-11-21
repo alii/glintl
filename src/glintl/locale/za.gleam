@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Zhuang.
 pub fn locale() -> Locale {
-  glintl.new_locale("za", glintl.Gregorian, 376)
+  glintl.new_locale("za", glintl.gregorian, 376)
 }

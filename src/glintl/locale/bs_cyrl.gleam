@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bosnian (Cyrillic).
 pub fn locale() -> Locale {
-  glintl.new_locale("bs-Cyrl", glintl.Gregorian, 39)
+  glintl.new_locale("bs-Cyrl", glintl.gregorian, 39)
 }

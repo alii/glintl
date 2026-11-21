@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Igbo.
 pub fn locale() -> Locale {
-  glintl.new_locale("ig", glintl.Gregorian, 168)
+  glintl.new_locale("ig", glintl.gregorian, 168)
 }

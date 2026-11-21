@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Yoruba.
 pub fn locale() -> Locale {
-  glintl.new_locale("yo", glintl.Gregorian, 369)
+  glintl.new_locale("yo", glintl.gregorian, 369)
 }

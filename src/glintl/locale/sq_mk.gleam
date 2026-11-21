@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Albanian (North Macedonia).
 pub fn locale() -> Locale {
-  glintl.new_locale("sq-MK", glintl.Gregorian, 312)
+  glintl.new_locale("sq-MK", glintl.gregorian, 312)
 }

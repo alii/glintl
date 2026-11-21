@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Sicilian.
 pub fn locale() -> Locale {
-  glintl.new_locale("scn", glintl.Gregorian, 293)
+  glintl.new_locale("scn", glintl.gregorian, 293)
 }

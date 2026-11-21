@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bangla.
 pub fn locale() -> Locale {
-  glintl.new_locale("bn", glintl.Gregorian, 32)
+  glintl.new_locale("bn", glintl.gregorian, 32)
 }

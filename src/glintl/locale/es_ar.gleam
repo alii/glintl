@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Spanish (Argentina).
 pub fn locale() -> Locale {
-  glintl.new_locale("es-AR", glintl.Gregorian, 102)
+  glintl.new_locale("es-AR", glintl.gregorian, 102)
 }

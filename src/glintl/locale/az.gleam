@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Azerbaijani.
 pub fn locale() -> Locale {
-  glintl.new_locale("az", glintl.Gregorian, 20)
+  glintl.new_locale("az", glintl.gregorian, 20)
 }

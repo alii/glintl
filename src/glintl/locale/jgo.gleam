@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Ngomba.
 pub fn locale() -> Locale {
-  glintl.new_locale("jgo", glintl.Gregorian, 174)
+  glintl.new_locale("jgo", glintl.gregorian, 174)
 }

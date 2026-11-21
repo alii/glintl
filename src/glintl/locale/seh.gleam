@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Sena.
 pub fn locale() -> Locale {
-  glintl.new_locale("seh", glintl.Gregorian, 298)
+  glintl.new_locale("seh", glintl.gregorian, 298)
 }

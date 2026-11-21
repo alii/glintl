@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Diego Garcia).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-DG", glintl.Gregorian, 72)
+  glintl.new_locale("en-DG", glintl.gregorian, 72)
 }

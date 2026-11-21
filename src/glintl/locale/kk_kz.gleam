@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kazakh (Kazakhstan).
 pub fn locale() -> Locale {
-  glintl.new_locale("kk-KZ", glintl.Gregorian, 185)
+  glintl.new_locale("kk-KZ", glintl.gregorian, 185)
 }

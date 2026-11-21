@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Danish.
 pub fn locale() -> Locale {
-  glintl.new_locale("da", glintl.Gregorian, 53)
+  glintl.new_locale("da", glintl.gregorian, 53)
 }

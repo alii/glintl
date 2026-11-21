@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Swedish.
 pub fn locale() -> Locale {
-  glintl.new_locale("sv", glintl.Gregorian, 324)
+  glintl.new_locale("sv", glintl.gregorian, 324)
 }

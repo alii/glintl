@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kurdish (Arabic, Iran).
 pub fn locale() -> Locale {
-  glintl.new_locale("ku-Arab-IR", glintl.Gregorian, 201)
+  glintl.new_locale("ku-Arab-IR", glintl.gregorian, 201)
 }

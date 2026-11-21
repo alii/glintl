@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tigrinya (Eritrea).
 pub fn locale() -> Locale {
-  glintl.new_locale("ti-ER", glintl.Gregorian, 339)
+  glintl.new_locale("ti-ER", glintl.gregorian, 339)
 }

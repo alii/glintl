@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Polish.
 pub fn locale() -> Locale {
-  glintl.new_locale("pl", glintl.Gregorian, 268)
+  glintl.new_locale("pl", glintl.gregorian, 268)
 }

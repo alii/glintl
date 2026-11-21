@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Koyraboro Senni.
 pub fn locale() -> Locale {
-  glintl.new_locale("ses", glintl.Gregorian, 299)
+  glintl.new_locale("ses", glintl.gregorian, 299)
 }

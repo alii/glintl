@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Shan.
 pub fn locale() -> Locale {
-  glintl.new_locale("shn", glintl.Gregorian, 303)
+  glintl.new_locale("shn", glintl.gregorian, 303)
 }

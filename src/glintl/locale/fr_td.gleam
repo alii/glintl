@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for French (Chad).
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-TD", glintl.Gregorian, 139)
+  glintl.new_locale("fr-TD", glintl.gregorian, 139)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Persian.
 pub fn locale() -> Locale {
-  glintl.new_locale("fa", glintl.Persian, 125)
+  glintl.new_locale("fa", glintl.persian, 125)
 }

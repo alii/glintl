@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Swampy Cree.
 pub fn locale() -> Locale {
-  glintl.new_locale("csw", glintl.Gregorian, 50)
+  glintl.new_locale("csw", glintl.gregorian, 50)
 }

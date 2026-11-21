@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bashkir.
 pub fn locale() -> Locale {
-  glintl.new_locale("ba", glintl.Gregorian, 22)
+  glintl.new_locale("ba", glintl.gregorian, 22)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Welsh.
 pub fn locale() -> Locale {
-  glintl.new_locale("cy", glintl.Gregorian, 52)
+  glintl.new_locale("cy", glintl.gregorian, 52)
 }

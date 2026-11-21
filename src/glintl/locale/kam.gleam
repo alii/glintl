@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kamba.
 pub fn locale() -> Locale {
-  glintl.new_locale("kam", glintl.Gregorian, 179)
+  glintl.new_locale("kam", glintl.gregorian, 179)
 }

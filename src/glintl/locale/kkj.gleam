@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kako.
 pub fn locale() -> Locale {
-  glintl.new_locale("kkj", glintl.Gregorian, 187)
+  glintl.new_locale("kkj", glintl.gregorian, 187)
 }

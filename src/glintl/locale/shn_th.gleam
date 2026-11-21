@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Shan (Thailand).
 pub fn locale() -> Locale {
-  glintl.new_locale("shn-TH", glintl.Buddhist, 303)
+  glintl.new_locale("shn-TH", glintl.buddhist, 303)
 }

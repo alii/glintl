@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Portuguese (Switzerland).
 pub fn locale() -> Locale {
-  glintl.new_locale("pt-CH", glintl.Gregorian, 274)
+  glintl.new_locale("pt-CH", glintl.gregorian, 274)
 }

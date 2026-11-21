@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for French (Congo - Brazzaville).
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-CG", glintl.Gregorian, 134)
+  glintl.new_locale("fr-CG", glintl.gregorian, 134)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Lakota.
 pub fn locale() -> Locale {
-  glintl.new_locale("lkt", glintl.Gregorian, 213)
+  glintl.new_locale("lkt", glintl.gregorian, 213)
 }

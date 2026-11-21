@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Croatian (Bosnia & Herzegovina).
 pub fn locale() -> Locale {
-  glintl.new_locale("hr-BA", glintl.Gregorian, 161)
+  glintl.new_locale("hr-BA", glintl.gregorian, 161)
 }

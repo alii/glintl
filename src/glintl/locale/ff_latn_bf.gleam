@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Fulah (Latin, Burkina Faso).
 pub fn locale() -> Locale {
-  glintl.new_locale("ff-Latn-BF", glintl.Gregorian, 127)
+  glintl.new_locale("ff-Latn-BF", glintl.gregorian, 127)
 }

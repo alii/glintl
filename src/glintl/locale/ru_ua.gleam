@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Russian (Ukraine).
 pub fn locale() -> Locale {
-  glintl.new_locale("ru-UA", glintl.Gregorian, 285)
+  glintl.new_locale("ru-UA", glintl.gregorian, 285)
 }

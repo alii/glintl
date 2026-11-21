@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bodo.
 pub fn locale() -> Locale {
-  glintl.new_locale("brx", glintl.Gregorian, 37)
+  glintl.new_locale("brx", glintl.gregorian, 37)
 }

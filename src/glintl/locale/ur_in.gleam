@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Urdu (India).
 pub fn locale() -> Locale {
-  glintl.new_locale("ur-IN", glintl.Gregorian, 353)
+  glintl.new_locale("ur-IN", glintl.gregorian, 353)
 }

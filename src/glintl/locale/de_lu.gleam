@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for German (Luxembourg).
 pub fn locale() -> Locale {
-  glintl.new_locale("de-LU", glintl.Gregorian, 59)
+  glintl.new_locale("de-LU", glintl.gregorian, 59)
 }

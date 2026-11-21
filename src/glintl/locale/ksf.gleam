@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bafia.
 pub fn locale() -> Locale {
-  glintl.new_locale("ksf", glintl.Gregorian, 199)
+  glintl.new_locale("ksf", glintl.gregorian, 199)
 }

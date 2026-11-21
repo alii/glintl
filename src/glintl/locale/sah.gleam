@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Yakut.
 pub fn locale() -> Locale {
-  glintl.new_locale("sah", glintl.Gregorian, 288)
+  glintl.new_locale("sah", glintl.gregorian, 288)
 }

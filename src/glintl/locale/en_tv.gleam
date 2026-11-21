@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Tuvalu).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-TV", glintl.Gregorian, 72)
+  glintl.new_locale("en-TV", glintl.gregorian, 72)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Cameroon).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-CM", glintl.Gregorian, 72)
+  glintl.new_locale("en-CM", glintl.gregorian, 72)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Slovak.
 pub fn locale() -> Locale {
-  glintl.new_locale("sk", glintl.Gregorian, 305)
+  glintl.new_locale("sk", glintl.gregorian, 305)
 }

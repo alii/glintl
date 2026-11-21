@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Sundanese.
 pub fn locale() -> Locale {
-  glintl.new_locale("su", glintl.Gregorian, 323)
+  glintl.new_locale("su", glintl.gregorian, 323)
 }

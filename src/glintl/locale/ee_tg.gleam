@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Ewe (Togo).
 pub fn locale() -> Locale {
-  glintl.new_locale("ee-TG", glintl.Gregorian, 68)
+  glintl.new_locale("ee-TG", glintl.gregorian, 68)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Anguilla).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-AI", glintl.Gregorian, 72)
+  glintl.new_locale("en-AI", glintl.gregorian, 72)
 }

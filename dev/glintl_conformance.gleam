@@ -174,24 +174,9 @@ fn number(text: String) -> Int {
 }
 
 fn calendar_from_id(id: String) -> glintl.Calendar {
-  case id {
-    "gregory" -> glintl.Gregorian
-    "iso8601" -> glintl.Iso8601
-    "buddhist" -> glintl.Buddhist
-    "japanese" -> glintl.Japanese
-    "roc" -> glintl.RepublicOfChina
-    "persian" -> glintl.Persian
-    "indian" -> glintl.Indian
-    "hebrew" -> glintl.Hebrew
-    "chinese" -> glintl.Chinese
-    "dangi" -> glintl.Dangi
-    "coptic" -> glintl.Coptic
-    "ethiopic" -> glintl.Ethiopic
-    "ethioaa" -> glintl.EthiopicAmeteAlem
-    "islamic-civil" -> glintl.IslamicCivil
-    "islamic-tbla" -> glintl.IslamicTabular
-    "islamic-umalqura" -> glintl.IslamicUmmAlQura
-    _ -> panic as { "unknown calendar: " <> id }
+  case glintl.calendar_from_name(id) {
+    Ok(calendar) -> calendar
+    Error(Nil) -> panic as { "unknown calendar: " <> id }
   }
 }
 

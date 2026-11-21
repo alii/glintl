@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tachelhit (Tifinagh).
 pub fn locale() -> Locale {
-  glintl.new_locale("shi-Tfng", glintl.Gregorian, 301)
+  glintl.new_locale("shi-Tfng", glintl.gregorian, 301)
 }

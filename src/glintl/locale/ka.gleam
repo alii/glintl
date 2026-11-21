@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Georgian.
 pub fn locale() -> Locale {
-  glintl.new_locale("ka", glintl.Gregorian, 177)
+  glintl.new_locale("ka", glintl.gregorian, 177)
 }

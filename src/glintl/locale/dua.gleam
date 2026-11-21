@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Duala.
 pub fn locale() -> Locale {
-  glintl.new_locale("dua", glintl.Gregorian, 63)
+  glintl.new_locale("dua", glintl.gregorian, 63)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Belarusian (Taraskievica orthography).
 pub fn locale() -> Locale {
-  glintl.new_locale("be-tarask", glintl.Gregorian, 24)
+  glintl.new_locale("be-tarask", glintl.gregorian, 24)
 }

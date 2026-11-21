@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Makhuwa-Meetto.
 pub fn locale() -> Locale {
-  glintl.new_locale("mgh", glintl.Gregorian, 229)
+  glintl.new_locale("mgh", glintl.gregorian, 229)
 }

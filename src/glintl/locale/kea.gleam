@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Kabuverdianu.
 pub fn locale() -> Locale {
-  glintl.new_locale("kea", glintl.Gregorian, 181)
+  glintl.new_locale("kea", glintl.gregorian, 181)
 }

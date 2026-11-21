@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Javanese.
 pub fn locale() -> Locale {
-  glintl.new_locale("jv", glintl.Gregorian, 176)
+  glintl.new_locale("jv", glintl.gregorian, 176)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Luyia.
 pub fn locale() -> Locale {
-  glintl.new_locale("luy", glintl.Gregorian, 222)
+  glintl.new_locale("luy", glintl.gregorian, 222)
 }

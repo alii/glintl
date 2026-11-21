@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Yiddish.
 pub fn locale() -> Locale {
-  glintl.new_locale("yi", glintl.Gregorian, 368)
+  glintl.new_locale("yi", glintl.gregorian, 368)
 }

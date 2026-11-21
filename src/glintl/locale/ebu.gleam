@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Embu.
 pub fn locale() -> Locale {
-  glintl.new_locale("ebu", glintl.Gregorian, 66)
+  glintl.new_locale("ebu", glintl.gregorian, 66)
 }

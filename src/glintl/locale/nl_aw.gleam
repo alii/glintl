@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Dutch (Aruba).
 pub fn locale() -> Locale {
-  glintl.new_locale("nl-AW", glintl.Gregorian, 250)
+  glintl.new_locale("nl-AW", glintl.gregorian, 250)
 }

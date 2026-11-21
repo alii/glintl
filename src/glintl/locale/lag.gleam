@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Langi.
 pub fn locale() -> Locale {
-  glintl.new_locale("lag", glintl.Gregorian, 209)
+  glintl.new_locale("lag", glintl.gregorian, 209)
 }

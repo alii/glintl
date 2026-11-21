@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Lingala (Angola).
 pub fn locale() -> Locale {
-  glintl.new_locale("ln-AO", glintl.Gregorian, 215)
+  glintl.new_locale("ln-AO", glintl.gregorian, 215)
 }

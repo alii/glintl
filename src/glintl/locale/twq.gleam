@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Tasawaq.
 pub fn locale() -> Locale {
-  glintl.new_locale("twq", glintl.Gregorian, 347)
+  glintl.new_locale("twq", glintl.gregorian, 347)
 }

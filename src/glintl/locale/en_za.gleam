@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (South Africa).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-ZA", glintl.Gregorian, 97)
+  glintl.new_locale("en-ZA", glintl.gregorian, 97)
 }

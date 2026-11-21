@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Shavian).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-Shaw", glintl.Gregorian, 70)
+  glintl.new_locale("en-Shaw", glintl.gregorian, 70)
 }

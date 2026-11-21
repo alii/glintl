@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Swedish (Åland Islands).
 pub fn locale() -> Locale {
-  glintl.new_locale("sv-AX", glintl.Gregorian, 325)
+  glintl.new_locale("sv-AX", glintl.gregorian, 325)
 }

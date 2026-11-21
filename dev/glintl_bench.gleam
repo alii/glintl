@@ -78,7 +78,7 @@ pub fn main() -> Nil {
   let assert Ok(london) = time_zone.from_name("Europe/London")
   let japanese =
     date_time.date_time_formatter(
-      glintl.with_calendar(ja.locale(), glintl.Japanese),
+      glintl.with_calendar(ja.locale(), glintl.japanese),
       date: date_time.Full,
       time: date_time.Short,
     )

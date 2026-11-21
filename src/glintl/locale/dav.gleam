@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Taita.
 pub fn locale() -> Locale {
-  glintl.new_locale("dav", glintl.Gregorian, 54)
+  glintl.new_locale("dav", glintl.gregorian, 54)
 }

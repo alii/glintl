@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for North Ndebele.
 pub fn locale() -> Locale {
-  glintl.new_locale("nd", glintl.Gregorian, 246)
+  glintl.new_locale("nd", glintl.gregorian, 246)
 }

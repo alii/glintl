@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Greek.
 pub fn locale() -> Locale {
-  glintl.new_locale("el", glintl.Gregorian, 69)
+  glintl.new_locale("el", glintl.gregorian, 69)
 }

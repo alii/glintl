@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Hausa (Arabic, Sudan).
 pub fn locale() -> Locale {
-  glintl.new_locale("ha-Arab-SD", glintl.Gregorian, 154)
+  glintl.new_locale("ha-Arab-SD", glintl.gregorian, 154)
 }

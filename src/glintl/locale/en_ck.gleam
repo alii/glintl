@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Cook Islands).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-CK", glintl.Gregorian, 72)
+  glintl.new_locale("en-CK", glintl.gregorian, 72)
 }

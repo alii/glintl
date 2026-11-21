@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Burundi).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-BI", glintl.Gregorian, 77)
+  glintl.new_locale("en-BI", glintl.gregorian, 77)
 }

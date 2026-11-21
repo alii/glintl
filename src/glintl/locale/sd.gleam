@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Sindhi.
 pub fn locale() -> Locale {
-  glintl.new_locale("sd", glintl.Gregorian, 294)
+  glintl.new_locale("sd", glintl.gregorian, 294)
 }

@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Russian (Kyrgyzstan).
 pub fn locale() -> Locale {
-  glintl.new_locale("ru-KG", glintl.Gregorian, 284)
+  glintl.new_locale("ru-KG", glintl.gregorian, 284)
 }

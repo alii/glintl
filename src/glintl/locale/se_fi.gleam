@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Northern Sami (Finland).
 pub fn locale() -> Locale {
-  glintl.new_locale("se-FI", glintl.Gregorian, 297)
+  glintl.new_locale("se-FI", glintl.gregorian, 297)
 }

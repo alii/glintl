@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Pashto.
 pub fn locale() -> Locale {
-  glintl.new_locale("ps", glintl.Persian, 271)
+  glintl.new_locale("ps", glintl.persian, 271)
 }

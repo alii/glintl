@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Dogri.
 pub fn locale() -> Locale {
-  glintl.new_locale("doi", glintl.Gregorian, 61)
+  glintl.new_locale("doi", glintl.gregorian, 61)
 }

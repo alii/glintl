@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Cebuano.
 pub fn locale() -> Locale {
-  glintl.new_locale("ceb", glintl.Gregorian, 44)
+  glintl.new_locale("ceb", glintl.gregorian, 44)
 }

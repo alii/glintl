@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Metaʼ.
 pub fn locale() -> Locale {
-  glintl.new_locale("mgo", glintl.Gregorian, 230)
+  glintl.new_locale("mgo", glintl.gregorian, 230)
 }

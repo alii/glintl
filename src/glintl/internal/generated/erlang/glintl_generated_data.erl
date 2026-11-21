@@ -50274,7 +50274,7 @@ field_strings() ->
 }.
 
 calendars() ->
-    [gregorian, iso8601, buddhist, japanese, republic_of_china, persian, indian, hebrew, chinese, dangi, coptic, ethiopic, ethiopic_amete_alem, islamic_civil, islamic_tabular, islamic_umm_al_qura].
+    [<<"gregory"/utf8>>, <<"iso8601"/utf8>>, <<"buddhist"/utf8>>, <<"japanese"/utf8>>, <<"roc"/utf8>>, <<"persian"/utf8>>, <<"indian"/utf8>>, <<"hebrew"/utf8>>, <<"chinese"/utf8>>, <<"dangi"/utf8>>, <<"coptic"/utf8>>, <<"ethiopic"/utf8>>, <<"ethioaa"/utf8>>, <<"islamic-civil"/utf8>>, <<"islamic-tbla"/utf8>>, <<"islamic-umalqura"/utf8>>].
 
 hour_cycles() ->
     [h11, h12, h23, h24].

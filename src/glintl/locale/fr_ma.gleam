@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for French (Morocco).
 pub fn locale() -> Locale {
-  glintl.new_locale("fr-MA", glintl.Gregorian, 141)
+  glintl.new_locale("fr-MA", glintl.gregorian, 141)
 }

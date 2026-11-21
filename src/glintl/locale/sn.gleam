@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Shona.
 pub fn locale() -> Locale {
-  glintl.new_locale("sn", glintl.Gregorian, 308)
+  glintl.new_locale("sn", glintl.gregorian, 308)
 }

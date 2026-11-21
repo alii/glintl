@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for English (Christmas Island).
 pub fn locale() -> Locale {
-  glintl.new_locale("en-CX", glintl.Gregorian, 72)
+  glintl.new_locale("en-CX", glintl.gregorian, 72)
 }

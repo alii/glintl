@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Interlingua.
 pub fn locale() -> Locale {
-  glintl.new_locale("ia", glintl.Gregorian, 165)
+  glintl.new_locale("ia", glintl.gregorian, 165)
 }

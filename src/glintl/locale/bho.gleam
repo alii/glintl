@@ -6,5 +6,5 @@ import glintl.{type Locale}
 
 /// Get the locale for Bhojpuri.
 pub fn locale() -> Locale {
-  glintl.new_locale("bho", glintl.Gregorian, 29)
+  glintl.new_locale("bho", glintl.gregorian, 29)
 }
