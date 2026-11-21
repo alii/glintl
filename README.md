@@ -6,8 +6,6 @@ On Erlang, glintl aims to give the same output as JavaScript's `Intl` API. It's 
 
 [Documentation](https://hexdocs.pm/glintl/) • [Repository](https://github.com/alii/glintl)
 
-glintl is in early development, so expect breaking changes.
-
 ```sh
 gleam add glintl gleam_time
 ```
@@ -50,6 +48,8 @@ To style each piece of a date, like a bold weekday, use `date_time.format_to_par
 On JavaScript, glintl calls `Intl.DateTimeFormat` directly. glintl adds no locale data to your JavaScript bundle, so you can use it in size-sensitive programs, like in the browser.
 
 On Erlang, glintl's locales are built-in to the package. The locales are generated when we build and publish glintl. We store the data as [literals](https://www.erlang.org/doc/system/eff_guide_processes.html#literal-pool), which Erlang keeps in one place for every process to share. This reduces memory usage compared to downloading or parsing files at runtime. And we're still working on improving performance!
+
+Note that ICU updates will be done in a semver patch, and thus are not considered breaking changes.
 
 If you're coming from Elixir, [Localize](https://github.com/elixir-localize/localize) offers a few more features than glintl, like formatting numbers and units. We do plan to add these to glintl. Beyond that, the main difference is where the locale data comes from:
 
