@@ -14,6 +14,7 @@
 
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import glintl/internal/calendar_id.{type CalendarId}
 @target(erlang)
 import glintl/internal/render
 
@@ -100,56 +101,56 @@ pub type Digits {
 /// Use a constant like `glintl.hebrew`, or get a calendar by name with
 /// `calendar_from_name`.
 pub opaque type Calendar {
-  Calendar(name: String)
+  Calendar(id: CalendarId)
 }
 
-pub const gregorian = Calendar("gregory")
+pub const gregorian = Calendar(calendar_id.Gregorian)
 
 /// The Gregorian calendar with ISO 8601 weeks and dates like 2026-10-25.
-pub const iso8601 = Calendar("iso8601")
+pub const iso8601 = Calendar(calendar_id.Iso8601)
 
 /// The Thai calendar. It counts years from 543 BC, so 2026 is 2569.
-pub const buddhist = Calendar("buddhist")
+pub const buddhist = Calendar(calendar_id.Buddhist)
 
 /// The Gregorian calendar with years counted in Japanese eras, so 2026 is
 /// Reiwa 8.
-pub const japanese = Calendar("japanese")
+pub const japanese = Calendar(calendar_id.Japanese)
 
 /// The Minguo calendar used in Taiwan. It counts years from 1912, so 2026 is
 /// 115.
-pub const republic_of_china = Calendar("roc")
+pub const republic_of_china = Calendar(calendar_id.RepublicOfChina)
 
 /// The Solar Hijri calendar used in Iran and Afghanistan.
-pub const persian = Calendar("persian")
+pub const persian = Calendar(calendar_id.Persian)
 
 /// The Indian national calendar.
-pub const indian = Calendar("indian")
+pub const indian = Calendar(calendar_id.Indian)
 
-pub const hebrew = Calendar("hebrew")
+pub const hebrew = Calendar(calendar_id.Hebrew)
 
-pub const chinese = Calendar("chinese")
+pub const chinese = Calendar(calendar_id.Chinese)
 
 /// The Korean lunisolar calendar.
-pub const dangi = Calendar("dangi")
+pub const dangi = Calendar(calendar_id.Dangi)
 
-pub const coptic = Calendar("coptic")
+pub const coptic = Calendar(calendar_id.Coptic)
 
 /// The Ethiopian calendar with years in the Amete Mihret era.
-pub const ethiopic = Calendar("ethiopic")
+pub const ethiopic = Calendar(calendar_id.Ethiopic)
 
 /// The Ethiopian calendar with years in the Amete Alem era.
-pub const ethiopic_amete_alem = Calendar("ethioaa")
+pub const ethiopic_amete_alem = Calendar(calendar_id.EthiopicAmeteAlem)
 
 /// The tabular Islamic calendar counted from Friday 16 July 622 in the Julian
 /// calendar.
-pub const islamic_civil = Calendar("islamic-civil")
+pub const islamic_civil = Calendar(calendar_id.IslamicCivil)
 
 /// The tabular Islamic calendar counted from Thursday 15 July 622 in the Julian
 /// calendar.
-pub const islamic_tabular = Calendar("islamic-tbla")
+pub const islamic_tabular = Calendar(calendar_id.IslamicTabular)
 
 /// The Umm al-Qura calendar used in Saudi Arabia.
-pub const islamic_umm_al_qura = Calendar("islamic-umalqura")
+pub const islamic_umm_al_qura = Calendar(calendar_id.IslamicUmmAlQura)
 
 /// Get the calendar a locale writes dates in.
 ///
@@ -383,7 +384,7 @@ pub fn hour_cycle_number(locale: Locale) -> Int {
 @target(erlang)
 @internal
 pub fn calendar_position(calendar: Calendar) -> Int {
-  position(calendars(), calendar.name, 0)
+  position(calendars(), calendar_name(calendar), 0)
 }
 
 @target(erlang)
@@ -419,28 +420,23 @@ pub fn intl_hour_cycle_option(locale: Locale) -> String {
 ///
 /// Old names such as `"islamic"` work too.
 pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
-  let name = string.lowercase(name)
-  case name {
-    "ethiopic-amete-alem" -> Ok(ethiopic_amete_alem)
-    "islamicc" -> Ok(islamic_civil)
-    "islamic" -> Ok(islamic_tabular)
-    "islamic-rgsa" -> Ok(gregorian)
-    "gregory"
-    | "iso8601"
-    | "buddhist"
-    | "japanese"
-    | "roc"
-    | "persian"
-    | "indian"
-    | "hebrew"
-    | "chinese"
-    | "dangi"
-    | "coptic"
-    | "ethiopic"
-    | "ethioaa"
-    | "islamic-civil"
-    | "islamic-tbla"
-    | "islamic-umalqura" -> Ok(Calendar(name))
+  case string.lowercase(name) {
+    "gregory" | "islamic-rgsa" -> Ok(gregorian)
+    "iso8601" -> Ok(iso8601)
+    "buddhist" -> Ok(buddhist)
+    "japanese" -> Ok(japanese)
+    "roc" -> Ok(republic_of_china)
+    "persian" -> Ok(persian)
+    "indian" -> Ok(indian)
+    "hebrew" -> Ok(hebrew)
+    "chinese" -> Ok(chinese)
+    "dangi" -> Ok(dangi)
+    "coptic" -> Ok(coptic)
+    "ethiopic" -> Ok(ethiopic)
+    "ethioaa" | "ethiopic-amete-alem" -> Ok(ethiopic_amete_alem)
+    "islamic-civil" | "islamicc" -> Ok(islamic_civil)
+    "islamic-tbla" | "islamic" -> Ok(islamic_tabular)
+    "islamic-umalqura" -> Ok(islamic_umm_al_qura)
     _ -> Error(Nil)
   }
 }
@@ -452,5 +448,10 @@ pub fn calendar_from_name(name: String) -> Result(Calendar, Nil) {
 /// // -> "hebrew"
 /// ```
 pub fn calendar_name(calendar: Calendar) -> String {
-  calendar.name
+  calendar_id.name(calendar.id)
+}
+
+@internal
+pub fn calendar_id(calendar: Calendar) -> CalendarId {
+  calendar.id
 }

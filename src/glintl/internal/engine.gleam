@@ -1,5 +1,3 @@
-//// The shared code behind `glintl/date` and `glintl/date_time`.
-
 @target(erlang)
 import gleam/list
 @target(erlang)
@@ -7,6 +5,8 @@ import gleam/option.{type Option, None, Some}
 @target(erlang)
 import gleam/result
 import glintl.{type Locale}
+@target(erlang)
+import glintl/internal/calendar_id
 import glintl/internal/data
 import glintl/internal/matcher
 import glintl/internal/render
@@ -257,27 +257,25 @@ fn intl_style(style: data.Style) -> String {
 
 @target(erlang)
 pub fn calendar_math(calendar: glintl.Calendar) -> fn() -> data.Math {
-  case glintl.calendar_name(calendar) {
-    "gregory" -> fn() { data.gregorian }
-    "iso8601" -> iso8601_math
-    "buddhist" -> buddhist_math
-    "japanese" -> japanese_math
-    "roc" -> republic_of_china_math
-    "persian" -> persian_math
-    "indian" -> indian_math
-    "hebrew" -> hebrew_math
-    "chinese" -> chinese_math
-    "dangi" -> dangi_math
-    "coptic" -> coptic_math
-    "ethiopic" -> ethiopic_math
-    "ethioaa" -> ethiopic_amete_alem_math
-    "islamic-civil" -> islamic_civil_math
-    "islamic-tbla" -> islamic_tabular_math
-    _ -> islamic_umm_al_qura_math
+  case glintl.calendar_id(calendar) {
+    calendar_id.Gregorian -> fn() { data.gregorian }
+    calendar_id.Iso8601 -> iso8601_math
+    calendar_id.Buddhist -> buddhist_math
+    calendar_id.Japanese -> japanese_math
+    calendar_id.RepublicOfChina -> republic_of_china_math
+    calendar_id.Persian -> persian_math
+    calendar_id.Indian -> indian_math
+    calendar_id.Hebrew -> hebrew_math
+    calendar_id.Chinese -> chinese_math
+    calendar_id.Dangi -> dangi_math
+    calendar_id.Coptic -> coptic_math
+    calendar_id.Ethiopic -> ethiopic_math
+    calendar_id.EthiopicAmeteAlem -> ethiopic_amete_alem_math
+    calendar_id.IslamicCivil -> islamic_civil_math
+    calendar_id.IslamicTabular -> islamic_tabular_math
+    calendar_id.IslamicUmmAlQura -> islamic_umm_al_qura_math
   }
 }
-
-// Each calendar's generated maths.
 
 @target(erlang)
 @external(erlang, "glintl_generated_calendar_iso8601", "math")
