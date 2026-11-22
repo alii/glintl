@@ -1227,61 +1227,6 @@ export function pieces(pattern: string): Piece[] {
   return walk(0, false, []);
 }
 
-// --- JavaScriptCore's era workaround ------------------------------------------
-
-// Bun's JavaScriptCore writes its own era before these instants, because ICU
-// never picks that era. For Islamic calendars JavaScriptCore replaces ICU's
-// era and writes the year as 1 minus ICU's, in ASCII digits. Coptic's first
-// era has no name in ICU, so JavaScriptCore adds the era to the end.
-// JavaScriptCore applies the workaround only when the pattern has an era.
-type EraWorkaround = {
-  beforeMs: number;
-  text: string;
-  // True when JavaScriptCore replaces the era ICU writes and flips the year.
-  replaces: boolean;
-};
-
-const ISLAMIC_EPOCH_MS = -42521558822000;
-const ISLAMIC_TABULAR_EPOCH_MS = -42521645222000;
-const COPTIC_EPOCH_MS = -53184182822000;
-const BEFORE_HIJRA = "Before Hijra";
-
-export function eraWorkaround(calendar: string): EraWorkaround | undefined {
-  switch (calendar) {
-    case "islamic-civil":
-    case "islamic-umalqura":
-      return { beforeMs: ISLAMIC_EPOCH_MS, text: BEFORE_HIJRA, replaces: true };
-    case "islamic-tbla":
-      return {
-        beforeMs: ISLAMIC_TABULAR_EPOCH_MS,
-        text: BEFORE_HIJRA,
-        replaces: true,
-      };
-    case "coptic":
-      return {
-        beforeMs: COPTIC_EPOCH_MS,
-        text: "Anno Martyrum",
-        replaces: false,
-      };
-    default:
-      return undefined;
-  }
-}
-
-const TWO_DIGIT_YEARS = 100;
-
-// JavaScriptCore's flipped year, in ASCII digits, and always two of them for
-// a two digit year.
-export function flippedYear(icuYear: number, twoDigit: boolean): string {
-  const flipped = 1 - icuYear;
-
-  return twoDigit
-    ? String(
-        ((flipped % TWO_DIGIT_YEARS) + TWO_DIGIT_YEARS) % TWO_DIGIT_YEARS,
-      ).padStart(2, "0")
-    : String(flipped);
-}
-
 // --- Run keys -----------------------------------------------------------------
 
 const HAN_YEAR = "\u5e74";

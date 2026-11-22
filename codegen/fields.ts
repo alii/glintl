@@ -1,7 +1,7 @@
 // Works out what the matcher needs to pick patterns for fields, for each
 // locale and calendar.
 
-import { type CalendarId, DAY_MS, type Math_ } from "./calendars.ts";
+import { type CalendarId, DAY_MS, type Math_, inBunEra } from "./calendars.ts";
 import {
   type Resource,
   allChildren,
@@ -22,8 +22,6 @@ import {
   type MatcherData,
   type Piece,
   ZONE,
-  eraWorkaround,
-  flippedYear,
   jscPattern,
   matcher,
   pieces,
@@ -34,7 +32,7 @@ import {
 } from "./matcher.ts";
 import { type Token, checkDays, derive, icu, moment } from "./patterns.ts";
 import { random } from "./random.ts";
-import { type Moment, renderParts } from "./render.ts";
+import { renderParts } from "./render.ts";
 import {
   HOURS_PER_HALF_DAY,
   MINUTES_PER_HOUR,
@@ -557,47 +555,6 @@ function checkMoments(math: Math_) {
   ];
 }
 
-const endsWithSpace = /\s$/u;
-
-// Applies JavaScriptCore's era workaround to each piece's text.
-function withEraWorkaroundFor(
-  calendar: CalendarId,
-  pattern: string,
-  request: FieldOptions,
-  texts: string[],
-  mo: Moment,
-): string {
-  const w = eraWorkaround(calendar);
-  const ms = mo.unixSeconds * MS_PER_SECOND + mo.milliseconds;
-
-  if (w === undefined || !hasEra(pattern) || ms >= w.beforeMs) {
-    return texts.join("");
-  }
-
-  const letters = pieces(pattern).map((p) => (p.t === "run" ? p.run[0] : ""));
-
-  if (!w.replaces) {
-    const written = texts.map((t, i) => (letters[i] === "G" ? "" : t)).join("");
-
-    return endsWithSpace.test(written)
-      ? written + w.text
-      : `${written} ${w.text}`;
-  }
-
-  const era = letters.lastIndexOf("G");
-  const year = letters.lastIndexOf("y");
-
-  return texts
-    .map((t, i) =>
-      i === era
-        ? w.text
-        : i === year
-          ? flippedYear(mo.date.extended, request.year === "2-digit")
-          : t,
-    )
-    .join("");
-}
-
 export function fieldsData(
   tag: string,
   calendar: CalendarId,
@@ -609,24 +566,12 @@ export function fieldsData(
   const requests = [...new Set(witnesses.values())];
   const name = (r: FieldOptions) => `${tag} ${calendar} ${JSON.stringify(r)}`;
 
-  const withEraWorkaround = (
-    pattern: string,
-    request: FieldOptions,
-    texts: string[],
-    mo: Moment,
-  ) => withEraWorkaroundFor(calendar, pattern, request, texts, mo);
-
   // Learns each key's token from what Intl writes for a request on a day.
   const learn = (request: FieldOptions) => {
     const pattern = jscPattern(m, request);
-    const workaround = eraWorkaround(calendar);
-
-    // JavaScriptCore's era workaround hides how ICU writes years, so `learn`
-    // skips those days.
+    // Bun writes its own era on some old days, so `learn` skips them.
     const skip = (d: number) =>
-      workaround !== undefined &&
-      hasEra(pattern) &&
-      d * DAY_MS < workaround.beforeMs + DAY_MS;
+      hasEra(pattern) && inBunEra(calendar, d * DAY_MS);
 
     const derived = derive(
       tag,
@@ -679,12 +624,14 @@ export function fieldsData(
     const tokens = tokensFor(pattern, runs);
 
     moments.forEach((mo) => {
-      const ours = withEraWorkaround(
-        pattern,
-        request,
-        renderParts(tokens, digits, mo),
-        mo,
-      );
+      if (
+        hasEra(pattern) &&
+        inBunEra(calendar, mo.unixSeconds * MS_PER_SECOND + mo.milliseconds)
+      ) {
+        return;
+      }
+
+      const ours = renderParts(tokens, digits, mo).join("");
 
       const theirs = icu(tag, calendar, request, mo);
 

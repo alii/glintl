@@ -34,6 +34,7 @@ import {
   NOON_MS,
   SCAN_FROM,
   day,
+  inBunEra,
 } from "./calendars.ts";
 import {
   FIELD_CHOICES,
@@ -153,7 +154,13 @@ function eraFormatter(calendar: string): Intl.DateTimeFormat {
 function eraOf(calendar: string, epochDay: number): string {
   const f = eraFormatters.get(calendar) ?? eraFormatter(calendar);
 
-  return f.format(epochDay * SECONDS_PER_DAY * MS_PER_SECOND + NOON_MS);
+  // Intl adds a date to an era on its own, so only read the era. Chinese and
+  // Dangi have none.
+  return (
+    f
+      .formatToParts(epochDay * SECONDS_PER_DAY * MS_PER_SECOND + NOON_MS)
+      .find((part) => part.type === "era")?.value ?? ""
+  );
 }
 
 function eraSplit(
@@ -245,7 +252,10 @@ function group(): Case[] {
     const seconds =
       epochDay * SECONDS_PER_DAY + secondOfDay - offset * SECONDS_PER_MINUTE;
 
-    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) {
+    if (
+      (kind === "table" && eraSplit(resolved, epochDay, seconds)) ||
+      inBunEra(resolved, seconds * MS_PER_SECOND)
+    ) {
       return [];
     }
 
@@ -285,15 +295,8 @@ const EVERY_TIMES: [number, number, number, number][] = [
 ];
 
 // A normal day, then days where years or eras are written in a special way:
-// the first year of Reiwa, the last day of Shōwa, and days before the Islamic
-// and Coptic eras.
-const EVERY_DAYS = [
-  day(2026, 3, 5),
-  day(2019, 5, 1),
-  day(1989, 1, 7),
-  day(500, 6, 15),
-  day(200, 6, 15),
-];
+// the first year of Reiwa and the last day of Shōwa.
+const EVERY_DAYS = [day(2026, 3, 5), day(2019, 5, 1), day(1989, 1, 7)];
 
 // The first day in `EVERY_DAYS` gets every time. The other days get these two.
 const OTHER_DAY_TIMES = [EVERY_TIMES[0]!, EVERY_TIMES[4]!];
@@ -373,7 +376,10 @@ function everyCases(tag: string, calendar: string, index: number): Case[] {
   );
 
   return everyMoments.flatMap(({ epochDay, offset, seconds, milliseconds }) => {
-    if (kind === "table" && eraSplit(resolved, epochDay, seconds)) {
+    if (
+      (kind === "table" && eraSplit(resolved, epochDay, seconds)) ||
+      inBunEra(resolved, seconds * MS_PER_SECOND)
+    ) {
       return [];
     }
 

@@ -204,15 +204,8 @@ type Digits {
   Local(Names)
   /// Digits from a numbering system other than the locale's default. Text written
   /// in the digits in `own` swaps to these, and years written with `own_minus` use
-  /// `minus`. Before `ascii_years_before`, JavaScriptCore writes years in ASCII
-  /// digits.
-  Swapped(
-    digits: Digits,
-    own: List(String),
-    own_minus: String,
-    minus: String,
-    ascii_years_before: Option(Int),
-  )
+  /// `minus`.
+  Swapped(digits: Digits, own: List(String), own_minus: String, minus: String)
 }
 
 @target(erlang)
@@ -237,22 +230,7 @@ type Prepared {
   )
   /// A fields pattern worked out when the formatter is compiled. Each piece has
   /// its run's letter, which is `""` for text.
-  Listed(
-    has_minute: Bool,
-    has_second: Bool,
-    pieces: List(#(String, Token)),
-    workaround: Workaround,
-  )
-}
-
-@target(erlang)
-/// JavaScriptCore's era workaround. `matcher.EraWorkaround` explains it.
-type Workaround {
-  NoWorkaround
-  /// Replace the last era and year before `before_ms`.
-  ReplaceEra(before_ms: Int, text: String, two_digit_year: Bool)
-  /// Before `before_ms`, leave out the era and add `text` to the end.
-  AppendEra(before_ms: Int, text: String)
+  Listed(has_minute: Bool, has_second: Bool, pieces: List(#(String, Token)))
 }
 
 // --- Tables ------------------------------------------------------------------
@@ -346,36 +324,24 @@ pub fn name_at(names: Names, index: Int) -> String {
 @target(erlang)
 /// Makes a formatter write numbers with the digits at `number` in the digits
 /// table, and its Gregorian fallback too. Years with the locale's default minus
-/// sign `own_minus` use `minus` instead, and the calendar's `workaround` says
-/// when JavaScriptCore writes years in ASCII.
+/// sign `own_minus` use `minus` instead.
 pub fn with_digits(
   compiled: Compiled,
   number: Int,
   own_minus: String,
   minus: String,
-  workaround: matcher.EraWorkaround,
 ) -> Compiled {
   let days = case compiled.days {
     GregorianDays -> GregorianDays
     OtherDays(math:, gregorian:) ->
       OtherDays(math:, gregorian: fn() {
-        with_digits(gregorian(), number, own_minus, minus, workaround)
+        with_digits(gregorian(), number, own_minus, minus)
       })
-  }
-  let ascii_years_before = case workaround {
-    matcher.Replaces(before_ms:, ..) -> option.Some(before_ms)
-    _ -> option.None
   }
   let digits = case digits_of(number) {
     digits if digits == compiled.digits -> digits
     digits ->
-      Swapped(
-        digits:,
-        own: digit_list(compiled.digits),
-        own_minus:,
-        minus:,
-        ascii_years_before:,
-      )
+      Swapped(digits:, own: digit_list(compiled.digits), own_minus:, minus:)
   }
   Compiled(..compiled, digits:, days:)
 }
@@ -453,19 +419,11 @@ pub fn compile_fields(
   locale: Int,
   position: Int,
   request: matcher.Request,
-  calendar: String,
   math: fn() -> data.Math,
   decimal: Option(String),
 ) -> Compiled {
   let gregorian = fn() {
-    compile_fields_at(
-      locale,
-      0,
-      request,
-      matcher.NoEraWorkaround,
-      GregorianDays,
-      decimal,
-    )
+    compile_fields_at(locale, 0, request, GregorianDays, decimal)
   }
   case position {
     0 -> gregorian()
@@ -474,7 +432,6 @@ pub fn compile_fields(
         locale,
         position,
         request,
-        matcher.era_workaround(calendar),
         OtherDays(math:, gregorian:),
         decimal,
       )
@@ -486,7 +443,6 @@ fn compile_fields_at(
   locale: Int,
   position: Int,
   request: matcher.Request,
-  workaround: matcher.EraWorkaround,
   days: Days,
   decimal: Option(String),
 ) -> Compiled {
@@ -517,7 +473,7 @@ fn compile_fields_at(
       decimal: option.unwrap(decimal, own_decimal),
     )
   let main = case matcher.pattern(m, request) {
-    Ok(pattern) -> listed(pattern, runs, request, workaround)
+    Ok(pattern) -> listed(pattern, runs)
     Error(Nil) -> Error(Nil)
   }
   case main {
@@ -529,12 +485,7 @@ fn compile_fields_at(
 }
 
 @target(erlang)
-fn listed(
-  pattern: String,
-  runs: BitArray,
-  request: matcher.Request,
-  workaround: matcher.EraWorkaround,
-) -> Result(Prepared, Nil) {
+fn listed(pattern: String, runs: BitArray) -> Result(Prepared, Nil) {
   let pieces = matcher.pieces(pattern)
   let tokens =
     list.try_map(pieces, fn(piece) {
@@ -558,25 +509,12 @@ fn listed(
     })
   case tokens {
     Error(Nil) -> Error(Nil)
-    Ok(tokens) -> {
-      let has_era = matcher.has_era_run(pieces)
-      let workaround = case workaround, has_era {
-        matcher.Replaces(before_ms:, text:), True ->
-          ReplaceEra(
-            before_ms:,
-            text:,
-            two_digit_year: request.year == "2-digit",
-          )
-        matcher.Appends(before_ms:, text:), True -> AppendEra(before_ms:, text:)
-        _, _ -> NoWorkaround
-      }
+    Ok(tokens) ->
       Ok(Listed(
         pieces: tokens,
         has_minute: list.any(tokens, fn(t) { is_minute(t.1) }),
         has_second: list.any(tokens, fn(t) { is_second(t.1) }),
-        workaround:,
       ))
-    }
   }
 }
 
@@ -865,16 +803,12 @@ fn write(compiled: Compiled, local: data.Local, milliseconds: Int) -> String {
   case prepared {
     Prepared(tokens:, ..) ->
       walk(tokens, prepared, local, milliseconds, compiled.digits, "")
-    Listed(pieces:, workaround:, ..) -> {
-      let texts =
-        list.map(pieces, fn(piece) {
-          #(
-            piece.0,
-            text(piece.1, prepared, local, milliseconds, compiled.digits),
-          )
-        })
-      with_workaround(texts, workaround, local, milliseconds)
-    }
+    Listed(pieces:, ..) ->
+      pieces
+      |> list.map(fn(piece) {
+        text(piece.1, prepared, local, milliseconds, compiled.digits)
+      })
+      |> string_concat
   }
 }
 
@@ -903,13 +837,14 @@ fn write_parts(
         [],
         False,
       )
-    Listed(..) -> {
-      let #(pieces, added) =
-        listed_pieces(prepared, local, milliseconds, compiled.digits)
-      // JavaScriptCore keeps the parts its workaround adds on their own.
-      list.fold(pieces, [], fn(acc, piece) { add_part(acc, piece.1, piece.2) })
-      |> list.append(list.reverse(added), _)
-    }
+    Listed(pieces:, ..) ->
+      list.fold(pieces, [], fn(acc, piece) {
+        add_part(
+          acc,
+          kind(piece.1),
+          text(piece.1, prepared, local, milliseconds, compiled.digits),
+        )
+      })
   }
   list.reverse(reversed)
 }
@@ -929,160 +864,6 @@ fn add_part(
       ..rest
     ]
     _, _, _ -> [#(kind, text), ..parts]
-  }
-}
-
-@target(erlang)
-/// Returns a fields pattern's pieces with their run letter, kind and text after
-/// JavaScriptCore's era workaround, then the parts the workaround adds to the
-/// end.
-fn listed_pieces(
-  prepared: Prepared,
-  local: data.Local,
-  milliseconds: Int,
-  digits: Digits,
-) -> #(List(#(String, PartKind, String)), List(#(PartKind, String))) {
-  case prepared {
-    Listed(pieces:, workaround:, ..) ->
-      list.map(pieces, fn(piece) {
-        #(
-          piece.0,
-          kind(piece.1),
-          text(piece.1, prepared, local, milliseconds, digits),
-        )
-      })
-      |> with_workaround_parts(workaround, local, milliseconds)
-    Prepared(..) -> #([], [])
-  }
-}
-
-@target(erlang)
-const milliseconds_per_second = 1000
-
-@target(erlang)
-/// Applies JavaScriptCore's era workaround to the text of each piece.
-fn with_workaround(
-  texts: List(#(String, String)),
-  workaround: Workaround,
-  m: data.Local,
-  milliseconds: Int,
-) -> String {
-  let ms = m.unix_seconds * milliseconds_per_second + milliseconds
-  case workaround {
-    ReplaceEra(before_ms:, text:, two_digit_year:) if ms < before_ms -> {
-      let era = last_index(texts, "G", 0, -1)
-      let year = last_index(texts, "y", 0, -1)
-      texts
-      |> list.index_map(fn(piece, i) {
-        case i == era, i == year {
-          True, _ -> text
-          _, True -> flipped_year(m.extended, two_digit_year)
-          _, _ -> piece.1
-        }
-      })
-      |> string_concat
-    }
-    AppendEra(before_ms:, text:) if ms < before_ms -> {
-      let written =
-        texts
-        |> list.map(fn(piece) {
-          case piece.0 {
-            "G" -> ""
-            _ -> piece.1
-          }
-        })
-        |> string_concat
-      case matcher.ends_with_space(written) {
-        True -> written <> text
-        False -> written <> " " <> text
-      }
-    }
-    _ -> string_concat(list.map(texts, fn(piece) { piece.1 }))
-  }
-}
-
-@target(erlang)
-/// Like `with_workaround`, for parts. It also returns the parts the workaround
-/// adds to the end.
-fn with_workaround_parts(
-  pieces: List(#(String, PartKind, String)),
-  workaround: Workaround,
-  m: data.Local,
-  milliseconds: Int,
-) -> #(List(#(String, PartKind, String)), List(#(PartKind, String))) {
-  let ms = m.unix_seconds * milliseconds_per_second + milliseconds
-  case workaround {
-    ReplaceEra(before_ms:, text:, two_digit_year:) if ms < before_ms -> {
-      let era = last_part_index(pieces, "G", 0, -1)
-      let year = last_part_index(pieces, "y", 0, -1)
-      let replaced =
-        list.index_map(pieces, fn(piece, i) {
-          case i == era, i == year {
-            True, _ -> #(piece.0, piece.1, text)
-            _, True -> #(
-              piece.0,
-              piece.1,
-              flipped_year(m.extended, two_digit_year),
-            )
-            _, _ -> piece
-          }
-        })
-      #(replaced, [])
-    }
-    AppendEra(before_ms:, text:) if ms < before_ms -> {
-      let kept = list.filter(pieces, fn(piece) { piece.0 != "G" })
-      let written = string_concat(list.map(kept, fn(piece) { piece.2 }))
-      case matcher.ends_with_space(written) {
-        True -> #(kept, [#(EraPart, text)])
-        False -> #(kept, [#(LiteralPart, " "), #(EraPart, text)])
-      }
-    }
-    _ -> #(pieces, [])
-  }
-}
-
-@target(erlang)
-fn last_index(
-  texts: List(#(String, String)),
-  letter: String,
-  i: Int,
-  found: Int,
-) -> Int {
-  case texts {
-    [] -> found
-    [#(l, _), ..rest] if l == letter -> last_index(rest, letter, i + 1, i)
-    [_, ..rest] -> last_index(rest, letter, i + 1, found)
-  }
-}
-
-@target(erlang)
-fn last_part_index(
-  pieces: List(#(String, PartKind, String)),
-  letter: String,
-  i: Int,
-  found: Int,
-) -> Int {
-  case pieces {
-    [] -> found
-    [#(l, _, _), ..rest] if l == letter ->
-      last_part_index(rest, letter, i + 1, i)
-    [_, ..rest] -> last_part_index(rest, letter, i + 1, found)
-  }
-}
-
-@target(erlang)
-/// JavaScriptCore writes 1 minus ICU's year in ASCII digits.
-fn flipped_year(icu_year: Int, two_digit: Bool) -> String {
-  let flipped = 1 - icu_year
-  case two_digit {
-    True -> {
-      let n = modulo(flipped, two_digit_years)
-      case n < ten {
-        True -> "0" <> int.to_string(n)
-        False -> int.to_string(n)
-      }
-    }
-    False -> int.to_string(flipped)
   }
 }
 
@@ -1200,10 +981,7 @@ fn text(
     Literal(text) | GlueText(text) -> text
     AsciiDigits(inner) -> text(inner, p, m, milliseconds, Ascii)
     Year(two_digit: True, minus:, ..) -> {
-      let #(minus, digits) = case digits {
-        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
-        _ -> #(minus, digits)
-      }
+      let #(minus, digits) = swapped_minus(minus, digits)
       let sign = case m.year < 0 {
         True -> minus
         False -> ""
@@ -1213,7 +991,7 @@ fn text(
     Year(two_digit: False, min_digits:, minus:, first:, minus_first:) -> {
       let #(minus, digits) = case digits, first {
         // ICU's `jpanyear` rules name year 1 and write other years in ASCII.
-        Swapped(..), "" -> year_digits(minus, digits, p, m, milliseconds)
+        Swapped(..), "" -> swapped_minus(minus, digits)
         Swapped(..), _ -> #(minus, Ascii)
         _, _ -> #(minus, digits)
       }
@@ -1237,10 +1015,7 @@ fn text(
       minimal_days:,
       exceptions:,
     ) -> {
-      let #(minus, digits) = case digits {
-        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
-        _ -> #(minus, digits)
-      }
+      let #(minus, digits) = swapped_minus(minus, digits)
       let year = data.week_year(m, first_day, minimal_days, exceptions)
       case two_digit, year < 0 {
         False, False -> padded(year, min_digits, digits)
@@ -1252,17 +1027,11 @@ fn text(
       }
     }
     ExtendedYear(minus:, two_digit: False) -> {
-      let #(minus, digits) = case digits {
-        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
-        _ -> #(minus, digits)
-      }
+      let #(minus, digits) = swapped_minus(minus, digits)
       signed(m.extended, minus, digits)
     }
     ExtendedYear(minus:, two_digit: True) -> {
-      let #(minus, digits) = case digits {
-        Swapped(..) -> year_digits(minus, digits, p, m, milliseconds)
-        _ -> #(minus, digits)
-      }
+      let #(minus, digits) = swapped_minus(minus, digits)
       let sign = case m.extended < 0 {
         True -> minus
         False -> ""
@@ -1519,26 +1288,6 @@ fn swapped(text: String, swap: Bool, digits: Digits) -> String {
 
 @target(erlang)
 /// Returns a year's minus sign and digits in the numbering system that's set.
-fn year_digits(
-  minus: String,
-  digits: Digits,
-  p: Prepared,
-  m: data.Local,
-  milliseconds: Int,
-) -> #(String, Digits) {
-  let ms = m.unix_seconds * milliseconds_per_second + milliseconds
-  case digits {
-    // JavaScriptCore flips years only in patterns with an era.
-    Swapped(ascii_years_before: option.Some(before), ..) if ms < before ->
-      case has_era(p) {
-        True -> #(minus, Ascii)
-        False -> swapped_minus(minus, digits)
-      }
-    _ -> swapped_minus(minus, digits)
-  }
-}
-
-@target(erlang)
 fn swapped_minus(minus: String, digits: Digits) -> #(String, Digits) {
   case digits {
     Swapped(own_minus:, minus: swapped, ..) if minus == own_minus -> #(
@@ -1546,32 +1295,6 @@ fn swapped_minus(minus: String, digits: Digits) -> #(String, Digits) {
       digits,
     )
     _ -> #(minus, digits)
-  }
-}
-
-@target(erlang)
-fn has_era(p: Prepared) -> Bool {
-  case p {
-    Listed(pieces:, ..) -> list.any(pieces, fn(piece) { is_era(piece.1) })
-    Prepared(tokens:, date:, time:, ..) ->
-      ids_have_era(tokens) || ids_have_era(date) || ids_have_era(time)
-  }
-}
-
-@target(erlang)
-fn ids_have_era(ids: BitArray) -> Bool {
-  case ids {
-    <<id:16, rest:bits>> -> is_era(element(id, tokens())) || ids_have_era(rest)
-    _ -> False
-  }
-}
-
-@target(erlang)
-fn is_era(token: Token) -> Bool {
-  case token {
-    Era(_) -> True
-    AsciiDigits(inner) -> is_era(inner)
-    _ -> False
   }
 }
 

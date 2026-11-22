@@ -4,3 +4,4 @@
 - On Erlang, glintl uses the ICU we built it with. On JavaScript, it uses the runtime's ICU. When the two versions differ, the targets can disagree on small details, often spaces and commas.
 - ICU 79.1 puts Chinese New Year 2027 and 2030 a day off. JavaScript gets this wrong too, so we intentionally match it in the name of behaviour parity.
 - Around midnight near AD 284 and AD 622, ICU shows the wrong year in the Coptic and Islamic calendars. glintl shows the right year there for now, so glintl and JavaScript can disagree.
+- Before AD 622 in the Islamic calendars and AD 284 in the Coptic calendar, glintl on Erlang can write the era and year differently to Bun. This is because JavaScriptCore changes these dates on top of ICU at format time, and glintl doesn't copy this extra behaviour.

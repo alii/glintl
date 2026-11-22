@@ -169,15 +169,7 @@ fn with_numbering_system(
     Some(number) -> {
       let #(own_minus, found) = minus_signs(glintl.locale_tag(locale))
       let minus = list.key_find(found, number) |> result.unwrap(own_minus)
-      render.with_digits(
-        rendered,
-        number,
-        own_minus,
-        minus,
-        matcher.era_workaround(
-          glintl.calendar_name(glintl.locale_calendar(locale)),
-        ),
-      )
+      render.with_digits(rendered, number, own_minus, minus)
     }
   }
 }
@@ -195,7 +187,6 @@ fn compile_fields(locale: Locale, request: matcher.Request) -> Compiled {
       glintl.locale_data(locale),
       glintl.calendar_position(calendar),
       request,
-      glintl.calendar_name(calendar),
       calendar_math(calendar),
       decimal(locale),
     )

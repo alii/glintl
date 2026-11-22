@@ -1296,58 +1296,6 @@ fn has_run(pieces: List(Piece), letter: fn(String) -> Bool) -> Bool {
 }
 
 @target(erlang)
-/// Checks whether text ends in a character Unicode calls white space.
-/// JavaScriptCore checks this before it adds its own era.
-pub fn ends_with_space(text: String) -> Bool {
-  case list.last(characters(text)) {
-    Ok(c) -> is_space(c)
-    Error(Nil) -> False
-  }
-}
-
-@target(erlang)
-fn is_space(c: String) -> Bool {
-  case c {
-    "\t" | "\n" | "\u{0B}" | "\u{0C}" | "\r" | " " | "\u{85}" | "\u{A0}" -> True
-    "\u{1680}" | "\u{2028}" | "\u{2029}" | "\u{202F}" | "\u{205F}" -> True
-    "\u{3000}" -> True
-    "\u{2000}"
-    | "\u{2001}"
-    | "\u{2002}"
-    | "\u{2003}"
-    | "\u{2004}"
-    | "\u{2005}" -> True
-    "\u{2006}" | "\u{2007}" | "\u{2008}" | "\u{2009}" | "\u{200A}" -> True
-    _ -> False
-  }
-}
-
-@target(erlang)
-/// Bun's JavaScriptCore writes its own era before a set moment, because ICU
-/// never picks that era. It only does this when the pattern has an era.
-///
-/// For the Islamic calendars, it replaces ICU's era and writes the year in ASCII
-/// digits as 1 minus ICU's year. Coptic's first era has no name in ICU, so it
-/// adds its era to the end. `codegen/matcher.ts` does the same.
-pub type EraWorkaround {
-  NoEraWorkaround
-  Replaces(before_ms: Int, text: String)
-  Appends(before_ms: Int, text: String)
-}
-
-@target(erlang)
-/// Picks a calendar's era workaround from ICU's name for the calendar.
-pub fn era_workaround(calendar: String) -> EraWorkaround {
-  case calendar {
-    "islamic-civil" | "islamic-umalqura" ->
-      Replaces(-42_521_558_822_000, "Before Hijra")
-    "islamic-tbla" -> Replaces(-42_521_645_222_000, "Before Hijra")
-    "coptic" -> Appends(-53_184_182_822_000, "Anno Martyrum")
-    _ -> NoEraWorkaround
-  }
-}
-
-@target(erlang)
 /// Splits text into code points like ICU does, so an apostrophe with an accent
 /// on it still counts as an apostrophe.
 fn characters(text: String) -> List(String) {

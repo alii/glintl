@@ -1048,3 +1048,37 @@ export function isoWeekday(epochDay: number): number {
     1
   );
 }
+
+// --- Bun's own eras ------------------------------------------------------------
+
+// Before these moments, Bun's JavaScriptCore writes its own era and year in
+// Islamic and Coptic dates that show an era. glintl doesn't copy that, so
+// checks against Bun skip those dates. The README explains this.
+const ISLAMIC_EPOCH_MS = -42521558822000;
+const ISLAMIC_TABULAR_EPOCH_MS = -42521645222000;
+const COPTIC_EPOCH_MS = -53184182822000;
+
+export function bunEraBefore(calendar: string): number | undefined {
+  switch (calendar) {
+    case "islamic-civil":
+    case "islamic-umalqura":
+      return ISLAMIC_EPOCH_MS;
+    case "islamic-tbla":
+      return ISLAMIC_TABULAR_EPOCH_MS;
+    case "coptic":
+      return COPTIC_EPOCH_MS;
+    default:
+      return undefined;
+  }
+}
+
+// Skip a little past the moment, because a local date can be up to a day
+// either side of it.
+const BUN_ERA_MARGIN_MS = 2 * DAY_MS;
+
+// Whether Bun writes its own era at `ms`, if the pattern shows one.
+export function inBunEra(calendar: string, ms: number): boolean {
+  const before = bunEraBefore(calendar);
+
+  return before !== undefined && ms < before + BUN_ERA_MARGIN_MS;
+}

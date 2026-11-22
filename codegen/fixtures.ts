@@ -11,6 +11,7 @@ import {
   SCAN_FROM,
   calendarDate,
   day,
+  inBunEra,
 } from "./calendars.ts";
 import { escape } from "./erlang.ts";
 import { STYLES } from "./patterns.ts";
@@ -528,7 +529,8 @@ export function fieldFixtures(
 
       if (
         math === undefined ||
-        calendarDate(mathFor(math.id), local) === undefined
+        calendarDate(mathFor(math.id), local) === undefined ||
+        inBunEra(math.id, seconds * MS_PER_SECOND)
       ) {
         return [];
       }
