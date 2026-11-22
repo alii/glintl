@@ -56,4 +56,4 @@ If you're coming from Elixir, [Localize](https://github.com/elixir-localize/loca
 - Localize loads locale data from files or the network. When a file is missing, it quietly falls back to another locale.
 - glintl builds every locale into the package. `glintl/locales` returns an error for a tag it has no data for, and has helpers if you want to implement the fallback yourself.
 
-[Limits](LIMITS.md) • [Contributing](CONTRIBUTING.md)
+[Limits](https://github.com/alii/glintl/blob/master/LIMITS.md) • [Contributing](https://github.com/alii/glintl/blob/master/CONTRIBUTING.md)
